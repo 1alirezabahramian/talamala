@@ -153,6 +153,26 @@ final class Kernel
     }
 
     /**
+     * Prefer Bearer staff session; skeleton fallback X-Staff-Id.
+     * @return array{0:?string,1:?array}
+     */
+    private function resolveStaffId(array $headers): array
+    {
+        $session = $this->sessionFromAuthHeader($headers);
+        if ($session !== null) {
+            if ($session->subjectType !== 'staff') {
+                return [null, ['status' => 403, 'body' => ['error' => 'staff_session_required']]];
+            }
+            return [$session->subjectId, null];
+        }
+        $fallback = $headers['x-staff-id'] ?? '';
+        if ($fallback !== '') {
+            return [$fallback, null];
+        }
+        return [null, ['status' => 401, 'body' => ['error' => 'unauthorized', 'message' => 'Bearer or X-Staff-Id required']]];
+    }
+
+    /**
      * @return array{status:int,body:array}
      */
     public function handle(string $method, string $path, array $headers, ?array $jsonBody): array
@@ -190,7 +210,13 @@ final class Kernel
 
         // Staff auth
         if ($method === 'POST' && $path === '/v1/auth/staff/login') {
-            return (new StaffAuthController($this->staffAuth))->login($tenant, $body, $correlationId);
+            $resp = (new StaffAuthController($this->staffAuth))->login($tenant, $body, $correlationId);
+            if (($resp['status'] ?? 0) === 200 && !empty($resp['body']['staff_id'])) {
+                $token = $this->issueSession($tenant->id, 'staff', (string) $resp['body']['staff_id']);
+                $resp['body']['access_token'] = $token;
+                $resp['body']['token_type'] = 'Bearer';
+            }
+            return $resp;
         }
         if ($method === 'POST' && $path === '/v1/auth/staff/password/rotate') {
             $staffId = $headers['x-staff-id'] ?? '';
@@ -228,19 +254,26 @@ final class Kernel
 
         // Admin registration queue
         if ($method === 'GET' && $path === '/v1/admin/registrations') {
+            [$staffId, $err] = $this->resolveStaffId($headers);
+            if ($err !== null) {
+                return $err;
+            }
             return (new RegistrationQueueController($this->customers, $this->registration))->index($tenant);
         }
         if ($method === 'POST' && preg_match('#^/v1/admin/registrations/([^/]+)/approve$#', $path, $m)) {
-            $staffId = $headers['x-staff-id'] ?? 'staff-unknown';
+            [$staffId, $err] = $this->resolveStaffId($headers);
+            if ($err !== null) {
+                return $err;
+            }
             return (new RegistrationQueueController($this->customers, $this->registration))
                 ->approve($tenant, $m[1], $staffId, $correlationId);
         }
 
         // Custody ops (staff) — skeleton auth via X-Staff-Id
         if ($method === 'POST' && $path === '/v1/admin/custody/receive') {
-            $staffId = $headers['x-staff-id'] ?? '';
-            if ($staffId === '') {
-                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            [$staffId, $err] = $this->resolveStaffId($headers);
+            if ($err !== null) {
+                return $err;
             }
             $customerId = (string) ($body['customer_id'] ?? '');
             $description = (string) ($body['description'] ?? '');
@@ -269,9 +302,9 @@ final class Kernel
             ];
         }
         if ($method === 'POST' && preg_match('#^/v1/admin/custody/([^/]+)/ready$#', $path, $m)) {
-            $staffId = $headers['x-staff-id'] ?? '';
-            if ($staffId === '') {
-                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            [$staffId, $err] = $this->resolveStaffId($headers);
+            if ($err !== null) {
+                return $err;
             }
             try {
                 $item = $this->custody->markReady($tenant->id, $m[1], $staffId, $correlationId);
@@ -281,9 +314,9 @@ final class Kernel
             return ['status' => 200, 'body' => ['id' => $item->id, 'status' => $item->status->value]];
         }
         if ($method === 'POST' && preg_match('#^/v1/admin/custody/([^/]+)/deliver$#', $path, $m)) {
-            $staffId = $headers['x-staff-id'] ?? '';
-            if ($staffId === '') {
-                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            [$staffId, $err] = $this->resolveStaffId($headers);
+            if ($err !== null) {
+                return $err;
             }
             try {
                 $item = $this->custody->deliver($tenant->id, $m[1], $staffId, $correlationId);

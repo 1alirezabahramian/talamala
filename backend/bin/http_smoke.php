@@ -60,11 +60,33 @@ $r = $k->handle('POST', '/v1/auth/customer/register', $h, [
 $check('register', ($r['status'] ?? 0) === 201, $r);
 $customerId = $r['body']['customer_id'] ?? '';
 
-$r = $k->handle('GET', '/v1/admin/registrations', $h, null);
+// Staff login + password rotation (before admin routes)
+$r = $k->handle('POST', '/v1/auth/staff/login', $h, [
+    'username' => 'operator',
+    'password' => 'ChangeMe-Now-1',
+]);
+$check('staff_login', ($r['status'] ?? 0) === 200 && ($r['body']['must_change_password'] ?? false) === true, $r);
+$staffId = $r['body']['staff_id'] ?? '';
+$staffToken = $r['body']['access_token'] ?? '';
+$check('staff_token_issued', $staffToken !== '', $r);
+
+$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
+    'current_password' => 'ChangeMe-Now-1',
+    'new_password' => 'Strong-Pass-99',
+]);
+$check('staff_rotate', ($r['status'] ?? 0) === 200, $r);
+
+$staffH = $h + ['authorization' => 'Bearer ' . $staffToken];
+
+$r = $k->handle('GET', '/v1/admin/registrations', $staffH, null);
 $check('admin_queue', ($r['status'] ?? 0) === 200 && is_array($r['body']['items'] ?? null), $r);
 
-$r = $k->handle('POST', '/v1/admin/registrations/' . $customerId . '/approve', $h + ['x-staff-id' => 'staff1'], null);
+$r = $k->handle('POST', '/v1/admin/registrations/' . $customerId . '/approve', $staffH, null);
 $check('admin_approve', ($r['status'] ?? 0) === 200 && ($r['body']['access_status'] ?? '') === 'active', $r);
+
+// Admin without auth must fail
+$r = $k->handle('GET', '/v1/admin/registrations', $h, null);
+$check('admin_unauthorized', ($r['status'] ?? 0) === 401, $r);
 
 // Bind kimia + seed balance for assets
 $k->registration->bindKimiaAccount('00000000-0000-0000-0000-000000000001', $customerId, 350, 'bind');
@@ -75,22 +97,8 @@ $k->kimia->seedBalance(350, [
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);
 $check('assets', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'] ?? '') === '1000000', $r);
 
-// Staff login + password rotation gate
-$r = $k->handle('POST', '/v1/auth/staff/login', $h, [
-    'username' => 'operator',
-    'password' => 'ChangeMe-Now-1',
-]);
-$check('staff_login', ($r['status'] ?? 0) === 200 && ($r['body']['must_change_password'] ?? false) === true, $r);
-$staffId = $r['body']['staff_id'] ?? '';
-
-$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
-    'current_password' => 'ChangeMe-Now-1',
-    'new_password' => 'Strong-Pass-99',
-]);
-$check('staff_rotate', ($r['status'] ?? 0) === 200, $r);
-
-// Custody lifecycle via HTTP
-$r = $k->handle('POST', '/v1/admin/custody/receive', $h + ['x-staff-id' => $staffId], [
+// Custody lifecycle via staff Bearer
+$r = $k->handle('POST', '/v1/admin/custody/receive', $staffH, [
     'customer_id' => $customerId,
     'description' => 'سکه امانت تست',
     'weight_grams' => '8.100',
@@ -99,10 +107,10 @@ $r = $k->handle('POST', '/v1/admin/custody/receive', $h + ['x-staff-id' => $staf
 $check('custody_receive', ($r['status'] ?? 0) === 201, $r);
 $custodyId = $r['body']['id'] ?? '';
 
-$r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/ready', $h + ['x-staff-id' => $staffId], null);
+$r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/ready', $staffH, null);
 $check('custody_ready', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ready_for_pickup', $r);
 
-$r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/deliver', $h + ['x-staff-id' => $staffId], null);
+$r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/deliver', $staffH, null);
 $check('custody_deliver', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'delivered', $r);
 
 $r = $k->handle('GET', '/v1/customer/custody', $h + ['x-customer-id' => $customerId], null);
