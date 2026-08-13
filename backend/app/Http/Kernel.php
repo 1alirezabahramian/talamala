@@ -133,7 +133,21 @@ final class Kernel
     }
 
     /**
-     * Prefer Bearer customer session; skeleton fallback X-Customer-Id.
+     * production | staging | local (default local allows skeleton header fallbacks)
+     */
+    public static function environment(): string
+    {
+        $env = getenv('TALAMALA_ENV') ?: getenv('APP_ENV') ?: 'local';
+        return strtolower(trim((string) $env));
+    }
+
+    public static function isProduction(): bool
+    {
+        return self::environment() === 'production';
+    }
+
+    /**
+     * Prefer Bearer customer session; X-Customer-Id only outside production.
      * @return array{0:?string,1:?array} [customerId, errorResponse]
      */
     private function resolveCustomerId(array $headers): array
@@ -145,15 +159,20 @@ final class Kernel
             }
             return [$session->subjectId, null];
         }
-        $fallback = $headers['x-customer-id'] ?? '';
-        if ($fallback !== '') {
-            return [$fallback, null];
+        if (!self::isProduction()) {
+            $fallback = $headers['x-customer-id'] ?? '';
+            if ($fallback !== '') {
+                return [$fallback, null];
+            }
         }
-        return [null, ['status' => 401, 'body' => ['error' => 'unauthorized', 'message' => 'Bearer or X-Customer-Id required']]];
+        return [null, ['status' => 401, 'body' => [
+            'error' => 'unauthorized',
+            'message' => self::isProduction() ? 'Bearer required' : 'Bearer or X-Customer-Id required',
+        ]]];
     }
 
     /**
-     * Prefer Bearer staff session; skeleton fallback X-Staff-Id.
+     * Prefer Bearer staff session; X-Staff-Id only outside production.
      * @return array{0:?string,1:?array}
      */
     private function resolveStaffId(array $headers): array
@@ -165,11 +184,16 @@ final class Kernel
             }
             return [$session->subjectId, null];
         }
-        $fallback = $headers['x-staff-id'] ?? '';
-        if ($fallback !== '') {
-            return [$fallback, null];
+        if (!self::isProduction()) {
+            $fallback = $headers['x-staff-id'] ?? '';
+            if ($fallback !== '') {
+                return [$fallback, null];
+            }
         }
-        return [null, ['status' => 401, 'body' => ['error' => 'unauthorized', 'message' => 'Bearer or X-Staff-Id required']]];
+        return [null, ['status' => 401, 'body' => [
+            'error' => 'unauthorized',
+            'message' => self::isProduction() ? 'Bearer required' : 'Bearer or X-Staff-Id required',
+        ]]];
     }
 
     /**
@@ -382,7 +406,7 @@ final class Kernel
         }
 
         // Dev-only helpers (never enable in production)
-        if (($headers['x-talamala-dev'] ?? '') === '1') {
+        if (!self::isProduction() && ($headers['x-talamala-dev'] ?? '') === '1') {
             if ($method === 'GET' && $path === '/v1/dev/last-otp') {
                 $last = $this->sms->sent[array_key_last($this->sms->sent)] ?? null;
                 return [

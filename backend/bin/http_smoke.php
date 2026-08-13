@@ -159,5 +159,16 @@ $check('assets_bearer', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'
 $r = $k->handle('GET', '/v1/customer/assets', $h, null);
 $check('assets_unauthorized', ($r['status'] ?? 0) === 401, $r);
 
+// Production mode: header identity fallbacks and dev routes disabled
+putenv('TALAMALA_ENV=production');
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);
+$check('production_blocks_header_fallback', ($r['status'] ?? 0) === 401, $r);
+$r = $k->handle('GET', '/v1/dev/last-otp', $h + ['x-talamala-dev' => '1'], null);
+$check('production_blocks_dev_routes', ($r['status'] ?? 0) === 404, $r);
+// Bearer still works in production
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $token], null);
+$check('production_bearer_ok', ($r['status'] ?? 0) === 200, $r);
+putenv('TALAMALA_ENV=local');
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);
