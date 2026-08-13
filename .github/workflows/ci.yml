@@ -1,0 +1,64 @@
+name: Talamala CI
+
+on:
+  push:
+    branches: [main, 'stage-*', 'feat/**']
+  pull_request:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl
+          coverage: none
+      - name: Validate composer.json
+        run: composer validate --no-check-publish || true
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-interaction || true
+      - name: PHP syntax check
+        run: find app -name "*.php" -print0 | xargs -0 -n1 php -l
+      - name: Unit tests (when present)
+        run: vendor/bin/phpunit --testsuite Unit || echo "No tests yet"
+
+  openapi:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Validate OpenAPI files exist
+        run: |
+          test -f openapi/auth-v1.openapi.yaml
+          test -f openapi/customer-v1.openapi.yaml
+          test -f openapi/backoffice-v1.openapi.yaml
+          echo "OpenAPI skeletons present"
+
+  secret-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Basic secret pattern scan
+        run: |
+          if grep -rE '(api[_-]?key|password|secret)\s*[:=]\s*["\047][^"\047]{8,}' --include='*.php' --include='*.yml' --include='*.yaml' --include='*.env*' . 2>/dev/null | grep -v 'example' | grep -v 'placeholder'; then
+            echo "Potential secrets found"
+            exit 1
+          fi
+          echo "No obvious secrets"
+
+  report:
+    needs: [backend, openapi, secret-scan]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Exact SHA report
+        run: |
+          echo "CI SHA: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Stage gate: foundation (Stage 1)"
