@@ -10,7 +10,8 @@
 ```bash
 cd backend
 php bin/smoke.php        # domain vertical — expect PASS=8
-php bin/http_smoke.php   # HTTP Kernel — expect PASS=25
+php bin/http_smoke.php   # HTTP Kernel — expect PASS=29
+php bin/check.php         # smoke + domain + logger redact
 ```
 
 ## HTTP server
