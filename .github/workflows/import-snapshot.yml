@@ -1,4 +1,4 @@
-name: Import uploaded snapshot
+name: Export uploaded snapshot
 
 on:
   push:
@@ -8,19 +8,19 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  import:
+  export:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - name: Safely extract snapshot
         shell: python
         run: |
-          import os, pathlib, re, shutil, stat, zipfile
+          import pathlib, shutil, stat, zipfile
           zpath = pathlib.Path('talamala-snapshot.zip')
-          out = pathlib.Path('/tmp/talamala-import')
+          out = pathlib.Path('exported-source')
           shutil.rmtree(out, ignore_errors=True)
           out.mkdir(parents=True)
           bad=[]; secrets=[]; symlinks=[]
@@ -37,26 +37,18 @@ jobs:
                   if (low.endswith('/.env') or '/.env.' in low) and not low.endswith('/.env.example'):
                       secrets.append(name)
                   if info.is_dir():
-                      (out / p).mkdir(parents=True, exist_ok=True)
                       continue
-                  target=out / p
+                  if not p.parts or p.parts[0] != 'talamala':
+                      raise SystemExit(f'Unexpected ZIP path: {name}')
+                  rel=pathlib.PurePosixPath(*p.parts[1:])
+                  target=out / rel
                   target.parent.mkdir(parents=True, exist_ok=True)
                   with z.open(info) as src, open(target,'wb') as dst:
                       shutil.copyfileobj(src,dst)
           if bad or symlinks or secrets:
               raise SystemExit(f'Rejected snapshot: unsafe={bad}, symlinks={symlinks}, secret-like={secrets}')
-          roots=[p for p in out.iterdir()]
-          if len(roots) != 1 or roots[0].name != 'talamala' or not roots[0].is_dir():
-              raise SystemExit(f'Unexpected ZIP root: {[p.name for p in roots]}')
-      - name: Replace repository contents with project source
-        run: |
-          rsync -a --delete --exclude='.git/' /tmp/talamala-import/talamala/ ./
-          git status --short
-      - name: Commit imported source
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add -A
-          git diff --cached --quiet && exit 0
-          git commit -m "Import complete Talamala project source"
-          git push origin HEAD:main
+      - uses: actions/upload-artifact@v4
+        with:
+          name: talamala-extracted-source
+          path: exported-source/
+          retention-days: 1
