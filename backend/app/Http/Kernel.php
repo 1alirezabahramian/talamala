@@ -133,6 +133,26 @@ final class Kernel
     }
 
     /**
+     * Prefer Bearer customer session; skeleton fallback X-Customer-Id.
+     * @return array{0:?string,1:?array} [customerId, errorResponse]
+     */
+    private function resolveCustomerId(array $headers): array
+    {
+        $session = $this->sessionFromAuthHeader($headers);
+        if ($session !== null) {
+            if ($session->subjectType !== 'customer') {
+                return [null, ['status' => 403, 'body' => ['error' => 'customer_session_required']]];
+            }
+            return [$session->subjectId, null];
+        }
+        $fallback = $headers['x-customer-id'] ?? '';
+        if ($fallback !== '') {
+            return [$fallback, null];
+        }
+        return [null, ['status' => 401, 'body' => ['error' => 'unauthorized', 'message' => 'Bearer or X-Customer-Id required']]];
+    }
+
+    /**
      * @return array{status:int,body:array}
      */
     public function handle(string $method, string $path, array $headers, ?array $jsonBody): array
@@ -198,9 +218,9 @@ final class Kernel
 
         // Customer assets — requires X-Customer-Id header in skeleton (session later)
         if ($method === 'GET' && $path === '/v1/customer/assets') {
-            $customerId = $headers['x-customer-id'] ?? '';
-            if ($customerId === '') {
-                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            [$customerId, $err] = $this->resolveCustomerId($headers);
+            if ($err !== null) {
+                return $err;
             }
             return (new CustomerAssetsController($this->customers, $this->financialRead))
                 ->assets($tenant, $customerId);
@@ -273,9 +293,9 @@ final class Kernel
             return ['status' => 200, 'body' => ['id' => $item->id, 'status' => $item->status->value]];
         }
         if ($method === 'GET' && $path === '/v1/customer/custody') {
-            $customerId = $headers['x-customer-id'] ?? '';
-            if ($customerId === '') {
-                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            [$customerId, $err] = $this->resolveCustomerId($headers);
+            if ($err !== null) {
+                return $err;
             }
             $items = $this->custodyRepo->listForCustomer($tenant->id, $customerId);
             $out = array_map(static fn ($i) => [
@@ -289,9 +309,9 @@ final class Kernel
 
         // Orders — accept from immutable quote (settlement remains blocked)
         if ($method === 'POST' && $path === '/v1/customer/orders/accept') {
-            $customerId = $headers['x-customer-id'] ?? '';
-            if ($customerId === '') {
-                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            [$customerId, $err] = $this->resolveCustomerId($headers);
+            if ($err !== null) {
+                return $err;
             }
             $quoteId = (string) ($body['quote_id'] ?? '');
             $idem = $headers['idempotency-key'] ?? ($body['idempotency_key'] ?? '');
@@ -313,9 +333,9 @@ final class Kernel
             ];
         }
         if ($method === 'GET' && $path === '/v1/customer/orders') {
-            $customerId = $headers['x-customer-id'] ?? '';
-            if ($customerId === '') {
-                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            [$customerId, $err] = $this->resolveCustomerId($headers);
+            if ($err !== null) {
+                return $err;
             }
             $list = $this->orderRepo->listForCustomer($tenant->id, $customerId);
             $out = array_map(static fn ($o) => [

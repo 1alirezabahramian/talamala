@@ -139,6 +139,17 @@ $r = $k->handle('POST', '/v1/dev/session', $h + ['x-talamala-dev' => '1'], [
     'subject_id' => $customerId,
 ]);
 $check('session_issue', ($r['status'] ?? 0) === 200 && isset($r['body']['access_token']), $r);
+$token = $r['body']['access_token'] ?? '';
+
+// Bearer auth path for assets (no X-Customer-Id)
+$r = $k->handle('GET', '/v1/customer/assets', $h + [
+    'authorization' => 'Bearer ' . $token,
+], null);
+$check('assets_bearer', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'] ?? '') === '1000000', $r);
+
+// Unauthorized without identity
+$r = $k->handle('GET', '/v1/customer/assets', $h, null);
+$check('assets_unauthorized', ($r['status'] ?? 0) === 401, $r);
 
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

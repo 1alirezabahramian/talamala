@@ -1,62 +1,44 @@
 openapi: 3.0.3
 info:
   title: Talamala Customer API
-  version: 1.1.0
+  version: 1.2.0
   description: >
     Customer-facing API. Financial values are server-normalized (Toman display).
-    No client-side financial calculation authority. Tenant from Host only.
+    No client-side financial calculation. Tenant from Host only.
+    Auth: Bearer customer session preferred; X-Customer-Id allowed in skeleton only.
 servers:
-  - url: /v1/customer
+  - url: /
 paths:
-  /me:
-    get:
-      operationId: customerMe
-      summary: Current customer profile and access status
-      security:
-        - bearerAuth: []
-      responses:
-        '200':
-          description: Profile
-        '401':
-          description: Unauthenticated
-  /assets:
+  /v1/customer/assets:
     get:
       operationId: customerAssets
       summary: Assets from Kimia read model (Toman + gold weight)
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/XCustomerIdSkeleton'
       responses:
         '200':
           description: Assets
-          content:
-            application/json:
-              schema:
-                type: object
-                properties:
-                  status:
-                    type: string
-                    enum: [ok, not_bound]
-                  money_toman:
-                    type: string
-                  gold_weight_g:
-                    type: string
         '401':
-          description: Unauthenticated
+          description: Unauthorized
         '503':
           description: Kimia unavailable
-  /orders:
+  /v1/customer/orders:
     get:
       operationId: customerOrders
       summary: Customer order list
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/XCustomerIdSkeleton'
       responses:
         '200':
           description: Orders
-  /orders/accept:
+  /v1/customer/orders/accept:
     post:
       operationId: customerAcceptOrder
-      summary: Accept immutable quote into order (settlement may remain blocked)
+      summary: Accept immutable quote (settlement may remain blocked)
       security:
         - bearerAuth: []
       parameters:
@@ -65,6 +47,7 @@ paths:
           required: true
           schema:
             type: string
+        - $ref: '#/components/parameters/XCustomerIdSkeleton'
       requestBody:
         required: true
         content:
@@ -80,12 +63,14 @@ paths:
           description: Order accepted
         '409':
           description: Quote not acceptable
-  /custody:
+  /v1/customer/custody:
     get:
       operationId: customerCustody
-      summary: Physical custody items (Amanat) — Talamala truth
+      summary: Physical custody items (Amanat)
       security:
         - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/XCustomerIdSkeleton'
       responses:
         '200':
           description: Custody list
@@ -94,3 +79,11 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+  parameters:
+    XCustomerIdSkeleton:
+      name: X-Customer-Id
+      in: header
+      required: false
+      description: Skeleton fallback when Bearer is absent. Remove after session is mandatory.
+      schema:
+        type: string
