@@ -1,0 +1,14 @@
+services:
+  backend:
+    image: php:8.3-cli
+    working_dir: /app
+    volumes:
+      - ../../backend:/app
+    command: ["php", "-S", "0.0.0.0:8080", "-t", "public"]
+    ports:
+      - "8080:8080"
+    env_file:
+      - ../../backend/.env.example
+    profiles: ["dev"]
+
+  # DB and workers added when Stage 1 migrations land.

@@ -1,0 +1,10 @@
+{
+  "name": "@talamala/customer",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Talamala customer PWA — Simple Frontend",
+  "scripts": {
+    "dev": "echo 'Wire Vite/Next when Stage 2 UI gate opens'",
+    "build": "echo 'No build yet — structure only'"
+  }
+}

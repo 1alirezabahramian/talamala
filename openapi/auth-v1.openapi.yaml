@@ -1,0 +1,89 @@
+openapi: 3.0.3
+info:
+  title: Talamala Auth API
+  version: 1.0.0
+  description: >
+    Authentication contracts. Tenant is Host-resolved; client must not send tenant_id as authority.
+    Customer auth is OTP-only. Staff requires password rotation on first login.
+servers:
+  - url: /v1
+paths:
+  /healthz:
+    get:
+      operationId: healthLive
+      summary: Liveness probe
+      responses:
+        '200':
+          description: OK
+  /auth/customer/otp/request:
+    post:
+      operationId: customerOtpRequest
+      summary: Request OTP for customer mobile
+      description: Rate-limited. Tenant from Host.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [mobile, purpose]
+              properties:
+                mobile:
+                  type: string
+                  example: "09121234567"
+                purpose:
+                  type: string
+                  enum: [login, registration]
+      responses:
+        '200':
+          description: Challenge created
+        '429':
+          description: Rate limited
+  /auth/customer/otp/verify:
+    post:
+      operationId: customerOtpVerify
+      summary: Verify OTP and establish session or registration path
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [challenge_id, code]
+              properties:
+                challenge_id:
+                  type: string
+                code:
+                  type: string
+      responses:
+        '200':
+          description: Authenticated or needs registration
+        '401':
+          description: Invalid or expired
+  /auth/staff/login:
+    post:
+      operationId: staffLogin
+      summary: Staff username/password login
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [username, password]
+              properties:
+                username:
+                  type: string
+                password:
+                  type: string
+                  format: password
+      responses:
+        '200':
+          description: Session or must_change_password
+        '401':
+          description: Invalid credentials
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
