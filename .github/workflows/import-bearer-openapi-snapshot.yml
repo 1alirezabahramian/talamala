@@ -56,7 +56,7 @@ jobs:
         run: |
           cd /tmp/talamala-new
           grep -Rqi 'Bearer' backend openapi
-          grep -RqiE 'version:[[:space:]]*["'"']?1\.2(\.0)?["'"']?' openapi
+          grep -Rqi 'version: 1.2' openapi
       - name: Import project source
         run: |
           rsync -a --delete \
