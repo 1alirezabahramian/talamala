@@ -1,0 +1,58 @@
+name: Verify OpenAPI 1.3 parity snapshot
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/import-openapi-13-snapshot.yml']
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Safely extract snapshot
+        shell: python
+        run: |
+          import pathlib, shutil, stat, zipfile
+          zpath=pathlib.Path('talamala-snapshot.zip'); out=pathlib.Path('/tmp/talamala-new')
+          shutil.rmtree(out, ignore_errors=True); out.mkdir(parents=True)
+          bad=[]; secrets=[]; symlinks=[]
+          with zipfile.ZipFile(zpath) as z:
+            for info in z.infolist():
+              name=info.filename.replace('\\','/'); p=pathlib.PurePosixPath(name); mode=(info.external_attr>>16)&0xffff
+              if name.startswith('/') or '..' in p.parts: bad.append(name); continue
+              if stat.S_ISLNK(mode): symlinks.append(name); continue
+              if info.is_dir(): continue
+              low=name.lower()
+              if (low.endswith('/.env') or '/.env.' in low) and not low.endswith('/.env.example'): secrets.append(name)
+              parts=list(p.parts)
+              if parts and parts[0]=='talamala': parts=parts[1:]
+              if not parts: continue
+              target=out.joinpath(*parts); target.parent.mkdir(parents=True,exist_ok=True)
+              with z.open(info) as src, open(target,'wb') as dst: shutil.copyfileobj(src,dst)
+          if bad or secrets or symlinks: raise SystemExit(f'Rejected unsafe={bad} secrets={secrets} symlinks={symlinks}')
+      - name: Verify claimed files and smoke 32/32
+        run: |
+          cd /tmp/talamala-new
+          for f in README.md backend/app/Http/Kernel.php backend/bin/http_smoke.php openapi/auth-v1.openapi.yaml openapi/customer-v1.openapi.yaml openapi/backoffice-v1.openapi.yaml docs/00-master/STAGE_PROGRESS_TALAGO.md docs/00-master/CURRENT_STATE.md docs/00-master/NEXT_ACTIONS.md; do test -f "$f"; done
+          cd backend
+          php bin/http_smoke.php | tee /tmp/http-smoke.txt
+          grep -Eq 'PASS=32([[:space:]]+FAIL=0|.*FAIL=0)' /tmp/http-smoke.txt
+          grep -RqiE 'tenant.*(isolation|mismatch|cross)|cross.*tenant' bin/http_smoke.php app
+      - name: Verify OpenAPI 1.3 markers
+        run: |
+          cd /tmp/talamala-new
+          grep -RqiE '1\.3|v1\.3|version:[[:space:]]*["'"']?1\.3' openapi README.md docs/00-master
+      - name: Import project source and preserve architecture handoff zip
+        run: |
+          rsync -a --delete --exclude='.git/' --exclude='.github/workflows/' --exclude='Talamala_COMPLETE_ONE_SHOT_HANDOFF.zip' /tmp/talamala-new/ ./
+          rm -f talamala-snapshot.zip
+          git status --short
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add -A
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat: OpenAPI v1.3 parity + adversarial tenant isolation (smoke 32/32)'
+          git push origin HEAD:main
