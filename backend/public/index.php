@@ -10,9 +10,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../app/bootstrap_autoload.php';
 
 use Talamala\Http\Kernel;
-
-header('Content-Type: application/json; charset=utf-8');
-header('X-Talamala-Bootstrap', 'kernel-v1');
+use Talamala\Http\SecurityHeaders;
 
 $method = $_SERVER['REQUEST_METHOD'] ?? 'GET';
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
@@ -28,6 +26,17 @@ if (isset($_SERVER['HTTP_HOST'])) {
     $headers['host'] = $_SERVER['HTTP_HOST'];
 }
 
+$origin = $headers['origin'] ?? null;
+foreach (SecurityHeaders::defaults($origin) as $name => $value) {
+    header($name . ': ' . $value);
+}
+header('X-Talamala-Bootstrap: kernel-v1');
+
+if ($method === 'OPTIONS') {
+    http_response_code(204);
+    exit;
+}
+
 $raw = file_get_contents('php://input') ?: '';
 $jsonBody = null;
 if ($raw !== '') {
@@ -37,6 +46,10 @@ if ($raw !== '') {
 
 $kernel = new Kernel();
 $result = $kernel->handle($method, $path, $headers, $jsonBody);
+
+foreach ($result['headers'] ?? [] as $name => $value) {
+    header($name . ': ' . $value);
+}
 
 http_response_code((int) ($result['status'] ?? 500));
 echo json_encode($result['body'] ?? new stdClass(), JSON_UNESCAPED_UNICODE);

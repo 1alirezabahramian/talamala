@@ -33,6 +33,7 @@ use Talamala\Infrastructure\Persistence\InMemoryTenantResolver;
 use Talamala\Infrastructure\Sms\FakeSmsOtpSender;
 use Talamala\Integrations\Jibit\FakeJibitIdentityClient;
 use Talamala\Integrations\Kimia\FakeKimiaReadClient;
+use Talamala\Infrastructure\Security\InMemoryRateLimiter;
 
 /**
  * Minimal composition root for Stage 1–3 skeleton.
@@ -53,6 +54,7 @@ final class Kernel
     public readonly InMemoryQuoteRepository $quotes;
     public readonly InMemoryOrderRepository $orderRepo;
     public readonly InMemorySessionStore $sessions;
+    public readonly InMemoryRateLimiter $otpRateLimiter;
     public readonly InMemoryAuditLogger $audit;
     public readonly InMemoryCustodyRepository $custodyRepo;
 
@@ -102,6 +104,7 @@ final class Kernel
             $this->audit,
         );
         $this->sessions = new InMemorySessionStore();
+        $this->otpRateLimiter = new InMemoryRateLimiter(maxAttempts: 5, windowSeconds: 300);
     }
 
     /** Issue a short-lived skeleton session (replace with signed JWT/DB later). */
@@ -226,6 +229,19 @@ final class Kernel
 
         // Auth OTP
         if ($method === 'POST' && $path === '/v1/auth/customer/otp/request') {
+            $mobile = (string) ($body['mobile'] ?? '');
+            $rlKey = $tenant->id . ':otp:' . preg_replace('/\D+/', '', $mobile);
+            $rl = $this->otpRateLimiter->hit($rlKey);
+            if (!$rl['allowed']) {
+                return [
+                    'status' => 429,
+                    'body' => [
+                        'error' => 'rate_limited',
+                        'retry_after' => $rl['retry_after'],
+                    ],
+                    'headers' => ['Retry-After' => (string) $rl['retry_after']],
+                ];
+            }
             return (new CustomerOtpController($this->otp))->requestOtp($tenant, $body, $correlationId);
         }
         if ($method === 'POST' && $path === '/v1/auth/customer/otp/verify') {

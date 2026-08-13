@@ -159,6 +159,20 @@ $check('assets_bearer', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'
 $r = $k->handle('GET', '/v1/customer/assets', $h, null);
 $check('assets_unauthorized', ($r['status'] ?? 0) === 401, $r);
 
+// OTP rate limit (5 / window) — use dedicated mobile
+$limited = false;
+for ($i = 0; $i < 6; $i++) {
+    $r = $k->handle('POST', '/v1/auth/customer/otp/request', $h, [
+        'mobile' => '09120001111',
+        'purpose' => 'login',
+    ]);
+    if (($r['status'] ?? 0) === 429) {
+        $limited = true;
+        break;
+    }
+}
+$check('otp_rate_limited', $limited, $r ?? null);
+
 // Production mode: header identity fallbacks and dev routes disabled
 putenv('TALAMALA_ENV=production');
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);
