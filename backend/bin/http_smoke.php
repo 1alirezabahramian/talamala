@@ -75,5 +75,70 @@ $k->kimia->seedBalance(350, [
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);
 $check('assets', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'] ?? '') === '1000000', $r);
 
+// Staff login + password rotation gate
+$r = $k->handle('POST', '/v1/auth/staff/login', $h, [
+    'username' => 'operator',
+    'password' => 'ChangeMe-Now-1',
+]);
+$check('staff_login', ($r['status'] ?? 0) === 200 && ($r['body']['must_change_password'] ?? false) === true, $r);
+$staffId = $r['body']['staff_id'] ?? '';
+
+$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
+    'current_password' => 'ChangeMe-Now-1',
+    'new_password' => 'Strong-Pass-99',
+]);
+$check('staff_rotate', ($r['status'] ?? 0) === 200, $r);
+
+// Custody lifecycle via HTTP
+$r = $k->handle('POST', '/v1/admin/custody/receive', $h + ['x-staff-id' => $staffId], [
+    'customer_id' => $customerId,
+    'description' => 'سکه امانت تست',
+    'weight_grams' => '8.100',
+    'fineness' => '900',
+]);
+$check('custody_receive', ($r['status'] ?? 0) === 201, $r);
+$custodyId = $r['body']['id'] ?? '';
+
+$r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/ready', $h + ['x-staff-id' => $staffId], null);
+$check('custody_ready', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ready_for_pickup', $r);
+
+$r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/deliver', $h + ['x-staff-id' => $staffId], null);
+$check('custody_deliver', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'delivered', $r);
+
+$r = $k->handle('GET', '/v1/customer/custody', $h + ['x-customer-id' => $customerId], null);
+$check('customer_custody_list', ($r['status'] ?? 0) === 200 && count($r['body']['items'] ?? []) >= 1, $r);
+
+// Order: seed fixture quote → accept (idempotent) → list (settlement blocked)
+$r = $k->handle('POST', '/v1/dev/seed-quote', $h + ['x-talamala-dev' => '1'], [
+    'customer_id' => $customerId,
+    'quantity' => '1.000',
+    'unit_price_rial' => '350000000',
+    'total_rial' => '350000000',
+]);
+$check('seed_quote', ($r['status'] ?? 0) === 201, $r);
+$quoteId = $r['body']['quote_id'] ?? '';
+
+$r = $k->handle('POST', '/v1/customer/orders/accept', $h + [
+    'x-customer-id' => $customerId,
+    'idempotency-key' => 'idem-http-1',
+], ['quote_id' => $quoteId]);
+$check('order_accept', ($r['status'] ?? 0) === 200 && ($r['body']['settlement'] ?? '') === 'blocked_by_ground_truth', $r);
+
+$r2 = $k->handle('POST', '/v1/customer/orders/accept', $h + [
+    'x-customer-id' => $customerId,
+    'idempotency-key' => 'idem-http-1',
+], ['quote_id' => $quoteId]);
+$check('order_idempotent', ($r2['status'] ?? 0) === 200 && ($r2['body']['from_idempotency_cache'] ?? false) === true, $r2);
+
+$r = $k->handle('GET', '/v1/customer/orders', $h + ['x-customer-id' => $customerId], null);
+$check('order_list', ($r['status'] ?? 0) === 200 && count($r['body']['items'] ?? []) >= 1, $r);
+
+// Session issue (skeleton)
+$r = $k->handle('POST', '/v1/dev/session', $h + ['x-talamala-dev' => '1'], [
+    'subject_type' => 'customer',
+    'subject_id' => $customerId,
+]);
+$check('session_issue', ($r['status'] ?? 0) === 200 && isset($r['body']['access_token']), $r);
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

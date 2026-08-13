@@ -7,16 +7,28 @@ namespace Talamala\Http;
 use Talamala\Application\Custody\CustodyApplicationService;
 use Talamala\Application\Identity\CustomerRegistrationService;
 use Talamala\Application\Identity\OtpAuthApplicationService;
+use Talamala\Application\Identity\StaffAuthApplicationService;
 use Talamala\Application\Kimia\CustomerFinancialReadService;
+use Talamala\Application\Order\OrderApplicationService;
+use Talamala\Domain\Quote\Quote;
+use Talamala\Domain\Quote\QuoteAsset;
+use Talamala\Domain\Quote\QuoteSide;
+use Talamala\Domain\Quote\QuoteStatus;
+use Talamala\Domain\Session\SessionRecord;
 use Talamala\Domain\Tenant\Tenant;
 use Talamala\Domain\Tenant\TenantResolver;
 use Talamala\Http\Controllers\Admin\RegistrationQueueController;
 use Talamala\Http\Controllers\Auth\CustomerOtpController;
+use Talamala\Http\Controllers\Auth\StaffAuthController;
 use Talamala\Http\Controllers\Customer\CustomerAssetsController;
 use Talamala\Http\Controllers\HealthController;
 use Talamala\Infrastructure\Persistence\InMemoryAuditLogger;
 use Talamala\Infrastructure\Persistence\InMemoryCustodyRepository;
 use Talamala\Infrastructure\Persistence\InMemoryCustomerRepository;
+use Talamala\Infrastructure\Persistence\InMemoryIdempotencyRegistry;
+use Talamala\Infrastructure\Persistence\InMemoryOrderRepository;
+use Talamala\Infrastructure\Persistence\InMemoryQuoteRepository;
+use Talamala\Infrastructure\Persistence\InMemorySessionStore;
 use Talamala\Infrastructure\Persistence\InMemoryTenantResolver;
 use Talamala\Infrastructure\Sms\FakeSmsOtpSender;
 use Talamala\Integrations\Jibit\FakeJibitIdentityClient;
@@ -36,7 +48,13 @@ final class Kernel
     public readonly CustomerFinancialReadService $financialRead;
     public readonly FakeKimiaReadClient $kimia;
     public readonly CustodyApplicationService $custody;
+    public readonly StaffAuthApplicationService $staffAuth;
+    public readonly OrderApplicationService $orders;
+    public readonly InMemoryQuoteRepository $quotes;
+    public readonly InMemoryOrderRepository $orderRepo;
+    public readonly InMemorySessionStore $sessions;
     public readonly InMemoryAuditLogger $audit;
+    public readonly InMemoryCustodyRepository $custodyRepo;
 
     public function __construct()
     {
@@ -53,6 +71,16 @@ final class Kernel
         $this->sms = new FakeSmsOtpSender();
         $this->otp = new OtpAuthApplicationService($this->sms, $this->audit);
 
+        $this->staffAuth = new StaffAuthApplicationService($this->audit);
+        // Demo staff: must change password on first login
+        $this->staffAuth->bootstrapStaff(
+            '00000000-0000-0000-0000-000000000001',
+            'staff-demo-1',
+            'operator',
+            'ChangeMe-Now-1',
+            true,
+        );
+
         $this->customers = new InMemoryCustomerRepository();
         $jibit = new FakeJibitIdentityClient();
         // Dev convenience: allow common test national/mobile pair
@@ -62,7 +90,46 @@ final class Kernel
         $this->kimia = new FakeKimiaReadClient();
         $this->financialRead = new CustomerFinancialReadService($this->kimia);
 
-        $this->custody = new CustodyApplicationService(new InMemoryCustodyRepository(), $this->audit);
+        $this->custodyRepo = new InMemoryCustodyRepository();
+        $this->custody = new CustodyApplicationService($this->custodyRepo, $this->audit);
+
+        $this->quotes = new InMemoryQuoteRepository();
+        $this->orderRepo = new InMemoryOrderRepository();
+        $this->orders = new OrderApplicationService(
+            $this->quotes,
+            $this->orderRepo,
+            new InMemoryIdempotencyRegistry(),
+            $this->audit,
+        );
+        $this->sessions = new InMemorySessionStore();
+    }
+
+    /** Issue a short-lived skeleton session (replace with signed JWT/DB later). */
+    public function issueSession(string $tenantId, string $subjectType, string $subjectId, int $ttlSeconds = 3600): string
+    {
+        $token = bin2hex(random_bytes(24));
+        $this->sessions->put(new SessionRecord(
+            token: $token,
+            tenantId: $tenantId,
+            subjectType: $subjectType,
+            subjectId: $subjectId,
+            expiresAt: (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify("+{$ttlSeconds} seconds"),
+        ));
+        return $token;
+    }
+
+    public function sessionFromAuthHeader(array $headers): ?SessionRecord
+    {
+        $auth = $headers['authorization'] ?? '';
+        if (!preg_match('/^Bearer\s+(\S+)/i', $auth, $m)) {
+            return null;
+        }
+        $session = $this->sessions->get($m[1]);
+        if ($session === null) {
+            return null;
+        }
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        return $session->isValid($now) ? $session : null;
     }
 
     /**
@@ -101,6 +168,18 @@ final class Kernel
             return (new CustomerOtpController($this->otp))->verifyOtp($tenant, $body, $correlationId);
         }
 
+        // Staff auth
+        if ($method === 'POST' && $path === '/v1/auth/staff/login') {
+            return (new StaffAuthController($this->staffAuth))->login($tenant, $body, $correlationId);
+        }
+        if ($method === 'POST' && $path === '/v1/auth/staff/password/rotate') {
+            $staffId = $headers['x-staff-id'] ?? '';
+            if ($staffId === '') {
+                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            }
+            return (new StaffAuthController($this->staffAuth))->rotatePassword($tenant, $staffId, $body, $correlationId);
+        }
+
         // Registration (after OTP verify registration_required)
         if ($method === 'POST' && $path === '/v1/auth/customer/register') {
             $result = $this->registration->completeRegistration($tenant->id, $body, $correlationId);
@@ -137,17 +216,171 @@ final class Kernel
                 ->approve($tenant, $m[1], $staffId, $correlationId);
         }
 
-        // Dev-only: last OTP code from Fake SMS (never in production)
-        if ($method === 'GET' && $path === '/v1/dev/last-otp' && ($headers['x-talamala-dev'] ?? '') === '1') {
-            $last = $this->sms->sent[array_key_last($this->sms->sent)] ?? null;
+        // Custody ops (staff) — skeleton auth via X-Staff-Id
+        if ($method === 'POST' && $path === '/v1/admin/custody/receive') {
+            $staffId = $headers['x-staff-id'] ?? '';
+            if ($staffId === '') {
+                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            }
+            $customerId = (string) ($body['customer_id'] ?? '');
+            $description = (string) ($body['description'] ?? '');
+            $weight = (string) ($body['weight_grams'] ?? '');
+            $fineness = isset($body['fineness']) ? (string) $body['fineness'] : null;
+            if ($customerId === '' || $description === '' || $weight === '') {
+                return ['status' => 422, 'body' => ['error' => 'customer_description_weight_required']];
+            }
+            $item = $this->custody->receive(
+                $tenant->id,
+                $customerId,
+                $description,
+                $weight,
+                $fineness,
+                $staffId,
+                $correlationId,
+                isset($body['barcode_ref']) ? (string) $body['barcode_ref'] : null,
+            );
+            return [
+                'status' => 201,
+                'body' => [
+                    'id' => $item->id,
+                    'status' => $item->status->value,
+                    'weight_grams' => $item->weightGrams,
+                ],
+            ];
+        }
+        if ($method === 'POST' && preg_match('#^/v1/admin/custody/([^/]+)/ready$#', $path, $m)) {
+            $staffId = $headers['x-staff-id'] ?? '';
+            if ($staffId === '') {
+                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            }
+            try {
+                $item = $this->custody->markReady($tenant->id, $m[1], $staffId, $correlationId);
+            } catch (\Throwable $e) {
+                return ['status' => 400, 'body' => ['error' => 'custody_transition_failed', 'message' => $e->getMessage()]];
+            }
+            return ['status' => 200, 'body' => ['id' => $item->id, 'status' => $item->status->value]];
+        }
+        if ($method === 'POST' && preg_match('#^/v1/admin/custody/([^/]+)/deliver$#', $path, $m)) {
+            $staffId = $headers['x-staff-id'] ?? '';
+            if ($staffId === '') {
+                return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
+            }
+            try {
+                $item = $this->custody->deliver($tenant->id, $m[1], $staffId, $correlationId);
+            } catch (\Throwable $e) {
+                return ['status' => 400, 'body' => ['error' => 'custody_transition_failed', 'message' => $e->getMessage()]];
+            }
+            return ['status' => 200, 'body' => ['id' => $item->id, 'status' => $item->status->value]];
+        }
+        if ($method === 'GET' && $path === '/v1/customer/custody') {
+            $customerId = $headers['x-customer-id'] ?? '';
+            if ($customerId === '') {
+                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            }
+            $items = $this->custodyRepo->listForCustomer($tenant->id, $customerId);
+            $out = array_map(static fn ($i) => [
+                'id' => $i->id,
+                'description' => $i->description,
+                'weight_grams' => $i->weightGrams,
+                'status' => $i->status->value,
+            ], $items);
+            return ['status' => 200, 'body' => ['items' => $out]];
+        }
+
+        // Orders — accept from immutable quote (settlement remains blocked)
+        if ($method === 'POST' && $path === '/v1/customer/orders/accept') {
+            $customerId = $headers['x-customer-id'] ?? '';
+            if ($customerId === '') {
+                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            }
+            $quoteId = (string) ($body['quote_id'] ?? '');
+            $idem = $headers['idempotency-key'] ?? ($body['idempotency_key'] ?? '');
+            if ($quoteId === '' || $idem === '') {
+                return ['status' => 422, 'body' => ['error' => 'quote_id_and_idempotency_key_required']];
+            }
+            $result = $this->orders->acceptFromQuote($tenant->id, $customerId, $quoteId, (string) $idem, $correlationId);
+            if (!$result->success) {
+                return ['status' => 409, 'body' => ['error' => $result->errorCode, 'message' => $result->errorMessage]];
+            }
             return [
                 'status' => 200,
                 'body' => [
-                    'mobile' => $last['mobile'] ?? null,
-                    'code' => $last['parameters']['Code'] ?? null,
-                    'count' => count($this->sms->sent),
+                    'order_id' => $result->order->id,
+                    'status' => $result->order->status->value,
+                    'from_idempotency_cache' => $result->fromIdempotencyCache,
+                    'settlement' => 'blocked_by_ground_truth',
                 ],
             ];
+        }
+        if ($method === 'GET' && $path === '/v1/customer/orders') {
+            $customerId = $headers['x-customer-id'] ?? '';
+            if ($customerId === '') {
+                return ['status' => 401, 'body' => ['error' => 'customer_id_required']];
+            }
+            $list = $this->orderRepo->listForCustomer($tenant->id, $customerId);
+            $out = array_map(static fn ($o) => [
+                'order_id' => $o->id,
+                'quote_id' => $o->quoteId,
+                'status' => $o->status->value,
+                'quantity' => $o->quantity,
+                'total_rial' => $o->totalRial,
+            ], $list);
+            return ['status' => 200, 'body' => ['items' => $out]];
+        }
+
+        // Dev-only helpers (never enable in production)
+        if (($headers['x-talamala-dev'] ?? '') === '1') {
+            if ($method === 'GET' && $path === '/v1/dev/last-otp') {
+                $last = $this->sms->sent[array_key_last($this->sms->sent)] ?? null;
+                return [
+                    'status' => 200,
+                    'body' => [
+                        'mobile' => $last['mobile'] ?? null,
+                        'code' => $last['parameters']['Code'] ?? null,
+                        'count' => count($this->sms->sent),
+                    ],
+                ];
+            }
+            // Seed a manual open quote for order smoke (prices are test fixtures, not live feed)
+            if ($method === 'POST' && $path === '/v1/dev/seed-quote') {
+                $customerId = (string) ($body['customer_id'] ?? '');
+                if ($customerId === '') {
+                    return ['status' => 422, 'body' => ['error' => 'customer_id_required']];
+                }
+                $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+                $quote = new Quote(
+                    id: 'q-' . bin2hex(random_bytes(6)),
+                    tenantId: $tenant->id,
+                    customerId: $customerId,
+                    side: QuoteSide::Buy,
+                    asset: QuoteAsset::Gold18,
+                    quantity: (string) ($body['quantity'] ?? '1.000'),
+                    unitPriceRial: (string) ($body['unit_price_rial'] ?? '350000000'),
+                    totalRial: (string) ($body['total_rial'] ?? '350000000'),
+                    issuedAt: $now,
+                    expiresAt: $now->modify('+5 minutes'),
+                    status: QuoteStatus::Open,
+                    priceSourceRef: 'dev-manual-fixture',
+                );
+                $this->quotes->save($quote);
+                return [
+                    'status' => 201,
+                    'body' => [
+                        'quote_id' => $quote->id,
+                        'expires_at' => $quote->expiresAt->format(\DateTimeInterface::ATOM),
+                        'note' => 'Fixture only — not a live price provider',
+                    ],
+                ];
+            }
+            if ($method === 'POST' && $path === '/v1/dev/session') {
+                $type = (string) ($body['subject_type'] ?? 'customer');
+                $id = (string) ($body['subject_id'] ?? '');
+                if ($id === '' || !in_array($type, ['customer', 'staff'], true)) {
+                    return ['status' => 422, 'body' => ['error' => 'subject_type_and_id_required']];
+                }
+                $token = $this->issueSession($tenant->id, $type, $id);
+                return ['status' => 200, 'body' => ['access_token' => $token, 'token_type' => 'Bearer']];
+            }
         }
 
         return [
