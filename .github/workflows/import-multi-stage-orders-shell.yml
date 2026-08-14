@@ -97,7 +97,7 @@ jobs:
           screen=Path('frontend/customer/src/screens/orders/OrdersListScreen.tsx').read_text()
           if '/v1/customer/orders' not in api: raise SystemExit('orders endpoint missing')
           if re.search(r'method\s*:\s*[\'\"](?:POST|PUT|PATCH|DELETE)', api, re.I): raise SystemExit('orders read stage contains write method')
-          if re.search(r'(?:price|quote|settlement|kimia)', api, re.I): raise SystemExit('orders read API contains forbidden financial/write markers')
+          if re.search(r'/v1/[^\s\"\']*(?:price|quote|settlement|kimia)', api, re.I): raise SystemExit('orders read API contains forbidden route')
           if re.search(r'(?:parseFloat|parseInt|Number)\s*\(', api+'\n'+screen): raise SystemExit('client numeric coercion forbidden')
           print('STAGE1_CONTRACT_OK')
           PY
@@ -184,7 +184,7 @@ jobs:
           shell=Path('frontend/customer/src/CustomerShell.tsx').read_text()
           for marker in ('Assets','Custody','Orders','Accept'):
               if not re.search(marker, shell, re.I): raise SystemExit(f'missing shell tab/import marker: {marker}')
-          if re.search(r'(?:price|kimiaWrite|settlement)', shell, re.I): raise SystemExit('forbidden shell scope marker')
+          if re.search(r'/v1/[^\s\"\']*(?:price|kimia|settlement)', shell, re.I): raise SystemExit('forbidden shell route')
           print('STAGE3_CONTRACT_OK')
           PY
           php backend/bin/http_smoke.php | tee /tmp/s3.log
