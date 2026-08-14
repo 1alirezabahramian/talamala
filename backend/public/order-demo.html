@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — Order Accept (settlement blocked)</title>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
+      --accent: #c9a227; --danger: #e85d5d; --ok: #3dba7e; --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Tahoma, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center; padding: 1.5rem 1rem;
+    }
+    .wrap { width: 100%; max-width: 440px; }
+    .badge {
+      display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; background: #243044; color: var(--muted); margin-bottom: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.35rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+    label { display: block; font-size: 0.85rem; color: var(--muted); margin-bottom: 0.35rem; }
+    input {
+      width: 100%; padding: 0.7rem; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--bg); color: var(--text); margin-bottom: 0.75rem; direction: ltr;
+    }
+    button {
+      width: 100%; padding: 0.75rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #111; font-weight: 700; cursor: pointer; margin-bottom: 0.5rem;
+    }
+    button.secondary { background: #2a3548; color: var(--text); }
+    .error { color: var(--danger); }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem; font-size: 0.75rem; direction: ltr; color: var(--muted); overflow: auto;
+    }
+    .hint { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Order accept · settlement blocked · fixture seed only (dev)</span>
+    <div class="card">
+      <h1>پذیرش سفارش</h1>
+      <p class="muted">بدون price provider زنده</p>
+      <label>customer_id (لوکال)</label>
+      <input id="customer_id" />
+      <label>quote_id</label>
+      <input id="quote_id" />
+      <button type="button" id="btn-seed" class="secondary">seed fixture quote (dev)</button>
+      <button type="button" id="btn-accept">accept order</button>
+      <button type="button" id="btn-list" class="secondary">list orders</button>
+      <p id="err" class="error" hidden></p>
+      <pre id="raw" hidden></pre>
+      <p class="hint">
+        POST /v1/dev/seed-quote (X-Talamala-Dev: 1) — fixture only<br />
+        POST /v1/customer/orders/accept + Idempotency-Key<br />
+        GET /v1/customer/orders
+      </p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const $ = (id) => document.getElementById(id);
+      function headers(dev) {
+        const h = {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Talamala-Host': 'demo.local',
+          'X-Customer-Id': $('customer_id').value.trim(),
+        };
+        if (dev) h['X-Talamala-Dev'] = '1';
+        return h;
+      }
+      function show(data) {
+        $('raw').textContent = JSON.stringify(data, null, 2);
+        $('raw').hidden = false;
+      }
+      $('btn-seed').onclick = async () => {
+        $('err').hidden = true;
+        const cid = $('customer_id').value.trim();
+        if (!cid) { $('err').textContent = 'customer_id'; $('err').hidden = false; return; }
+        const res = await fetch('/v1/dev/seed-quote', {
+          method: 'POST',
+          headers: headers(true),
+          body: JSON.stringify({
+            customer_id: cid,
+            quantity: '1.000',
+            unit_price_rial: '350000000',
+            total_rial: '350000000',
+          }),
+        });
+        const data = await res.json().catch(() => ({}));
+        show(data);
+        if (res.ok && data.quote_id) $('quote_id').value = data.quote_id;
+        if (!res.ok) { $('err').textContent = data.error || 'seed fail'; $('err').hidden = false; }
+      };
+      $('btn-accept').onclick = async () => {
+        $('err').hidden = true;
+        const quote_id = $('quote_id').value.trim();
+        if (!quote_id) { $('err').textContent = 'quote_id'; $('err').hidden = false; return; }
+        const idem = (crypto.randomUUID && crypto.randomUUID()) || ('idem-' + Date.now());
+        const h = headers(false);
+        h['Idempotency-Key'] = idem;
+        const res = await fetch('/v1/customer/orders/accept', {
+          method: 'POST', headers: h, body: JSON.stringify({ quote_id }),
+        });
+        const data = await res.json().catch(() => ({}));
+        show(data);
+        if (!res.ok) { $('err').textContent = data.message || data.error || 'accept fail'; $('err').hidden = false; }
+      };
+      $('btn-list').onclick = async () => {
+        const res = await fetch('/v1/customer/orders', { headers: headers(false) });
+        const data = await res.json().catch(() => ({}));
+        show(data);
+      };
+    })();
+  </script>
+</body>
+</html>
