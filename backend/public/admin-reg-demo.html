@@ -1,0 +1,235 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — Registration Queue (admin)</title>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
+      --accent: #c9a227; --danger: #e85d5d; --ok: #3dba7e; --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Tahoma, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+    .wrap { width: 100%; max-width: 480px; }
+    .badge {
+      display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; background: #243044; color: var(--muted); margin-bottom: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.35rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+    label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--muted); }
+    input {
+      width: 100%; padding: 0.7rem 0.85rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      margin-bottom: 0.75rem; direction: ltr;
+    }
+    button {
+      width: 100%; padding: 0.75rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #111; font-weight: 700; cursor: pointer;
+      margin-bottom: 0.5rem;
+    }
+    button.secondary { background: #2a3548; color: var(--text); }
+    button:disabled { opacity: 0.55; }
+    .error { color: var(--danger); font-size: 0.9rem; }
+    .ok { color: var(--ok); font-size: 0.9rem; }
+    .item {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem; margin-bottom: 0.5rem;
+    }
+    .item strong { display: block; }
+    .meta { color: var(--muted); font-size: 0.85rem; margin: 0.25rem 0 0.5rem; }
+    .item button { width: auto; padding: 0.4rem 0.9rem; font-size: 0.85rem; }
+    .hint { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-top: 0.75rem; }
+    .hidden { display: none; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Backoffice · RegistrationQueue + approve · no price / no Kimia Write</span>
+
+    <div class="card" id="login-card">
+      <h1>ورود staff</h1>
+      <p class="muted">دمو: operator / ChangeMe-Now-1</p>
+      <label>username</label>
+      <input id="user" value="operator" dir="ltr" />
+      <label>password</label>
+      <input id="pass" type="password" value="ChangeMe-Now-1" dir="ltr" />
+      <div id="rotate-box" class="hidden">
+        <label>رمز جدید (چرخش اجباری)</label>
+        <input id="pass-new" type="password" value="ChangeMe-Now-2" dir="ltr" />
+      </div>
+      <button id="btn-login" type="button">ورود</button>
+      <p id="login-err" class="error hidden"></p>
+      <p id="login-ok" class="ok hidden"></p>
+    </div>
+
+    <div class="card hidden" id="queue-card">
+      <h1>صف ثبت‌نام</h1>
+      <p class="muted">Limited → Active (staff approve)</p>
+      <button id="btn-reload" type="button" class="secondary">تازه‌سازی صف</button>
+      <p id="queue-err" class="error hidden"></p>
+      <div id="list"></div>
+      <p class="hint">
+        GET /v1/admin/registrations<br />
+        POST /v1/admin/registrations/{id}/approve<br />
+        Tenant: X-Talamala-Host: demo.local
+      </p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const TENANT = 'demo.local';
+      const $ = (id) => document.getElementById(id);
+      let token = null;
+      let staffId = null;
+
+      function headers() {
+        return {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Talamala-Host': TENANT,
+          Authorization: 'Bearer ' + token,
+        };
+      }
+
+      async function loadQueue() {
+        $('queue-err').classList.add('hidden');
+        $('list').innerHTML = '';
+        const res = await fetch('/v1/admin/registrations', { headers: headers() });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+          $('queue-err').textContent = data.message || data.error || ('HTTP ' + res.status);
+          $('queue-err').classList.remove('hidden');
+          return;
+        }
+        const items = data.items || [];
+        if (!items.length) {
+          $('list').innerHTML = '<p class="muted">صف خالی است</p>';
+          return;
+        }
+        $('list').innerHTML = items.map(function (it) {
+          return (
+            '<div class="item" data-id="' + it.customer_id + '">' +
+            '<strong>' + (it.full_name || '—') + '</strong>' +
+            '<div class="meta" dir="ltr">' + it.mobile + ' · ' + it.access_status +
+            (it.kimia_bound ? ' · bound' : '') + '</div>' +
+            '<button type="button" class="btn-approve">تأیید</button>' +
+            '</div>'
+          );
+        }).join('');
+        $('list').querySelectorAll('.btn-approve').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            const id = btn.closest('.item').getAttribute('data-id');
+            btn.disabled = true;
+            const r = await fetch('/v1/admin/registrations/' + encodeURIComponent(id) + '/approve', {
+              method: 'POST',
+              headers: headers(),
+              body: '{}',
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+              $('queue-err').textContent = d.message || d.error || 'approve failed';
+              $('queue-err').classList.remove('hidden');
+              btn.disabled = false;
+              return;
+            }
+            await loadQueue();
+          });
+        });
+      }
+
+      $('btn-login').addEventListener('click', async () => {
+        $('login-err').classList.add('hidden');
+        $('login-ok').classList.add('hidden');
+        const username = $('user').value.trim();
+        const password = $('pass').value;
+        $('btn-login').disabled = true;
+        try {
+          let res = await fetch('/v1/auth/staff/login', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              'X-Talamala-Host': TENANT,
+            },
+            body: JSON.stringify({ username, password }),
+          });
+          let data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            $('login-err').textContent = data.message || data.error || 'ورود ناموفق';
+            $('login-err').classList.remove('hidden');
+            return;
+          }
+          staffId = data.staff_id;
+          token = data.access_token;
+          if (data.must_change_password) {
+            $('rotate-box').classList.remove('hidden');
+            const newPass = $('pass-new').value;
+            res = await fetch('/v1/auth/staff/password/rotate', {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Talamala-Host': TENANT,
+                'X-Staff-Id': staffId,
+                Authorization: token ? ('Bearer ' + token) : undefined,
+              },
+              body: JSON.stringify({
+                current_password: password,
+                new_password: newPass,
+              }),
+            });
+            data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              $('login-err').textContent = data.message || data.error || 'چرخش رمز ناموفق';
+              $('login-err').classList.remove('hidden');
+              return;
+            }
+            // re-login with new password for clean token
+            res = await fetch('/v1/auth/staff/login', {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Talamala-Host': TENANT,
+              },
+              body: JSON.stringify({ username, password: newPass }),
+            });
+            data = await res.json().catch(() => ({}));
+            if (res.ok && data.access_token) {
+              token = data.access_token;
+              staffId = data.staff_id;
+            }
+          }
+          if (!token) {
+            $('login-err').textContent = 'token صادر نشد';
+            $('login-err').classList.remove('hidden');
+            return;
+          }
+          $('login-ok').textContent = 'ورود موفق';
+          $('login-ok').classList.remove('hidden');
+          $('queue-card').classList.remove('hidden');
+          await loadQueue();
+        } catch (e) {
+          $('login-err').textContent = 'ارتباط برقرار نشد';
+          $('login-err').classList.remove('hidden');
+        } finally {
+          $('btn-login').disabled = false;
+        }
+      });
+
+      $('btn-reload').addEventListener('click', () => loadQueue());
+    })();
+  </script>
+</body>
+</html>
