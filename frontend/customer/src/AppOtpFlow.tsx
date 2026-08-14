@@ -1,22 +1,24 @@
 /**
- * Minimal OTP vertical shell (request → verify → done).
- * Wire into Vite/Next when design-system gate opens.
- * Local runnable path today: /otp-demo.html on PHP server.
+ * OTP → registration_required → Registration form → done.
+ * Local runnable path: /otp-demo.html
  */
 
 import { useState } from 'react';
 import { OtpRequestScreen } from './screens/auth/OtpRequestScreen';
 import { OtpVerifyScreen } from './screens/auth/OtpVerifyScreen';
+import { RegistrationScreen } from './screens/auth/RegistrationScreen';
 
 type Step =
   | { name: 'request' }
   | { name: 'verify'; challengeId: string; mobile: string; expiresAt: string }
+  | { name: 'register'; mobile: string }
   | {
       name: 'done';
-      kind: 'authenticated' | 'registration_required';
+      kind: 'authenticated' | 'registered';
       accessToken?: string;
       customerId?: string;
       accessStatus?: string;
+      kimiaBound?: boolean;
     };
 
 export function AppOtpFlow() {
@@ -40,9 +42,7 @@ export function AppOtpFlow() {
         mobile={step.mobile}
         expiresAt={step.expiresAt}
         onBack={() => setStep({ name: 'request' })}
-        onRegistrationRequired={() =>
-          setStep({ name: 'done', kind: 'registration_required' })
-        }
+        onRegistrationRequired={() => setStep({ name: 'register', mobile: step.mobile })}
         onAuthenticated={({ accessToken, customerId, accessStatus }) =>
           setStep({
             name: 'done',
@@ -56,14 +56,38 @@ export function AppOtpFlow() {
     );
   }
 
+  if (step.name === 'register') {
+    return (
+      <RegistrationScreen
+        mobile={step.mobile}
+        onBack={() => setStep({ name: 'request' })}
+        onSuccess={({ customerId, accessStatus, kimiaBound }) =>
+          setStep({
+            name: 'done',
+            kind: 'registered',
+            customerId,
+            accessStatus,
+            kimiaBound,
+          })
+        }
+      />
+    );
+  }
+
   return (
     <div className="tal-screen" dir="rtl" lang="fa">
-      <h1>{step.kind === 'authenticated' ? 'ورود موفق' : 'ثبت‌نام لازم است'}</h1>
-      {step.kind === 'authenticated' ? (
+      <h1>{step.kind === 'authenticated' ? 'ورود موفق' : 'ثبت‌نام ثبت شد'}</h1>
+      {step.customerId ? (
         <p className="tal-muted">customer_id: {step.customerId}</p>
-      ) : (
-        <p className="tal-muted">موبایل تأیید شد — مرحله بعد: فرم ثبت‌نام</p>
-      )}
+      ) : null}
+      {step.accessStatus ? (
+        <p className="tal-muted">access_status: {step.accessStatus}</p>
+      ) : null}
+      {step.kind === 'registered' ? (
+        <p className="tal-muted">
+          وضعیت پیش‌فرض محدود است تا staff approve (جدا از Jibit).
+        </p>
+      ) : null}
       <button type="button" onClick={() => setStep({ name: 'request' })}>
         شروع دوباره
       </button>

@@ -1,5 +1,5 @@
 /**
- * Customer OTP auth API — contracts match OpenAPI auth-v1.3 + Kernel.
+ * Customer OTP + registration API — contracts match OpenAPI auth-v1.3 + Kernel.
  * Never invent response fields.
  */
 
@@ -33,7 +33,19 @@ export type DevLastOtp = {
   count: number;
 };
 
-/** Iran mobile: 09xxxxxxxxx or +989xxxxxxxxx → normalized digits for display only. */
+export type RegisterRequest = {
+  mobile: string;
+  national_code: string;
+  full_name: string;
+};
+
+export type RegisterSuccess = {
+  customer_id: string;
+  access_status: string;
+  kimia_bound: boolean;
+};
+
+/** Iran mobile normalize for display/API only. */
 export function normalizeIranMobile(input: string): string {
   const digits = input.replace(/\D+/g, '');
   if (digits.startsWith('98') && digits.length === 12) {
@@ -72,9 +84,21 @@ export async function verifyOtp(
 }
 
 /**
- * Dev-only: read last OTP from FakeSms (requires X-Talamala-Dev: 1).
- * Never call in production builds.
+ * POST /v1/auth/customer/register
+ * Body exact: mobile, national_code, full_name
+ * 201 → customer_id, access_status, kimia_bound
+ * Jibit mismatch → error (backend); staff approve is separate.
  */
+export async function registerCustomer(
+  body: RegisterRequest,
+): Promise<ApiResult<RegisterSuccess>> {
+  return apiPost<RegisterSuccess>('/v1/auth/customer/register', {
+    mobile: normalizeIranMobile(body.mobile),
+    national_code: body.national_code.trim(),
+    full_name: body.full_name.trim(),
+  });
+}
+
 export async function fetchDevLastOtp(): Promise<ApiResult<DevLastOtp>> {
   return apiGet<DevLastOtp>('/v1/dev/last-otp', undefined, { 'X-Talamala-Dev': '1' });
 }

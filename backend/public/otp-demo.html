@@ -95,6 +95,26 @@
       </div>
     </div>
 
+    
+    <div id="step-register" class="card hidden">
+      <h1>تکمیل ثبت‌نام</h1>
+      <p class="muted" id="reg-mobile-hint">موبایل تأییدشده</p>
+      <form id="form-register">
+        <label for="full_name">نام کامل</label>
+        <input id="full_name" type="text" autocomplete="name" required />
+        <label for="national_code">کد ملی</label>
+        <input id="national_code" type="text" inputmode="numeric" maxlength="10" dir="ltr" required />
+        <p id="err-register" class="error hidden" role="alert"></p>
+        <button id="btn-register" type="submit">ثبت‌نام</button>
+        <button type="button" class="link" id="btn-reg-back">بازگشت</button>
+      </form>
+      <p class="dev-hint">
+        قرارداد OpenAPI: mobile + national_code + full_name<br/>
+        Jibit gate روی backend؛ staff approve جداست.<br/>
+        تست تطبیق fake: national_code <code>0012345678</code> با mobile <code>09121234567</code>
+      </p>
+    </div>
+
     <div id="step-done" class="card hidden">
       <h1 id="done-title">نتیجه</h1>
       <p id="done-msg" class="muted"></p>
@@ -201,18 +221,21 @@
             setErr('err-verify', data.message || data.error || 'کد نامعتبر');
             return;
           }
-          show('step-done');
           if (data.status === 'registration_required') {
-            $('done-title').textContent = 'ثبت‌نام لازم است';
-            $('done-msg').textContent = 'موبایل تأیید شد. مرحله بعد: فرم ثبت‌نام (Jibit gate).';
+            $('reg-mobile-hint').innerHTML = 'موبایل تأییدشده: <span dir="ltr">' + mobile + '</span>';
+            show('step-register');
+            $('full_name').focus();
           } else if (data.status === 'authenticated') {
+            show('step-done');
             $('done-title').textContent = 'ورود موفق';
             $('done-msg').textContent = 'session صادر شد.';
+            $('done-json').textContent = JSON.stringify(data, null, 2);
           } else {
+            show('step-done');
             $('done-title').textContent = 'پاسخ سرور';
             $('done-msg').textContent = '';
+            $('done-json').textContent = JSON.stringify(data, null, 2);
           }
-          $('done-json').textContent = JSON.stringify(data, null, 2);
         } catch (err) {
           setErr('err-verify', 'ارتباط با سرور برقرار نشد');
         } finally {
@@ -226,6 +249,8 @@
         setErr('err-verify', null);
         $('code').value = '';
         $('dev-code').textContent = '';
+        if ($('full_name')) $('full_name').value = '';
+        if ($('national_code')) $('national_code').value = '';
         show('step-request');
       });
 
@@ -237,6 +262,56 @@
         setErr('err-request', null);
         setErr('err-verify', null);
         $('dev-code').textContent = '';
+        show('step-request');
+      });
+
+
+      $('form-register').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setErr('err-register', null);
+        const full_name = $('full_name').value.trim();
+        const national_code = $('national_code').value.replace(/\D+/g, '');
+        if (full_name.length < 2) {
+          setErr('err-register', 'نام کامل را وارد کنید');
+          return;
+        }
+        if (national_code.length < 8) {
+          setErr('err-register', 'کد ملی باید ۸ تا ۱۰ رقم باشد');
+          return;
+        }
+        const btn = $('btn-register');
+        btn.disabled = true;
+        btn.textContent = 'در حال ارسال…';
+        try {
+          const res = await fetch(API + '/v1/auth/customer/register', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ mobile, national_code, full_name }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            const msg = data.error === 'jibit_mismatch'
+              ? 'تطبیق هویت (Jibit) ناموفق بود'
+              : (data.message || data.error || 'خطا در ثبت‌نام');
+            setErr('err-register', msg);
+            return;
+          }
+          show('step-done');
+          $('done-title').textContent = 'ثبت‌نام ثبت شد';
+          $('done-msg').textContent = 'دسترسی محدود تا staff approve — جدا از Jibit.';
+          $('done-json').textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+          setErr('err-register', 'ارتباط با سرور برقرار نشد');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'ثبت‌نام';
+        }
+      });
+
+      $('btn-reg-back').addEventListener('click', () => {
+        setErr('err-register', null);
+        $('full_name').value = '';
+        $('national_code').value = '';
         show('step-request');
       });
 
