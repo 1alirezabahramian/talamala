@@ -1,0 +1,203 @@
+name: Import multi-stage orders shell
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-multi-stage-orders-shell
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Safely extract delivery
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f talamala-multi-stage-orders-shell.zip
+          rm -rf /tmp/multi-stage && mkdir -p /tmp/multi-stage
+          python3 - <<'PY'
+          import os, stat, zipfile
+          from pathlib import PurePosixPath
+          zpath='talamala-multi-stage-orders-shell.zip'
+          required={
+            'stage-orders-read/STAGE.md',
+            'stage-orders-read/frontend/customer/src/api/orders.ts',
+            'stage-orders-read/frontend/customer/src/screens/orders/OrdersListScreen.tsx',
+            'stage-orders-read/docs/00-master/STAGE_ORDERS_READ_UI.md',
+            'stage-order-accept/STAGE.md',
+            'stage-order-accept/frontend/customer/src/api/orderAccept.ts',
+            'stage-order-accept/frontend/customer/src/screens/orders/OrderAcceptScreen.tsx',
+            'stage-order-accept/backend/public/order-demo.html',
+            'stage-order-accept/docs/00-master/STAGE_ORDER_ACCEPT_UI.md',
+            'stage-customer-shell/STAGE.md',
+            'stage-customer-shell/frontend/customer/src/CustomerShell.tsx',
+            'stage-customer-shell/docs/00-master/STAGE_CUSTOMER_SHELL.md',
+          }
+          with zipfile.ZipFile(zpath) as z:
+              files=[]
+              for info in z.infolist():
+                  name=info.filename.replace('\\','/')
+                  p=PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe path: {name}')
+                  mode=(info.external_attr >> 16) & 0xFFFF
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink rejected: {name}')
+                  if name.endswith('/'): continue
+                  if os.path.basename(name).startswith('.env'): raise SystemExit(f'secret-like file rejected: {name}')
+                  files.append(name)
+              missing=required-set(files)
+              if missing: raise SystemExit('missing required files: '+repr(sorted(missing)))
+              allowed=required|{'README_MULTI_STAGE.md'}
+              extras=set(files)-allowed
+              if extras: raise SystemExit('unexpected files: '+repr(sorted(extras)))
+              z.extractall('/tmp/multi-stage')
+          print('ZIP_OK')
+          PY
+
+      - name: Verify existing dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/customer/src/api/client.ts
+          test -f frontend/customer/src/api/assets.ts
+          test -f frontend/customer/src/api/custody.ts
+          test -f frontend/customer/src/screens/assets/AssetsScreen.tsx
+          test -f frontend/customer/src/screens/custody/CustodyListScreen.tsx
+          test -f backend/bin/http_smoke.php
+          test -f backend/public/router.php
+
+      - name: Stage 1 overlay - Orders Read
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frontend/customer/src/screens/orders
+          cp /tmp/multi-stage/stage-orders-read/frontend/customer/src/api/orders.ts frontend/customer/src/api/orders.ts
+          cp /tmp/multi-stage/stage-orders-read/frontend/customer/src/screens/orders/OrdersListScreen.tsx frontend/customer/src/screens/orders/OrdersListScreen.tsx
+          cp /tmp/multi-stage/stage-orders-read/docs/00-master/STAGE_ORDERS_READ_UI.md docs/00-master/STAGE_ORDERS_READ_UI.md
+
+      - name: Stage 1 contract and regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          api=Path('frontend/customer/src/api/orders.ts').read_text()
+          screen=Path('frontend/customer/src/screens/orders/OrdersListScreen.tsx').read_text()
+          if '/v1/customer/orders' not in api: raise SystemExit('orders endpoint missing')
+          if re.search(r'method\s*:\s*[\'\"](?:POST|PUT|PATCH|DELETE)', api, re.I): raise SystemExit('orders read stage contains write method')
+          if re.search(r'(?:price|quote|settlement|kimia)', api, re.I): raise SystemExit('orders read API contains forbidden financial/write markers')
+          if re.search(r'(?:parseFloat|parseInt|Number)\s*\(', api+'\n'+screen): raise SystemExit('client numeric coercion forbidden')
+          print('STAGE1_CONTRACT_OK')
+          PY
+          php backend/bin/http_smoke.php | tee /tmp/s1.log
+          grep -Eq 'PASS=32([^0-9]|$)' /tmp/s1.log
+          ! grep -Eq 'FAIL=[1-9][0-9]*' /tmp/s1.log
+
+      - name: Stage 1 exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add frontend/customer/src/api/orders.ts frontend/customer/src/screens/orders/OrdersListScreen.tsx docs/00-master/STAGE_ORDERS_READ_UI.md
+          expected=$(printf '%s\n' docs/00-master/STAGE_ORDERS_READ_UI.md frontend/customer/src/api/orders.ts frontend/customer/src/screens/orders/OrdersListScreen.tsx | sort)
+          actual=$(git diff --cached --name-only | sort)
+          test "$actual" = "$expected"
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(customer): orders list UI — GET /v1/customer/orders read-only'
+          git push origin HEAD:main
+
+      - name: Stage 2 overlay - Order Accept
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/multi-stage/stage-order-accept/frontend/customer/src/api/orderAccept.ts frontend/customer/src/api/orderAccept.ts
+          cp /tmp/multi-stage/stage-order-accept/frontend/customer/src/screens/orders/OrderAcceptScreen.tsx frontend/customer/src/screens/orders/OrderAcceptScreen.tsx
+          cp /tmp/multi-stage/stage-order-accept/backend/public/order-demo.html backend/public/order-demo.html
+          cp /tmp/multi-stage/stage-order-accept/docs/00-master/STAGE_ORDER_ACCEPT_UI.md docs/00-master/STAGE_ORDER_ACCEPT_UI.md
+
+      - name: Stage 2 contract regression and demo
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          api=Path('frontend/customer/src/api/orderAccept.ts').read_text()
+          screen=Path('frontend/customer/src/screens/orders/OrderAcceptScreen.tsx').read_text()
+          demo=Path('backend/public/order-demo.html').read_text()
+          doc=Path('docs/00-master/STAGE_ORDER_ACCEPT_UI.md').read_text()
+          alltext='\n'.join((api,screen,demo,doc))
+          if 'quote_id' not in alltext: raise SystemExit('quote_id contract missing')
+          if not re.search(r'blocked_by_ground_truth', alltext, re.I): raise SystemExit('settlement block marker missing')
+          if re.search(r'/v1/[^\s\"\']*(?:price|kimia)', api+'\n'+screen+'\n'+demo, re.I): raise SystemExit('forbidden price/Kimia route')
+          if re.search(r'(?:parseFloat|parseInt|Number)\s*\(', api+'\n'+screen+'\n'+demo): raise SystemExit('client numeric coercion forbidden')
+          print('STAGE2_CONTRACT_OK')
+          PY
+          php backend/bin/http_smoke.php | tee /tmp/s2.log
+          grep -Eq 'PASS=32([^0-9]|$)' /tmp/s2.log
+          ! grep -Eq 'FAIL=[1-9][0-9]*' /tmp/s2.log
+          (cd backend && php -S 127.0.0.1:8080 -t public public/router.php >/tmp/order-server.log 2>&1 & echo $! >/tmp/order-server.pid)
+          trap 'kill $(cat /tmp/order-server.pid) 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do curl -fsS http://127.0.0.1:8080/order-demo.html -o /tmp/order-demo.html && break || sleep 0.5; done
+          test -s /tmp/order-demo.html
+          grep -Eiq 'quote_id|blocked_by_ground_truth|accept' /tmp/order-demo.html
+
+      - name: Stage 2 exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add frontend/customer/src/api/orderAccept.ts frontend/customer/src/screens/orders/OrderAcceptScreen.tsx backend/public/order-demo.html docs/00-master/STAGE_ORDER_ACCEPT_UI.md
+          expected=$(printf '%s\n' backend/public/order-demo.html docs/00-master/STAGE_ORDER_ACCEPT_UI.md frontend/customer/src/api/orderAccept.ts frontend/customer/src/screens/orders/OrderAcceptScreen.tsx | sort)
+          actual=$(git diff --cached --name-only | sort)
+          test "$actual" = "$expected"
+          git commit -m 'feat(customer): order accept UI — quote_id + settlement blocked_by_ground_truth'
+          git push origin HEAD:main
+
+      - name: Stage 3 overlay - Customer Shell
+        shell: bash
+        run: |
+          set -euo pipefail
+          cp /tmp/multi-stage/stage-customer-shell/frontend/customer/src/CustomerShell.tsx frontend/customer/src/CustomerShell.tsx
+          cp /tmp/multi-stage/stage-customer-shell/docs/00-master/STAGE_CUSTOMER_SHELL.md docs/00-master/STAGE_CUSTOMER_SHELL.md
+
+      - name: Stage 3 dependency contract and regression
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f frontend/customer/src/screens/orders/OrdersListScreen.tsx
+          test -f frontend/customer/src/screens/orders/OrderAcceptScreen.tsx
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+          shell=Path('frontend/customer/src/CustomerShell.tsx').read_text()
+          for marker in ('Assets','Custody','Orders','Accept'):
+              if not re.search(marker, shell, re.I): raise SystemExit(f'missing shell tab/import marker: {marker}')
+          if re.search(r'(?:price|kimiaWrite|settlement)', shell, re.I): raise SystemExit('forbidden shell scope marker')
+          print('STAGE3_CONTRACT_OK')
+          PY
+          php backend/bin/http_smoke.php | tee /tmp/s3.log
+          grep -Eq 'PASS=32([^0-9]|$)' /tmp/s3.log
+          ! grep -Eq 'FAIL=[1-9][0-9]*' /tmp/s3.log
+
+      - name: Stage 3 exact commit
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add frontend/customer/src/CustomerShell.tsx docs/00-master/STAGE_CUSTOMER_SHELL.md
+          expected=$(printf '%s\n' docs/00-master/STAGE_CUSTOMER_SHELL.md frontend/customer/src/CustomerShell.tsx | sort)
+          actual=$(git diff --cached --name-only | sort)
+          test "$actual" = "$expected"
+          git commit -m 'feat(customer): CustomerShell tabs — assets / custody / orders / accept'
+          git push origin HEAD:main
