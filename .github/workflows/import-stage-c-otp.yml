@@ -31,24 +31,24 @@ jobs:
               target=out.joinpath(*parts); target.parent.mkdir(parents=True,exist_ok=True)
               with z.open(info) as src, open(target,'wb') as dst: shutil.copyfileobj(src,dst)
           if bad or secrets or symlinks: raise SystemExit(f'Rejected unsafe={bad} secrets={secrets} symlinks={symlinks}')
-      - name: Verify Stage C contents and smoke 32/32
+      - name: Verify Stage C declared contents
         run: |
-          cd /tmp/talamala-stage-c
-          test -d frontend/customer
-          test -f backend/public/otp-demo.html
-          test -f backend/app/Application/Identity/OtpAuthApplicationService.php
-          test -f backend/app/Infrastructure/Sms/FakeSmsOtpSender.php
-          test -d docs/00-master
-          php backend/bin/http_smoke.php | tee /tmp/http-smoke.txt
-          grep -Eq 'PASS=32([[:space:]]+FAIL=0|.*FAIL=0)' /tmp/http-smoke.txt
-      - name: Replace only declared Stage C scope
+          test -d /tmp/talamala-stage-c/frontend/customer
+          test -f /tmp/talamala-stage-c/backend/public/otp-demo.html
+          test -f /tmp/talamala-stage-c/backend/app/Application/Identity/OtpAuthApplicationService.php
+          test -f /tmp/talamala-stage-c/backend/app/Infrastructure/Sms/FakeSmsOtpSender.php
+          test -d /tmp/talamala-stage-c/docs/00-master
+      - name: Overlay declared Stage C scope
         run: |
           rsync -a /tmp/talamala-stage-c/frontend/customer/ frontend/customer/
           cp /tmp/talamala-stage-c/backend/public/otp-demo.html backend/public/otp-demo.html
           cp /tmp/talamala-stage-c/backend/app/Application/Identity/OtpAuthApplicationService.php backend/app/Application/Identity/OtpAuthApplicationService.php
           cp /tmp/talamala-stage-c/backend/app/Infrastructure/Sms/FakeSmsOtpSender.php backend/app/Infrastructure/Sms/FakeSmsOtpSender.php
           rsync -a /tmp/talamala-stage-c/docs/00-master/ docs/00-master/
-          git status --short
+      - name: Verify full project smoke 32/32 after overlay
+        run: |
+          php backend/bin/http_smoke.php | tee /tmp/http-smoke.txt
+          grep -Eq 'PASS=32([[:space:]]+FAIL=0|.*FAIL=0)' /tmp/http-smoke.txt
       - name: Commit and push
         run: |
           git config user.name 'github-actions[bot]'
