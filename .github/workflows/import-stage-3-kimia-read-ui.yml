@@ -154,3 +154,5 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(stage-3): customer assets UI — Kimia Read GET /v1/customer/assets'
           git push origin HEAD:main
+
+# trigger: 2026-08-14
