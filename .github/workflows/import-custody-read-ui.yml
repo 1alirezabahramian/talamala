@@ -1,0 +1,187 @@
+name: Verify and import Custody Read UI
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: import-custody-read-ui
+  cancel-in-progress: false
+
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Confirm source HEAD and ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f talamala-stage-custody-read-ui.zip
+          echo "SOURCE_HEAD=$(git rev-parse HEAD)"
+
+      - name: Safely inspect and extract ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf /tmp/custody-ui
+          mkdir -p /tmp/custody-ui
+          python3 - <<'PY'
+          import os, stat, zipfile
+          from pathlib import PurePosixPath
+
+          zpath='talamala-stage-custody-read-ui.zip'
+          required={
+            'frontend/customer/src/api/custody.ts',
+            'frontend/customer/src/screens/custody/CustodyListScreen.tsx',
+            'backend/public/custody-demo.html',
+            'docs/00-master/STAGE_CUSTODY_READ_UI.md',
+          }
+          with zipfile.ZipFile(zpath) as z:
+              files=[]
+              for info in z.infolist():
+                  name=info.filename.replace('\\','/')
+                  p=PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise SystemExit(f'unsafe ZIP path: {name}')
+                  mode=(info.external_attr >> 16) & 0xFFFF
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f'symlink rejected: {name}')
+                  if name.endswith('/'):
+                      continue
+                  if os.path.basename(name).startswith('.env'):
+                      raise SystemExit(f'secret-like file rejected: {name}')
+                  files.append(name)
+
+              actual=set(files)
+              missing=required-actual
+              if missing:
+                  raise SystemExit('missing required files: '+repr(sorted(missing)))
+
+              extras=actual-required
+              bad_extras=[x for x in extras if '/' in x or not x.lower().endswith('.md')]
+              if bad_extras:
+                  raise SystemExit('unexpected non-guide files: '+repr(sorted(bad_extras)))
+
+              print('ZIP_FILES='+repr(sorted(actual)))
+              print('GUIDE_FILES='+repr(sorted(extras)))
+              z.extractall('/tmp/custody-ui')
+          print('ZIP_OK')
+          PY
+
+      - name: Verify current repository structure
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d frontend/customer/src/api
+          test -d frontend/customer/src/screens
+          test -d backend/public
+          test -d docs/00-master
+          test -f backend/public/router.php
+          test -f backend/bin/smoke.php
+          test -f backend/bin/http_smoke.php
+
+      - name: Overlay only approved delivery files
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p frontend/customer/src/screens/custody
+          cp /tmp/custody-ui/frontend/customer/src/api/custody.ts frontend/customer/src/api/custody.ts
+          cp /tmp/custody-ui/frontend/customer/src/screens/custody/CustodyListScreen.tsx frontend/customer/src/screens/custody/CustodyListScreen.tsx
+          cp /tmp/custody-ui/backend/public/custody-demo.html backend/public/custody-demo.html
+          cp /tmp/custody-ui/docs/00-master/STAGE_CUSTODY_READ_UI.md docs/00-master/STAGE_CUSTODY_READ_UI.md
+
+      - name: Verify custody read-only contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re
+          from pathlib import Path
+
+          api = Path('frontend/customer/src/api/custody.ts').read_text(encoding='utf-8')
+          screen = Path('frontend/customer/src/screens/custody/CustodyListScreen.tsx').read_text(encoding='utf-8')
+          demo = Path('backend/public/custody-demo.html').read_text(encoding='utf-8')
+          doc = Path('docs/00-master/STAGE_CUSTODY_READ_UI.md').read_text(encoding='utf-8')
+
+          for label, text in [('api', api), ('demo', demo), ('doc', doc)]:
+              if '/v1/customer/custody' not in text:
+                  raise SystemExit(f'{label}: missing /v1/customer/custody')
+
+          if not re.search(r'weight_grams\s*[?:]?\s*:\s*string\b', api):
+              raise SystemExit('api: weight_grams must be typed as string')
+
+          if re.search(r'method\s*:\s*[\'\"](?:POST|PUT|PATCH|DELETE)[\'\"]', api, re.I):
+              raise SystemExit('api: forbidden write HTTP method')
+
+          if re.search(r'/v1/customer/custody/(?:receive|ready|deliver)\b', api, re.I):
+              raise SystemExit('api: forbidden staff custody operation route')
+
+          if re.search(r'(?:parseFloat|parseInt|Number)\s*\(\s*[^)]*weight_grams', screen + '\n' + demo):
+              raise SystemExit('UI: weight_grams must not be numerically recomputed')
+
+          if 'CustodyListScreen' not in screen:
+              raise SystemExit('screen: CustodyListScreen marker missing')
+
+          print('CUSTODY_READ_ONLY_CONTRACT_OK')
+          PY
+
+      - name: Backend regression smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          php backend/bin/smoke.php | tee /tmp/smoke.log
+          php backend/bin/http_smoke.php | tee /tmp/http-smoke.log
+          grep -Eq 'PASS=32([^0-9]|$)' /tmp/smoke.log /tmp/http-smoke.log
+          ! grep -Eq 'FAIL=[1-9][0-9]*' /tmp/smoke.log /tmp/http-smoke.log
+
+      - name: Local custody demo smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd backend
+          php -S 127.0.0.1:8080 -t public public/router.php >/tmp/custody-server.log 2>&1 &
+          server_pid=$!
+          trap 'kill $server_pid || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8080/custody-demo.html -o /tmp/custody-demo.html; then break; fi
+            sleep 0.5
+          done
+          test -s /tmp/custody-demo.html
+          grep -Fq '/v1/customer/custody' /tmp/custody-demo.html
+
+      - name: Stage exact approved scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add \
+            frontend/customer/src/api/custody.ts \
+            frontend/customer/src/screens/custody/CustodyListScreen.tsx \
+            backend/public/custody-demo.html \
+            docs/00-master/STAGE_CUSTODY_READ_UI.md
+
+          expected=$(printf '%s\n' \
+            backend/public/custody-demo.html \
+            docs/00-master/STAGE_CUSTODY_READ_UI.md \
+            frontend/customer/src/api/custody.ts \
+            frontend/customer/src/screens/custody/CustodyListScreen.tsx | sort)
+          actual=$(git diff --cached --name-only | sort)
+          printf 'EXPECTED:\n%s\nACTUAL:\n%s\n' "$expected" "$actual"
+          test "$actual" = "$expected"
+
+      - name: Commit and push custody read UI
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat: customer custody list UI — GET /v1/customer/custody read-only'
+          git push origin HEAD:main
