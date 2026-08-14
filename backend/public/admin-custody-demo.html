@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — Custody Ops (staff)</title>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
+      --accent: #c9a227; --danger: #e85d5d; --ok: #3dba7e; --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Tahoma, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+    .wrap { width: 100%; max-width: 480px; }
+    .badge {
+      display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; background: #243044; color: var(--muted); margin-bottom: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem; margin-bottom: 1rem;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 0.35rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+    label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--muted); }
+    input {
+      width: 100%; padding: 0.7rem 0.85rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      margin-bottom: 0.75rem; direction: ltr;
+    }
+    button {
+      width: 100%; padding: 0.75rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #111; font-weight: 700; cursor: pointer;
+      margin-bottom: 0.5rem;
+    }
+    button.secondary { background: #2a3548; color: var(--text); }
+    button:disabled { opacity: 0.55; }
+    .error { color: var(--danger); }
+    .ok { color: var(--ok); }
+    .hidden { display: none; }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem; font-size: 0.75rem; overflow: auto; direction: ltr;
+      color: var(--muted); max-height: 160px;
+    }
+    .hint { font-size: 0.8rem; color: var(--muted); line-height: 1.5; margin-top: 0.75rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Staff CustodyOps · receive → ready → deliver · no price / no Kimia Write</span>
+
+    <div class="card" id="login-card">
+      <h1>ورود staff</h1>
+      <p class="muted">operator / ChangeMe-Now-1 (یا رمز بعد از rotate)</p>
+      <label>username</label>
+      <input id="user" value="operator" />
+      <label>password</label>
+      <input id="pass" type="password" value="ChangeMe-Now-1" />
+      <div id="rotate-box" class="hidden">
+        <label>رمز جدید</label>
+        <input id="pass-new" type="password" value="ChangeMe-Now-2" />
+      </div>
+      <button id="btn-login" type="button">ورود</button>
+      <p id="login-err" class="error hidden"></p>
+    </div>
+
+    <div class="card hidden" id="ops-card">
+      <h1>امانت — عملیات</h1>
+      <label>customer_id</label>
+      <input id="customer_id" placeholder="از register/approve" />
+      <label>description</label>
+      <input id="description" style="direction:rtl" placeholder="سکه / شمش …" />
+      <label>weight_grams (decimal string)</label>
+      <input id="weight" value="10.5" />
+      <label>fineness (اختیاری)</label>
+      <input id="fineness" placeholder="0.900" />
+      <button id="btn-receive" type="button">receive</button>
+      <button id="btn-ready" type="button" class="secondary" disabled>ready</button>
+      <button id="btn-deliver" type="button" class="secondary" disabled>deliver</button>
+      <p id="ops-err" class="error hidden"></p>
+      <p id="ops-ok" class="ok hidden"></p>
+      <pre id="raw" class="hidden"></pre>
+      <p class="hint">
+        POST /v1/admin/custody/receive<br />
+        POST /v1/admin/custody/{id}/ready<br />
+        POST /v1/admin/custody/{id}/deliver
+      </p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const TENANT = 'demo.local';
+      const $ = (id) => document.getElementById(id);
+      let token = null;
+      let custodyId = null;
+
+      function h() {
+        return {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Talamala-Host': TENANT,
+          Authorization: 'Bearer ' + token,
+        };
+      }
+
+      $('btn-login').addEventListener('click', async () => {
+        $('login-err').classList.add('hidden');
+        const username = $('user').value.trim();
+        let password = $('pass').value;
+        $('btn-login').disabled = true;
+        try {
+          let res = await fetch('/v1/auth/staff/login', {
+            method: 'POST',
+            headers: {
+              Accept: 'application/json',
+              'Content-Type': 'application/json',
+              'X-Talamala-Host': TENANT,
+            },
+            body: JSON.stringify({ username, password }),
+          });
+          let data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            $('login-err').textContent = data.message || data.error || 'login failed';
+            $('login-err').classList.remove('hidden');
+            return;
+          }
+          token = data.access_token;
+          if (data.must_change_password) {
+            $('rotate-box').classList.remove('hidden');
+            const newPass = $('pass-new').value;
+            res = await fetch('/v1/auth/staff/password/rotate', {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Talamala-Host': TENANT,
+                'X-Staff-Id': data.staff_id,
+                Authorization: token ? 'Bearer ' + token : undefined,
+              },
+              body: JSON.stringify({ current_password: password, new_password: newPass }),
+            });
+            data = await res.json().catch(() => ({}));
+            if (!res.ok) {
+              $('login-err').textContent = data.message || data.error || 'rotate failed';
+              $('login-err').classList.remove('hidden');
+              return;
+            }
+            res = await fetch('/v1/auth/staff/login', {
+              method: 'POST',
+              headers: {
+                Accept: 'application/json',
+                'Content-Type': 'application/json',
+                'X-Talamala-Host': TENANT,
+              },
+              body: JSON.stringify({ username, password: newPass }),
+            });
+            data = await res.json().catch(() => ({}));
+            token = data.access_token;
+          }
+          if (!token) {
+            $('login-err').textContent = 'no token';
+            $('login-err').classList.remove('hidden');
+            return;
+          }
+          $('ops-card').classList.remove('hidden');
+        } catch (e) {
+          $('login-err').textContent = 'network';
+          $('login-err').classList.remove('hidden');
+        } finally {
+          $('btn-login').disabled = false;
+        }
+      });
+
+      function showRaw(data) {
+        $('raw').textContent = JSON.stringify(data, null, 2);
+        $('raw').classList.remove('hidden');
+      }
+
+      $('btn-receive').addEventListener('click', async () => {
+        $('ops-err').classList.add('hidden');
+        $('ops-ok').classList.add('hidden');
+        const body = {
+          customer_id: $('customer_id').value.trim(),
+          description: $('description').value.trim(),
+          weight_grams: $('weight').value.trim(),
+        };
+        const f = $('fineness').value.trim();
+        if (f) body.fineness = f;
+        const res = await fetch('/v1/admin/custody/receive', {
+          method: 'POST', headers: h(), body: JSON.stringify(body),
+        });
+        const data = await res.json().catch(() => ({}));
+        showRaw(data);
+        if (!res.ok) {
+          $('ops-err').textContent = data.message || data.error || 'receive failed';
+          $('ops-err').classList.remove('hidden');
+          return;
+        }
+        custodyId = data.id;
+        $('ops-ok').textContent = 'received · ' + data.status;
+        $('ops-ok').classList.remove('hidden');
+        $('btn-ready').disabled = false;
+        $('btn-deliver').disabled = true;
+      });
+
+      $('btn-ready').addEventListener('click', async () => {
+        if (!custodyId) return;
+        const res = await fetch('/v1/admin/custody/' + encodeURIComponent(custodyId) + '/ready', {
+          method: 'POST', headers: h(), body: '{}',
+        });
+        const data = await res.json().catch(() => ({}));
+        showRaw(data);
+        if (!res.ok) {
+          $('ops-err').textContent = data.message || data.error || 'ready failed';
+          $('ops-err').classList.remove('hidden');
+          return;
+        }
+        $('ops-ok').textContent = data.status;
+        $('ops-ok').classList.remove('hidden');
+        $('btn-deliver').disabled = false;
+        $('btn-ready').disabled = true;
+      });
+
+      $('btn-deliver').addEventListener('click', async () => {
+        if (!custodyId) return;
+        const res = await fetch('/v1/admin/custody/' + encodeURIComponent(custodyId) + '/deliver', {
+          method: 'POST', headers: h(), body: '{}',
+        });
+        const data = await res.json().catch(() => ({}));
+        showRaw(data);
+        if (!res.ok) {
+          $('ops-err').textContent = data.message || data.error || 'deliver failed';
+          $('ops-err').classList.remove('hidden');
+          return;
+        }
+        $('ops-ok').textContent = data.status;
+        $('ops-ok').classList.remove('hidden');
+        $('btn-deliver').disabled = true;
+      });
+    })();
+  </script>
+</body>
+</html>
