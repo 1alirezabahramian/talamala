@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — Assets (Kimia Read)</title>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
+      --accent: #c9a227; --danger: #e85d5d; --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Tahoma, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+    .wrap { width: 100%; max-width: 420px; }
+    .badge {
+      display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; background: #243044; color: var(--muted); margin-bottom: 1rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem;
+    }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; margin: 0 0 1rem; }
+    label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--muted); }
+    input {
+      width: 100%; padding: 0.75rem 0.85rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      font-size: 1rem; margin-bottom: 0.85rem; direction: ltr; text-align: left;
+    }
+    button {
+      width: 100%; padding: 0.8rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #111; font-weight: 700; font-size: 1rem;
+      cursor: pointer;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .error { color: var(--danger); font-size: 0.9rem; }
+    dl { margin: 0; }
+    dt { color: var(--muted); font-size: 0.85rem; margin-top: 0.75rem; }
+    dd { margin: 0.2rem 0 0; font-size: 1.25rem; font-weight: 600; }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem; font-size: 0.75rem; overflow: auto; direction: ltr;
+      color: var(--muted); max-height: 200px; margin-top: 1rem;
+    }
+    .hint { font-size: 0.8rem; color: var(--muted); margin-top: 1rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Stage 3 · Kimia Read only · GET /v1/customer/assets</span>
+    <div class="card">
+      <h1>دارایی من</h1>
+      <p class="muted">مقادیر فقط از سرور — بدون محاسبهٔ سمت کلاینت</p>
+
+      <label for="customer_id">Customer ID (لوکال: هدر X-Customer-Id)</label>
+      <input id="customer_id" type="text" placeholder="پس از register از response" dir="ltr" />
+
+      <label for="token">Bearer token (اختیاری)</label>
+      <input id="token" type="text" placeholder="از OTP authenticated" dir="ltr" />
+
+      <button id="btn-load" type="button">خواندن دارایی</button>
+      <p id="err" class="error" hidden></p>
+
+      <dl id="view" hidden>
+        <dt>وضعیت</dt>
+        <dd id="v-status">—</dd>
+        <dt>موجودی نقد (تومان)</dt>
+        <dd id="v-money" dir="ltr">—</dd>
+        <dt>وزن طلا (گرم)</dt>
+        <dd id="v-gold" dir="ltr">—</dd>
+      </dl>
+      <pre id="raw" hidden></pre>
+
+      <p class="hint">
+        Tenant: <code>X-Talamala-Host: demo.local</code><br />
+        ممنوع در این مرحله: price · Kimia Write · Quote/Order/Custody write
+      </p>
+    </div>
+  </div>
+  <script>
+    (function () {
+      const TENANT = 'demo.local';
+      const $ = (id) => document.getElementById(id);
+
+      $('btn-load').addEventListener('click', async () => {
+        $('err').hidden = true;
+        $('view').hidden = true;
+        $('raw').hidden = true;
+        const token = $('token').value.trim();
+        const customerId = $('customer_id').value.trim();
+        if (!token && !customerId) {
+          $('err').textContent = 'Bearer یا Customer ID لازم است';
+          $('err').hidden = false;
+          return;
+        }
+        const headers = {
+          Accept: 'application/json',
+          'X-Talamala-Host': TENANT,
+        };
+        if (token) headers.Authorization = 'Bearer ' + token;
+        else headers['X-Customer-Id'] = customerId;
+
+        $('btn-load').disabled = true;
+        try {
+          const res = await fetch('/v1/customer/assets', { headers });
+          const data = await res.json().catch(() => ({}));
+          $('raw').textContent = JSON.stringify(data, null, 2);
+          $('raw').hidden = false;
+          if (!res.ok) {
+            $('err').textContent = data.message || data.error || ('HTTP ' + res.status);
+            $('err').hidden = false;
+            return;
+          }
+          $('v-status').textContent = data.status || '—';
+          $('v-money').textContent = data.money_toman ?? '—';
+          $('v-gold').textContent = data.gold_weight_g ?? '—';
+          $('view').hidden = false;
+        } catch (e) {
+          $('err').textContent = 'ارتباط با سرور برقرار نشد';
+          $('err').hidden = false;
+        } finally {
+          $('btn-load').disabled = false;
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
