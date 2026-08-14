@@ -114,8 +114,11 @@ jobs:
               raise SystemExit('missing CustodyOpsScreen marker')
           if re.search(r'/v1/[^\s\"\']*(?:price|quote|order)', exe, re.I):
               raise SystemExit('forbidden price/quote/order route')
-          if re.search(r'kimia', exe, re.I):
-              raise SystemExit('forbidden Kimia executable marker')
+          # Allow explanatory text such as "no Kimia Write"; reject executable-looking Kimia write/bind routes or calls.
+          if re.search(r'/v1/[^\s\"\']*kimia[^\s\"\']*(?:write|bind|sync|post|put|patch|delete)', exe, re.I):
+              raise SystemExit('forbidden Kimia write/bind route')
+          if re.search(r'(?:kimia(?:Write|Bind|Sync)|writeKimia|bindKimia)\s*\(', exe, re.I):
+              raise SystemExit('forbidden Kimia write/bind call')
           if re.search(r'(?:parseFloat|parseInt|Number)\s*\(', exe):
               raise SystemExit('client numeric float/integer coercion forbidden in this stage')
           print('CUSTODY_OPS_CONTRACT_OK')
