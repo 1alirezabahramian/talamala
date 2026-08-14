@@ -40,11 +40,13 @@ jobs:
                       raise SystemExit(f'secret-like file rejected: {name}')
                   names.append(name)
               manifests=[n for n in names if n.endswith('/STAGE.md')]
-              roots=sorted({n.split('/',1)[0] for n in names})
-              if len(manifests)!=3 or len(roots)!=3:
-                  raise SystemExit(f'expected 3 independent stage folders with STAGE.md; roots={roots}, manifests={manifests}')
+              stage_roots=sorted({m.split('/',1)[0] for m in manifests})
+              allowed_roots=set(stage_roots)|{'README_MULTI_STAGE.md'}
+              actual_roots={n.split('/',1)[0] for n in names}
+              if len(manifests)!=3 or len(stage_roots)!=3 or not actual_roots.issubset(allowed_roots):
+                  raise SystemExit(f'expected 3 independent stage folders plus optional README; stage_roots={stage_roots}, actual_roots={sorted(actual_roots)}, manifests={manifests}')
               z.extractall('/tmp/multi-stage')
-              print('ROOTS='+repr(roots))
+              print('STAGE_ROOTS='+repr(stage_roots))
               print('FILES:')
               for n in sorted(names): print(n)
               for m in sorted(manifests):
