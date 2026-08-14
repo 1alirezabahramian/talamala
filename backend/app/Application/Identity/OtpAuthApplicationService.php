@@ -12,7 +12,8 @@ use Talamala\Integrations\Sms\SmsOtpSender;
 
 /**
  * Stage 2 application service: request + verify OTP.
- * Uses hashed code storage in memory for skeleton; production uses secure store + rate limits.
+ * Challenges persisted to temp file so PHP built-in server multi-request works locally.
+ * Production should use secure store + rate limits (file store is skeleton-only).
  */
 final class OtpAuthApplicationService
 {
@@ -29,7 +30,9 @@ final class OtpAuthApplicationService
         private readonly SmsOtpSender $sms,
         private readonly AuditLogger $audit,
         private readonly int $otpTemplateId = 1,
-    ) {}
+    ) {
+        $this->loadChallenges();
+    }
 
     public function seedExistingCustomer(string $tenantId, string $mobile, string $customerId): void
     {
@@ -41,6 +44,7 @@ final class OtpAuthApplicationService
 
     public function requestOtp(string $tenantId, string $mobile, string $purpose, string $correlationId): OtpChallenge
     {
+        $this->loadChallenges();
         $mobile = $this->normalizeMobile($mobile);
         if (!in_array($purpose, ['login', 'registration'], true)) {
             throw new \InvalidArgumentException('Invalid OTP purpose');
@@ -60,6 +64,7 @@ final class OtpAuthApplicationService
             maxAttempts: self::MAX_ATTEMPTS,
         );
         $this->challenges[$id] = $challenge;
+        $this->saveChallenges();
 
         $this->sms->sendVerify($tenantId, $mobile, $this->otpTemplateId, [
             'Code' => $plain,
@@ -79,8 +84,6 @@ final class OtpAuthApplicationService
             occurredAt: $now,
         ));
 
-        // Dev only: attach plain code via metadata is forbidden in production logs.
-        // Tests read via reflection or FakeSms last parameters.
         return $challenge;
     }
 
@@ -90,6 +93,7 @@ final class OtpAuthApplicationService
         string $code,
         string $correlationId,
     ): AuthResult {
+        $this->loadChallenges();
         $challenge = $this->challenges[$challengeId] ?? null;
         if ($challenge === null || $challenge->tenantId !== $tenantId) {
             return AuthResult::failure('otp_not_found', 'Challenge not found');
@@ -114,6 +118,7 @@ final class OtpAuthApplicationService
             $challenge->maxAttempts,
         );
         $this->challenges[$challengeId] = $challenge;
+        $this->saveChallenges();
 
         if (!password_verify($code, $challenge->codeHash)) {
             $this->audit->log(new AuditEvent(
@@ -133,6 +138,7 @@ final class OtpAuthApplicationService
         }
 
         unset($this->challenges[$challengeId]);
+        $this->saveChallenges();
 
         $key = $tenantId . ':' . $challenge->mobile;
         if (isset($this->knownCustomers[$key])) {
@@ -176,5 +182,69 @@ final class OtpAuthApplicationService
             return '***';
         }
         return substr($mobile, 0, 4) . '****' . substr($mobile, -3);
+    }
+
+    private function storePath(): string
+    {
+        return rtrim(sys_get_temp_dir(), '/') . '/talamala-otp-challenges.json';
+    }
+
+    private function loadChallenges(): void
+    {
+        $path = $this->storePath();
+        if (!is_file($path)) {
+            return;
+        }
+        $raw = @file_get_contents($path);
+        if ($raw === false || $raw === '') {
+            return;
+        }
+        $data = json_decode($raw, true);
+        if (!is_array($data)) {
+            return;
+        }
+        $now = new \DateTimeImmutable('now', new \DateTimeZone('UTC'));
+        $loaded = [];
+        foreach ($data as $id => $row) {
+            if (!is_array($row) || !isset($row['tenantId'], $row['mobile'], $row['purpose'], $row['codeHash'], $row['expiresAt'])) {
+                continue;
+            }
+            try {
+                $expires = new \DateTimeImmutable((string) $row['expiresAt'], new \DateTimeZone('UTC'));
+            } catch (\Throwable) {
+                continue;
+            }
+            $c = new OtpChallenge(
+                id: (string) $id,
+                tenantId: (string) $row['tenantId'],
+                mobile: (string) $row['mobile'],
+                purpose: (string) $row['purpose'],
+                codeHash: (string) $row['codeHash'],
+                expiresAt: $expires,
+                attempts: (int) ($row['attempts'] ?? 0),
+                maxAttempts: (int) ($row['maxAttempts'] ?? self::MAX_ATTEMPTS),
+            );
+            if (!$c->isExpired($now)) {
+                $loaded[(string) $id] = $c;
+            }
+        }
+        $this->challenges = $loaded;
+    }
+
+    private function saveChallenges(): void
+    {
+        $out = [];
+        foreach ($this->challenges as $id => $c) {
+            $out[$id] = [
+                'tenantId' => $c->tenantId,
+                'mobile' => $c->mobile,
+                'purpose' => $c->purpose,
+                'codeHash' => $c->codeHash,
+                'expiresAt' => $c->expiresAt->format(\DateTimeInterface::ATOM),
+                'attempts' => $c->attempts,
+                'maxAttempts' => $c->maxAttempts,
+            ];
+        }
+        @file_put_contents($this->storePath(), json_encode($out, JSON_UNESCAPED_UNICODE), LOCK_EX);
     }
 }

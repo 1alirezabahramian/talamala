@@ -1,10 +1,14 @@
 {
   "name": "@talamala/customer",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Talamala customer PWA — Simple Frontend",
+  "type": "module",
   "scripts": {
-    "dev": "echo 'Wire Vite/Next when Stage 2 UI gate opens'",
-    "build": "echo 'No build yet — structure only'"
+    "dev": "echo 'Use backend OTP demo: open http://127.0.0.1:8080/otp-demo.html after php -S'",
+    "check:auth": "node --check src/api/auth.ts 2>/dev/null || echo 'TS sources present — wire Vite when UI gate opens'"
+  },
+  "peerDependencies": {
+    "react": ">=18"
   }
 }

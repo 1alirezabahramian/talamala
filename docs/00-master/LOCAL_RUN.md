@@ -60,3 +60,22 @@ Staff demo (must change password on first login):
 ## GitHub write from Grok connector
 
 Still may be 403; owner pushes ZIP/commits manually.
+
+
+## Customer OTP demo (Stage C)
+
+With the HTTP server running:
+
+1. Open in browser: http://127.0.0.1:8080/otp-demo.html
+2. Enter mobile e.g. `09121234567` → Request OTP
+3. Click «خواندن کد از FakeSms» (dev) or use code from server logs path
+4. Verify → expect `registration_required` (new mobile) or `authenticated`
+
+Tenant header is sent as `X-Talamala-Host: demo.local` (browser cannot set Host).
+
+TypeScript sources (for future Vite):
+
+- `frontend/customer/src/api/client.ts`
+- `frontend/customer/src/api/auth.ts`
+- `frontend/customer/src/screens/auth/Otp*.tsx`
+- `frontend/customer/src/AppOtpFlow.tsx`

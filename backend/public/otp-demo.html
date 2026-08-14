@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — OTP Demo (local)</title>
+  <style>
+    :root {
+      --bg: #0f1419;
+      --card: #1a2332;
+      --text: #e7ecf3;
+      --muted: #8b9bb4;
+      --accent: #c9a227;
+      --danger: #e85d5d;
+      --ok: #3dba7e;
+      --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Tahoma, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center;
+      padding: 1.5rem 1rem;
+    }
+    .wrap { width: 100%; max-width: 420px; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
+    .muted { color: var(--muted); font-size: 0.9rem; margin: 0 0 1.25rem; }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.25rem;
+    }
+    label { display: block; font-size: 0.85rem; margin-bottom: 0.35rem; color: var(--muted); }
+    input {
+      width: 100%; padding: 0.75rem 0.85rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      font-size: 1.05rem; margin-bottom: 0.85rem; direction: ltr; text-align: left;
+    }
+    input:focus { outline: 2px solid var(--accent); border-color: transparent; }
+    button {
+      width: 100%; padding: 0.8rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #111; font-weight: 700; font-size: 1rem;
+      cursor: pointer; margin-top: 0.25rem;
+    }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    button.link {
+      background: transparent; color: var(--muted); font-weight: 500;
+      margin-top: 0.5rem; text-decoration: underline;
+    }
+    .error { color: var(--danger); font-size: 0.9rem; margin: 0 0 0.75rem; }
+    .ok { color: var(--ok); font-size: 0.9rem; }
+    .badge {
+      display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; background: #243044; color: var(--muted); margin-bottom: 1rem;
+    }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.75rem; font-size: 0.75rem; overflow: auto; direction: ltr; text-align: left;
+      color: var(--muted); max-height: 180px;
+    }
+    .hidden { display: none; }
+    .dev-hint { font-size: 0.8rem; color: var(--muted); margin-top: 1rem; line-height: 1.5; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Stage C · local vertical · demo.local</span>
+    <div id="step-request" class="card">
+      <h1>ورود با پیامک</h1>
+      <p class="muted">شماره موبایل → OTP واقعی روی سرور لوکال</p>
+      <form id="form-request">
+        <label for="mobile">موبایل</label>
+        <input id="mobile" type="tel" inputmode="numeric" placeholder="09121234567" maxlength="13" autocomplete="tel" required />
+        <p id="err-request" class="error hidden" role="alert"></p>
+        <button id="btn-request" type="submit">دریافت کد</button>
+      </form>
+      <p class="dev-hint">
+        Tenant: <code>X-Talamala-Host: demo.local</code><br />
+        Same-origin با PHP built-in server — بدون CORS.
+      </p>
+    </div>
+
+    <div id="step-verify" class="card hidden">
+      <h1>تأیید کد</h1>
+      <p class="muted" id="verify-hint">کد پیامک را وارد کنید</p>
+      <form id="form-verify">
+        <label for="code">کد یک‌بارمصرف</label>
+        <input id="code" type="text" inputmode="numeric" placeholder="------" maxlength="8" autocomplete="one-time-code" required />
+        <p id="err-verify" class="error hidden" role="alert"></p>
+        <button id="btn-verify" type="submit">تأیید</button>
+        <button type="button" class="link" id="btn-back">بازگشت</button>
+      </form>
+      <div class="dev-hint">
+        <button type="button" class="link" id="btn-dev-otp" style="width:auto;padding:0">خواندن کد از FakeSms (dev)</button>
+        <span id="dev-code" class="ok"></span>
+      </div>
+    </div>
+
+    <div id="step-done" class="card hidden">
+      <h1 id="done-title">نتیجه</h1>
+      <p id="done-msg" class="muted"></p>
+      <pre id="done-json"></pre>
+      <button type="button" id="btn-restart">شروع دوباره</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const TENANT = 'demo.local';
+      // same-origin: empty base → relative paths on PHP server
+      const API = '';
+
+      let challengeId = null;
+      let mobile = null;
+
+      const $ = (id) => document.getElementById(id);
+      const show = (id) => { document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); $(id).classList.remove('hidden'); };
+      const setErr = (id, msg) => {
+        const el = $(id);
+        if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
+        el.textContent = msg; el.classList.remove('hidden');
+      };
+
+      function headers(extra) {
+        const h = {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-Talamala-Host': TENANT,
+        };
+        if (extra) Object.assign(h, extra);
+        return h;
+      }
+
+      function normalizeMobile(input) {
+        let d = String(input).replace(/\D+/g, '');
+        if (d.startsWith('98') && d.length === 12) d = '0' + d.slice(2);
+        if (d.startsWith('9') && d.length === 10) d = '0' + d;
+        return d;
+      }
+
+      function isValidMobile(m) {
+        return /^09\d{9}$/.test(m);
+      }
+
+      $('form-request').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setErr('err-request', null);
+        mobile = normalizeMobile($('mobile').value);
+        if (!isValidMobile(mobile)) {
+          setErr('err-request', 'شماره موبایل معتبر نیست (مثال: 09121234567)');
+          return;
+        }
+        const btn = $('btn-request');
+        btn.disabled = true;
+        btn.textContent = 'در حال ارسال…';
+        try {
+          const res = await fetch(API + '/v1/auth/customer/otp/request', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ mobile, purpose: 'registration' }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            if (res.status === 429) {
+              setErr('err-request', 'محدودیت نرخ. ' + (data.retry_after || 60) + ' ثانیه صبر کنید.');
+            } else {
+              setErr('err-request', data.message || data.error || 'خطا در درخواست');
+            }
+            return;
+          }
+          challengeId = data.challenge_id;
+          $('verify-hint').innerHTML = 'کد ارسال‌شده به <span dir="ltr">' + mobile + '</span> را وارد کنید';
+          show('step-verify');
+          $('code').focus();
+        } catch (err) {
+          setErr('err-request', 'ارتباط با سرور برقرار نشد — PHP server را روشن کنید');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'دریافت کد';
+        }
+      });
+
+      $('form-verify').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setErr('err-verify', null);
+        const code = $('code').value.replace(/\D+/g, '');
+        if (code.length < 4) {
+          setErr('err-verify', 'کد را به‌درستی وارد کنید');
+          return;
+        }
+        const btn = $('btn-verify');
+        btn.disabled = true;
+        btn.textContent = 'در حال بررسی…';
+        try {
+          const res = await fetch(API + '/v1/auth/customer/otp/verify', {
+            method: 'POST',
+            headers: headers(),
+            body: JSON.stringify({ challenge_id: challengeId, code }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setErr('err-verify', data.message || data.error || 'کد نامعتبر');
+            return;
+          }
+          show('step-done');
+          if (data.status === 'registration_required') {
+            $('done-title').textContent = 'ثبت‌نام لازم است';
+            $('done-msg').textContent = 'موبایل تأیید شد. مرحله بعد: فرم ثبت‌نام (Jibit gate).';
+          } else if (data.status === 'authenticated') {
+            $('done-title').textContent = 'ورود موفق';
+            $('done-msg').textContent = 'session صادر شد.';
+          } else {
+            $('done-title').textContent = 'پاسخ سرور';
+            $('done-msg').textContent = '';
+          }
+          $('done-json').textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+          setErr('err-verify', 'ارتباط با سرور برقرار نشد');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'تأیید';
+        }
+      });
+
+      $('btn-back').addEventListener('click', () => {
+        challengeId = null;
+        setErr('err-verify', null);
+        $('code').value = '';
+        $('dev-code').textContent = '';
+        show('step-request');
+      });
+
+      $('btn-restart').addEventListener('click', () => {
+        challengeId = null;
+        mobile = null;
+        $('mobile').value = '';
+        $('code').value = '';
+        setErr('err-request', null);
+        setErr('err-verify', null);
+        $('dev-code').textContent = '';
+        show('step-request');
+      });
+
+      $('btn-dev-otp').addEventListener('click', async () => {
+        try {
+          const res = await fetch(API + '/v1/dev/last-otp', {
+            headers: headers({ 'X-Talamala-Dev': '1' }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (data.code) {
+            $('dev-code').textContent = ' → ' + data.code;
+            $('code').value = String(data.code);
+          } else {
+            $('dev-code').textContent = ' (کدی نیست)';
+          }
+        } catch (err) {
+          $('dev-code').textContent = ' خطا';
+        }
+      });
+    })();
+  </script>
+</body>
+</html>
