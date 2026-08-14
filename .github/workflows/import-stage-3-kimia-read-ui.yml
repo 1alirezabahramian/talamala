@@ -95,7 +95,7 @@ jobs:
         run: |
           set -euo pipefail
           grep -Fq '/v1/customer/assets' frontend/customer/src/api/assets.ts
-          grep -Eiq '\bGET\b|method:[[:space:]]*["'"']GET["'"']' frontend/customer/src/api/assets.ts
+          grep -Eiq 'GET|method:[[:space:]]*GET' frontend/customer/src/api/assets.ts
           grep -Fq 'AssetsScreen' frontend/customer/src/screens/assets/AssetsScreen.tsx
           grep -Fq '/v1/customer/assets' backend/public/assets-demo.html
           if grep -Eiq '\b(POST|PUT|PATCH|DELETE)\b' frontend/customer/src/api/assets.ts; then
@@ -154,5 +154,3 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(stage-3): customer assets UI — Kimia Read GET /v1/customer/assets'
           git push origin HEAD:main
-
-# trigger: 2026-08-14
