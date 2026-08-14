@@ -184,5 +184,19 @@ $r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer '
 $check('production_bearer_ok', ($r['status'] ?? 0) === 200, $r);
 putenv('TALAMALA_ENV=local');
 
+// --- Adversarial isolation (B) ---
+$hOther = ['host' => 'other.local', 'x-correlation-id' => 'http-smoke-other'];
+$r = $k->handle('POST', '/v1/auth/customer/otp/request', $hOther, [
+    'mobile' => '09120001111',
+    'purpose' => 'login',
+]);
+$check('otp_rate_limit_isolated_across_tenants', (($r['status'] ?? 0) === 200 && isset($r['body']['challenge_id'])), $r);
+
+$r = $k->handle('GET', '/readyz', $hOther, null);
+$check('tenant_other_readyz', ($r['status'] ?? 0) === 200 && ($r['body']['tenant_slug'] ?? '') === 'other', $r);
+
+$r = $k->handle('GET', '/readyz', ['host' => 'not-a-tenant.test'], null);
+$check('tenant_unknown_still_fail_closed', ($r['status'] ?? 0) === 400, $r);
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

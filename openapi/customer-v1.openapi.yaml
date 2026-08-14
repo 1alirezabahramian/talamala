@@ -1,53 +1,35 @@
 openapi: 3.0.3
 info:
   title: Talamala Customer API
-  version: 1.2.0
-  description: >
-    Customer-facing API. Financial values are server-normalized (Toman display).
-    No client-side financial calculation. Tenant from Host only.
-    Auth: Bearer customer session preferred; X-Customer-Id allowed in skeleton only.
+  version: 1.3.0
+  description: |
+    Customer API. Financial values are server-normalized (Toman).
+    Tenant from Host. Bearer preferred; X-Customer-Id only outside production.
 servers:
   - url: /
 paths:
   /v1/customer/assets:
     get:
       operationId: customerAssets
-      summary: Assets from Kimia read model (Toman + gold weight)
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/XCustomerIdSkeleton'
+      security: [{ bearerAuth: [] }]
       responses:
-        '200':
-          description: Assets
-        '401':
-          description: Unauthorized
-        '503':
-          description: Kimia unavailable
+        '200': { description: Assets (decimal strings) }
+        '401': { description: Unauthorized }
   /v1/customer/orders:
     get:
       operationId: customerOrders
-      summary: Customer order list
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/XCustomerIdSkeleton'
+      security: [{ bearerAuth: [] }]
       responses:
-        '200':
-          description: Orders
+        '200': { description: Orders }
   /v1/customer/orders/accept:
     post:
       operationId: customerAcceptOrder
-      summary: Accept immutable quote (settlement may remain blocked)
-      security:
-        - bearerAuth: []
+      security: [{ bearerAuth: [] }]
       parameters:
         - name: Idempotency-Key
           in: header
           required: true
-          schema:
-            type: string
-        - $ref: '#/components/parameters/XCustomerIdSkeleton'
+          schema: { type: string }
       requestBody:
         required: true
         content:
@@ -56,34 +38,18 @@ paths:
               type: object
               required: [quote_id]
               properties:
-                quote_id:
-                  type: string
+                quote_id: { type: string }
       responses:
-        '200':
-          description: Order accepted
-        '409':
-          description: Quote not acceptable
+        '200': { description: Accepted (settlement may be blocked) }
+        '409': { description: Quote not acceptable }
   /v1/customer/custody:
     get:
       operationId: customerCustody
-      summary: Physical custody items (Amanat)
-      security:
-        - bearerAuth: []
-      parameters:
-        - $ref: '#/components/parameters/XCustomerIdSkeleton'
+      security: [{ bearerAuth: [] }]
       responses:
-        '200':
-          description: Custody list
+        '200': { description: Custody list }
 components:
   securitySchemes:
     bearerAuth:
       type: http
       scheme: bearer
-  parameters:
-    XCustomerIdSkeleton:
-      name: X-Customer-Id
-      in: header
-      required: false
-      description: Skeleton fallback when Bearer is absent. Remove after session is mandatory.
-      schema:
-        type: string

@@ -71,6 +71,14 @@ final class Kernel
             isActive: true,
             isVerified: true,
         ));
+        // Second tenant for adversarial isolation tests
+        $this->tenants->register(new Tenant(
+            id: '00000000-0000-0000-0000-000000000002',
+            slug: 'other',
+            primaryHost: 'other.local',
+            isActive: true,
+            isVerified: true,
+        ));
 
         $this->sms = new FakeSmsOtpSender();
         $this->otp = new OtpAuthApplicationService($this->sms, $this->audit);

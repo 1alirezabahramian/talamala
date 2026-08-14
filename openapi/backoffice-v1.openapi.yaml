@@ -1,15 +1,14 @@
 openapi: 3.0.3
 info:
   title: Talamala Backoffice API
-  version: 1.2.0
-  description: Staff/admin API. Tenant from Host. Bearer staff session preferred; X-Staff-Id skeleton fallback.
+  version: 1.3.0
+  description: Staff/admin API. Tenant from Host. Custody is platform truth.
 servers:
   - url: /
 paths:
   /v1/auth/staff/login:
     post:
       operationId: staffLogin
-      summary: Staff login; returns access_token + must_change_password
       requestBody:
         required: true
         content:
@@ -21,10 +20,13 @@ paths:
                 username: { type: string }
                 password: { type: string }
       responses:
-        '200':
-          description: Logged in
-        '401':
-          description: Invalid credentials
+        '200': { description: Logged in }
+        '401': { description: Invalid }
+  /v1/auth/staff/password/rotate:
+    post:
+      operationId: staffPasswordRotate
+      responses:
+        '200': { description: Rotated }
   /v1/admin/registrations:
     get:
       operationId: listRegistrationQueue
@@ -61,6 +63,28 @@ paths:
                 fineness: { type: string }
       responses:
         '201': { description: Created }
+  /v1/admin/custody/{id}/ready:
+    post:
+      operationId: custodyReady
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: ready_for_pickup }
+  /v1/admin/custody/{id}/deliver:
+    post:
+      operationId: custodyDeliver
+      security: [{ bearerAuth: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: delivered }
 components:
   securitySchemes:
     bearerAuth:

@@ -61,7 +61,7 @@ See `docs/00-master/LOCAL_RUN.md`.
 
 ```bash
 cd backend
-php bin/http_smoke.php          # PASS=25
+php bin/http_smoke.php          # PASS=32
 php -S 127.0.0.1:8080 -t public public/router.php
 ```
 
