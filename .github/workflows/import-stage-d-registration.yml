@@ -14,8 +14,9 @@ jobs:
         shell: python
         run: |
           import pathlib, shutil, stat, zipfile
-          zpath=pathlib.Path('talamala-stage-D-registration.zip'); out=pathlib.Path('/tmp/talamala-stage-d')
-          shutil.rmtree(out, ignore_errors=True); out.mkdir(parents=True)
+          zpath=pathlib.Path('talamala-stage-D-registration.zip'); raw=pathlib.Path('/tmp/talamala-stage-d-raw'); out=pathlib.Path('/tmp/talamala-stage-d')
+          shutil.rmtree(raw, ignore_errors=True); shutil.rmtree(out, ignore_errors=True)
+          raw.mkdir(parents=True); out.mkdir(parents=True)
           bad=[]; secrets=[]; symlinks=[]
           with zipfile.ZipFile(zpath) as z:
             for info in z.infolist():
@@ -25,12 +26,15 @@ jobs:
               if info.is_dir(): continue
               low=name.lower()
               if (low.endswith('/.env') or '/.env.' in low) and not low.endswith('/.env.example'): secrets.append(name)
-              parts=list(p.parts)
-              if parts and parts[0]=='talamala': parts=parts[1:]
-              if not parts: continue
-              target=out.joinpath(*parts); target.parent.mkdir(parents=True,exist_ok=True)
+              target=raw.joinpath(*p.parts); target.parent.mkdir(parents=True,exist_ok=True)
               with z.open(info) as src, open(target,'wb') as dst: shutil.copyfileobj(src,dst)
           if bad or secrets or symlinks: raise SystemExit(f'Rejected unsafe={bad} secrets={secrets} symlinks={symlinks}')
+          roots=[p for p in raw.iterdir()]
+          src=roots[0] if len(roots)==1 and roots[0].is_dir() else raw
+          for item in src.iterdir():
+            dest=out/item.name
+            if item.is_dir(): shutil.copytree(item,dest,dirs_exist_ok=True)
+            else: shutil.copy2(item,dest)
       - name: Verify declared Stage D files
         run: |
           test -f /tmp/talamala-stage-d/components/auth/RegistrationScreen.tsx
