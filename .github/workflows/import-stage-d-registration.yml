@@ -1,0 +1,62 @@
+name: Verify and import Stage D registration
+on:
+  push:
+    branches: [main]
+    paths: ['.github/workflows/import-stage-d-registration.yml']
+permissions:
+  contents: write
+jobs:
+  import:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Safely extract Stage D zip
+        shell: python
+        run: |
+          import pathlib, shutil, stat, zipfile
+          zpath=pathlib.Path('talamala-stage-D-registration.zip'); out=pathlib.Path('/tmp/talamala-stage-d')
+          shutil.rmtree(out, ignore_errors=True); out.mkdir(parents=True)
+          bad=[]; secrets=[]; symlinks=[]
+          with zipfile.ZipFile(zpath) as z:
+            for info in z.infolist():
+              name=info.filename.replace('\\','/'); p=pathlib.PurePosixPath(name); mode=(info.external_attr>>16)&0xffff
+              if name.startswith('/') or '..' in p.parts: bad.append(name); continue
+              if stat.S_ISLNK(mode): symlinks.append(name); continue
+              if info.is_dir(): continue
+              low=name.lower()
+              if (low.endswith('/.env') or '/.env.' in low) and not low.endswith('/.env.example'): secrets.append(name)
+              parts=list(p.parts)
+              if parts and parts[0]=='talamala': parts=parts[1:]
+              if not parts: continue
+              target=out.joinpath(*parts); target.parent.mkdir(parents=True,exist_ok=True)
+              with z.open(info) as src, open(target,'wb') as dst: shutil.copyfileobj(src,dst)
+          if bad or secrets or symlinks: raise SystemExit(f'Rejected unsafe={bad} secrets={secrets} symlinks={symlinks}')
+      - name: Verify declared Stage D files
+        run: |
+          test -f /tmp/talamala-stage-d/components/auth/RegistrationScreen.tsx
+          test -f /tmp/talamala-stage-d/api/auth.ts
+          test -f /tmp/talamala-stage-d/openapi.json
+          test -f /tmp/talamala-stage-d/backend/public/routes/auth.php
+      - name: Overlay Stage D files
+        run: |
+          mkdir -p components/auth api backend/public/routes
+          cp /tmp/talamala-stage-d/components/auth/RegistrationScreen.tsx components/auth/RegistrationScreen.tsx
+          cp /tmp/talamala-stage-d/api/auth.ts api/auth.ts
+          cp /tmp/talamala-stage-d/openapi.json openapi.json
+          cp /tmp/talamala-stage-d/backend/public/routes/auth.php backend/public/routes/auth.php
+      - name: Verify full smoke after overlay
+        run: |
+          php backend/bin/http_smoke.php | tee /tmp/http-smoke.txt
+          grep -Eq 'PASS=32([[:space:]]+FAIL=0|.*FAIL=0)' /tmp/http-smoke.txt
+      - name: Verify registration/Jibit fake markers
+        run: |
+          grep -Rqi 'registration_required' components/auth api backend/public/routes/auth.php openapi.json
+          grep -RqiE '09121234567|0012345678|Jibit|jibit' components/auth api backend/public/routes/auth.php openapi.json
+      - name: Commit and push
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add components/auth/RegistrationScreen.tsx api/auth.ts openapi.json backend/public/routes/auth.php
+          git diff --cached --quiet && exit 0
+          git commit -m 'feat(stage-D): Registration flow after OTP registration_required'
+          git push origin HEAD:main
