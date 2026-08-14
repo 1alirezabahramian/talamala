@@ -10,57 +10,117 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Safely extract Stage D zip
+
+      - name: Safely inspect and extract Stage D zip
         shell: python
         run: |
           import pathlib, shutil, stat, zipfile
-          zpath=pathlib.Path('talamala-stage-D-registration.zip'); raw=pathlib.Path('/tmp/talamala-stage-d-raw'); out=pathlib.Path('/tmp/talamala-stage-d')
-          shutil.rmtree(raw, ignore_errors=True); shutil.rmtree(out, ignore_errors=True)
-          raw.mkdir(parents=True); out.mkdir(parents=True)
-          bad=[]; secrets=[]; symlinks=[]
+
+          zpath = pathlib.Path('talamala-stage-D-registration.zip')
+          out = pathlib.Path('/tmp/talamala-stage-d')
+          shutil.rmtree(out, ignore_errors=True)
+          out.mkdir(parents=True)
+
+          expected = {
+              'frontend/customer/src/api/auth.ts',
+              'frontend/customer/src/screens/auth/RegistrationScreen.tsx',
+              'frontend/customer/src/AppOtpFlow.tsx',
+              'backend/public/otp-demo.html',
+              'docs/00-master/STAGE_D_REGISTRATION.md',
+              'STAGE_D_APPLY.md',
+              'STAGE_D_PATHS.md',
+          }
+          seen = set()
+          bad = []
+          secrets = []
+          symlinks = []
+
           with zipfile.ZipFile(zpath) as z:
-            for info in z.infolist():
-              name=info.filename.replace('\\','/'); p=pathlib.PurePosixPath(name); mode=(info.external_attr>>16)&0xffff
-              if name.startswith('/') or '..' in p.parts: bad.append(name); continue
-              if stat.S_ISLNK(mode): symlinks.append(name); continue
-              if info.is_dir(): continue
-              low=name.lower()
-              if (low.endswith('/.env') or '/.env.' in low) and not low.endswith('/.env.example'): secrets.append(name)
-              target=raw.joinpath(*p.parts); target.parent.mkdir(parents=True,exist_ok=True)
-              with z.open(info) as src, open(target,'wb') as dst: shutil.copyfileobj(src,dst)
-          if bad or secrets or symlinks: raise SystemExit(f'Rejected unsafe={bad} secrets={secrets} symlinks={symlinks}')
-          roots=[p for p in raw.iterdir()]
-          src=roots[0] if len(roots)==1 and roots[0].is_dir() else raw
-          for item in src.iterdir():
-            dest=out/item.name
-            if item.is_dir(): shutil.copytree(item,dest,dirs_exist_ok=True)
-            else: shutil.copy2(item,dest)
-      - name: Verify declared Stage D files
+              for info in z.infolist():
+                  name = info.filename.replace('\\', '/').lstrip('./')
+                  p = pathlib.PurePosixPath(name)
+                  mode = (info.external_attr >> 16) & 0xffff
+                  if info.is_dir():
+                      continue
+                  if name.startswith('/') or '..' in p.parts:
+                      bad.append(name)
+                      continue
+                  if stat.S_ISLNK(mode):
+                      symlinks.append(name)
+                      continue
+                  low = name.lower()
+                  if (low.endswith('/.env') or '/.env.' in low) and not low.endswith('/.env.example'):
+                      secrets.append(name)
+                      continue
+                  seen.add(name)
+                  target = out.joinpath(*p.parts)
+                  target.parent.mkdir(parents=True, exist_ok=True)
+                  with z.open(info) as src, open(target, 'wb') as dst:
+                      shutil.copyfileobj(src, dst)
+
+          print('ZIP files:')
+          for name in sorted(seen):
+              print(name)
+
+          if bad or secrets or symlinks:
+              raise SystemExit(f'Rejected unsafe={bad} secrets={secrets} symlinks={symlinks}')
+          if seen != expected:
+              raise SystemExit(f'ZIP path mismatch. missing={sorted(expected-seen)} extra={sorted(seen-expected)}')
+
+      - name: Verify current-main target structure
         run: |
-          test -f /tmp/talamala-stage-d/components/auth/RegistrationScreen.tsx
-          test -f /tmp/talamala-stage-d/api/auth.ts
-          test -f /tmp/talamala-stage-d/openapi.json
-          test -f /tmp/talamala-stage-d/backend/public/routes/auth.php
-      - name: Overlay Stage D files
+          test -f frontend/customer/src/api/auth.ts
+          test -d frontend/customer/src/screens/auth
+          test -f frontend/customer/src/AppOtpFlow.tsx
+          test -f backend/public/otp-demo.html
+          test -d docs/00-master
+
+      - name: Overlay only Stage D delivery files
         run: |
-          mkdir -p components/auth api backend/public/routes
-          cp /tmp/talamala-stage-d/components/auth/RegistrationScreen.tsx components/auth/RegistrationScreen.tsx
-          cp /tmp/talamala-stage-d/api/auth.ts api/auth.ts
-          cp /tmp/talamala-stage-d/openapi.json openapi.json
-          cp /tmp/talamala-stage-d/backend/public/routes/auth.php backend/public/routes/auth.php
-      - name: Verify full smoke after overlay
+          mkdir -p frontend/customer/src/screens/auth docs/00-master
+          cp /tmp/talamala-stage-d/frontend/customer/src/api/auth.ts frontend/customer/src/api/auth.ts
+          cp /tmp/talamala-stage-d/frontend/customer/src/screens/auth/RegistrationScreen.tsx frontend/customer/src/screens/auth/RegistrationScreen.tsx
+          cp /tmp/talamala-stage-d/frontend/customer/src/AppOtpFlow.tsx frontend/customer/src/AppOtpFlow.tsx
+          cp /tmp/talamala-stage-d/backend/public/otp-demo.html backend/public/otp-demo.html
+          cp /tmp/talamala-stage-d/docs/00-master/STAGE_D_REGISTRATION.md docs/00-master/STAGE_D_REGISTRATION.md
+
+      - name: Verify registration_required transition and registration wiring
         run: |
+          grep -q 'registration_required' frontend/customer/src/AppOtpFlow.tsx
+          grep -q 'RegistrationScreen' frontend/customer/src/AppOtpFlow.tsx
+          grep -q 'registration_required' frontend/customer/src/api/auth.ts
+          grep -Eq 'register|registration' frontend/customer/src/api/auth.ts
+          grep -Eq 'register|registration' frontend/customer/src/screens/auth/RegistrationScreen.tsx
+          grep -q 'registration_required' backend/public/otp-demo.html
+
+      - name: Backend regression and HTTP smoke
+        run: |
+          php backend/bin/smoke.php
           php backend/bin/http_smoke.php | tee /tmp/http-smoke.txt
           grep -Eq 'PASS=32([[:space:]]+FAIL=0|.*FAIL=0)' /tmp/http-smoke.txt
-      - name: Verify registration/Jibit fake markers
+
+      - name: Verify exact five-file commit scope
         run: |
-          grep -Rqi 'registration_required' components/auth api backend/public/routes/auth.php openapi.json
-          grep -RqiE '09121234567|0012345678|Jibit|jibit' components/auth api backend/public/routes/auth.php openapi.json
-      - name: Commit and push
+          git add \
+            frontend/customer/src/api/auth.ts \
+            frontend/customer/src/screens/auth/RegistrationScreen.tsx \
+            frontend/customer/src/AppOtpFlow.tsx \
+            backend/public/otp-demo.html \
+            docs/00-master/STAGE_D_REGISTRATION.md
+          printf '%s\n' \
+            backend/public/otp-demo.html \
+            docs/00-master/STAGE_D_REGISTRATION.md \
+            frontend/customer/src/AppOtpFlow.tsx \
+            frontend/customer/src/api/auth.ts \
+            frontend/customer/src/screens/auth/RegistrationScreen.tsx > /tmp/expected.txt
+          git diff --cached --name-only | sort > /tmp/actual.txt
+          diff -u /tmp/expected.txt /tmp/actual.txt
+          ! git diff --cached --name-only | grep -Eq '(^|/)STAGE_D_(APPLY|PATHS)\.md$'
+
+      - name: Commit and push Stage D to main
         run: |
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add components/auth/RegistrationScreen.tsx api/auth.ts openapi.json backend/public/routes/auth.php
-          git diff --cached --quiet && exit 0
-          git commit -m 'feat(stage-D): Registration flow after OTP registration_required'
+          git diff --cached --quiet && { echo 'No Stage D changes to commit'; exit 1; }
+          git commit -m 'feat(stage-D): registration form after OTP registration_required'
           git push origin HEAD:main
