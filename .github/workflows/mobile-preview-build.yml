@@ -1,0 +1,70 @@
+name: Mobile Preview Build
+
+on:
+  push:
+    branches: [mobile-preview]
+
+permissions:
+  contents: write
+
+jobs:
+  build-preview:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            frontend/customer/package-lock.json
+            frontend/backoffice/package-lock.json
+      - name: Build customer
+        working-directory: frontend/customer
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build -- --base=./
+      - name: Build backoffice
+        working-directory: frontend/backoffice
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build -- --base=./
+      - name: Assemble static preview
+        run: |
+          set -euo pipefail
+          rm -rf mobile-preview-site
+          mkdir -p mobile-preview-site/customer mobile-preview-site/backoffice
+          cp -a frontend/customer/dist/. mobile-preview-site/customer/
+          cp -a frontend/backoffice/dist/. mobile-preview-site/backoffice/
+          cat > mobile-preview-site/index.html <<'HTML'
+          <!doctype html>
+          <html lang="fa" dir="rtl">
+          <head>
+            <meta charset="utf-8">
+            <meta name="viewport" content="width=device-width,initial-scale=1">
+            <title>Talamala Mobile Preview</title>
+            <style>
+              body{font-family:system-ui,-apple-system,sans-serif;background:#f7f7f5;color:#18202a;margin:0;padding:24px}
+              main{max-width:680px;margin:auto}h1{margin-top:10vh}.card{display:block;padding:18px;margin:14px 0;border:1px solid #ddd;border-radius:16px;background:#fff;text-decoration:none;color:inherit}small{color:#667}
+            </style>
+          </head>
+          <body><main><h1>Talamala Preview</h1><p>نمایش استاتیک رابط فعلی از GitHub HEAD تأییدشده.</p>
+          <a class="card" href="./customer/"><strong>پنل مشتری</strong><br><small>Customer SPA</small></a>
+          <a class="card" href="./backoffice/"><strong>پنل مدیریت</strong><br><small>Backoffice SPA</small></a>
+          <p><small>این preview فقط UI است و backend زنده ندارد.</small></p></main></body></html>
+          HTML
+          printf '%s\n' "07108b684d9fd4fc11588fb4d7815008d13d6a83" > mobile-preview-site/SOURCE_SHA
+      - name: Commit built preview
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add mobile-preview-site
+          git diff --cached --quiet && exit 0
+          git commit -m 'chore(preview): publish static mobile UI'
+          git push origin HEAD:mobile-preview
