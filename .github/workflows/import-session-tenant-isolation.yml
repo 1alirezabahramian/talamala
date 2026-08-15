@@ -1,0 +1,98 @@
+name: Import Session Tenant Isolation
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite,sqlite3,mbstring,xml,curl
+          coverage: none
+      - name: Safe extract exact scope
+        run: |
+          set -euo pipefail
+          ZIP=talamala-session-tenant-isolation-20260815.zip
+          test "$(sha256sum "$ZIP" | awk '{print $1}')" = '3c3d61387988b0004ee8517a36f39b3ebc7fd327f1bd51c9cbda9c4dbd740d95'
+          rm -rf /tmp/stage && mkdir -p /tmp/stage
+          python3 - <<'PY'
+          import os,stat,zipfile,shutil
+          from pathlib import Path,PurePosixPath
+          z='talamala-session-tenant-isolation-20260815.zip'; out=Path('/tmp/stage')
+          allowed={
+            '.github/workflows/ci.yml',
+            'backend/app/Http/Kernel.php',
+            'backend/bin/http_smoke.php',
+            'docs/00-master/CURRENT_STATE.md',
+            'docs/00-master/OPERATORS.md',
+            'docs/00-master/LOCAL_RUN.md',
+            'docs/00-master/STAGE_SESSION_TENANT_ISOLATION.md',
+          }
+          with zipfile.ZipFile(z) as f:
+              for info in f.infolist():
+                  n=info.filename.replace('\\','/'); p=PurePosixPath(n)
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe {n}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink {n}')
+                  if n.endswith('/'): continue
+                  b=os.path.basename(n)
+                  if b.startswith('.env') and b!='.env.example': raise SystemExit(f'secret-like {n}')
+              f.extractall(out)
+          roots=list(out.iterdir()); src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
+          if not (src/'MANIFEST.txt').exists(): raise SystemExit('MANIFEST missing')
+          actual={p.relative_to(src).as_posix() for p in src.rglob('*') if p.is_file() and p.name!='MANIFEST.txt'}
+          if actual != allowed: raise SystemExit(f'scope mismatch actual={sorted(actual)}')
+          for rel in sorted(allowed):
+              s=src/rel
+              if rel=='.github/workflows/ci.yml':
+                  shutil.copy2(s,'/tmp/ci-isolation.yml'); continue
+              d=Path.cwd()/rel; d.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(s,d)
+          PY
+      - name: Validate stage gates
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/http_smoke.php); echo "$out"; grep -q 'PASS=48 FAIL=0' <<<"$out"
+          out=$(php backend/bin/persist_smoke.php); echo "$out"; grep -q 'PASS=9 FAIL=0' <<<"$out"
+          out=$(php backend/bin/cors_smoke.php); echo "$out"; grep -q 'PASS=10 FAIL=0' <<<"$out"
+          out=$(php backend/bin/logger_smoke.php); echo "$out"; grep -q 'PASS=8 FAIL=0' <<<"$out"
+          out=$(php backend/bin/maintenance_smoke.php); echo "$out"; grep -q 'PASS=7 FAIL=0' <<<"$out"
+          out=$(php backend/bin/landing_smoke.php); echo "$out"; grep -q 'PASS=13 FAIL=0' <<<"$out"
+          out=$(php backend/bin/spa_router_smoke.php); echo "$out"; grep -q 'FAIL=0' <<<"$out"
+          php backend/bin/openapi_parity_check.php
+          out=$(php backend/bin/check.php); echo "$out"; grep -q 'ALL CHECKS PASSED' <<<"$out"
+      - name: Commit exact production scope
+        run: |
+          set -euo pipefail
+          paths=(
+            backend/app/Http/Kernel.php
+            backend/bin/http_smoke.php
+            docs/00-master/CURRENT_STATE.md
+            docs/00-master/OPERATORS.md
+            docs/00-master/LOCAL_RUN.md
+            docs/00-master/STAGE_SESSION_TENANT_ISOLATION.md
+          )
+          git add -- "${paths[@]}"
+          staged=$(git diff --cached --name-only); printf '%s\n' "$staged"
+          for p in "${paths[@]}"; do grep -Fxq "$p" <<<"$staged"; done
+          git diff --cached --check -- ':(exclude)docs/**'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'fix(auth): bind sessions to tenant host'
+          echo "PRODUCTION_COMMIT=$(git rev-parse HEAD)"
+          git push origin HEAD:main
+      - name: Persist CI payload temporarily
+        run: |
+          set -euo pipefail
+          cp /tmp/ci-isolation.yml .ci-isolation-payload.yml
+          grep -q 'PASS=48 FAIL=0' .ci-isolation-payload.yml
+          git add .ci-isolation-payload.yml
+          git commit -m 'chore: stage isolation CI payload'
+          git push origin HEAD:main
