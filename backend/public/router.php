@@ -22,6 +22,17 @@ $htmlSecurityHeaders = static function (): void {
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: no-referrer');
     header('Cache-Control: no-store');
+    // Minimal CSP for static HTML demos (inline style/script required by zero-build demos)
+    header(
+        "Content-Security-Policy: default-src 'self'; "
+        . "style-src 'self' 'unsafe-inline'; "
+        . "script-src 'self' 'unsafe-inline'; "
+        . "img-src 'self' data:; "
+        . "connect-src 'self'; "
+        . "frame-ancestors 'none'; "
+        . "base-uri 'self'; "
+        . "form-action 'self'"
+    );
 };
 
 $buildMeta = static function (): array {
@@ -80,6 +91,18 @@ $spaHtml = static function (int $status, string $title, string $message, string 
     header('Content-Type: text/html; charset=utf-8');
     header('Cache-Control: no-store');
     header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: no-referrer');
+    header(
+        "Content-Security-Policy: default-src 'self'; "
+        . "style-src 'self' 'unsafe-inline'; "
+        . "script-src 'self' 'unsafe-inline'; "
+        . "img-src 'self' data:; "
+        . "connect-src 'self'; "
+        . "frame-ancestors 'none'; "
+        . "base-uri 'self'; "
+        . "form-action 'self'"
+    );
     $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $safeMsg = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
     $safeHint = htmlspecialchars($hint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');

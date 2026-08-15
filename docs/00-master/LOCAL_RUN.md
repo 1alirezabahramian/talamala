@@ -7,11 +7,23 @@
 
 ## Smokes (no network)
 
+Preferred:
+
+```bash
+make check
+# or: cd backend && php bin/check.php
+```
+
+Expect: http 43 · persist 9 · cors 10 · logger 8 · maintenance 7 · landing 13 · openapi parity · ALL CHECKS PASSED
+
+Individual:
+
 ```bash
 cd backend
-php bin/smoke.php        # domain vertical — expect PASS=8
-php bin/http_smoke.php   # HTTP Kernel — expect PASS=43
-php bin/check.php         # smoke + domain + logger redact
+php bin/smoke.php            # domain vertical
+php bin/http_smoke.php       # PASS=43
+php bin/landing_smoke.php    # PASS=13 (includes minimal CSP check)
+php bin/check.php
 ```
 
 ## HTTP server

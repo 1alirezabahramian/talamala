@@ -2,5 +2,9 @@
 User-agent: *
 Disallow: /otp-demo.html
 Disallow: /admin-reg-demo.html
+Disallow: /admin-custody-demo.html
 Disallow: /customer-shell-demo.html
+Disallow: /custody-demo.html
+Disallow: /assets-demo.html
+Disallow: /order-demo.html
 Disallow: /v1/dev/

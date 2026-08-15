@@ -40,6 +40,7 @@ $html = (string) $html;
 $check('landing_version_placeholder', str_contains($html, '{{VERSION}}') && str_contains($html, '{{BUILD_SHA}}'), null);
 $rt = (string) $rt;
 $check('router_html_security_headers', str_contains($rt, 'X-Frame-Options') && str_contains($rt, 'serveHtmlFile'), null);
+$check('router_html_csp', str_contains($rt, 'Content-Security-Policy') && str_contains($rt, "frame-ancestors 'none'"), null);
 $check('makefile_exists', is_file(dirname($root) . '/Makefile'), null);
 
 echo "\n---\nPASS=$pass FAIL=$fail\n";

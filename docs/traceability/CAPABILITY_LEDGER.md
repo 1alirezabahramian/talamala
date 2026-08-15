@@ -28,6 +28,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 Do not copy GoldPlatform completion percentages.
 
 
-## Persistence-1 note (2026-08-15)
-Customer / Custody / Quote / Order repositories: SQLite PDO implemented.
-Sessions, audit, idempotency, tenant resolver: still InMemory (Persistence-2).
+## Persistence notes (2026-08-15)
+- Persistence-1: Customer / Custody / Quote / Order → SQLite PDO
+- Persistence-2: Sessions / Idempotency / Audit / OTP rate limiter → SQLite PDO
+- Tenant resolver: still InMemory (host seed only; durable multi-tenant resolver deferred)
