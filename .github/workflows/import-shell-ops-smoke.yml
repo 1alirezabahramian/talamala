@@ -1,4 +1,4 @@
-name: Import Shell Ops Smoke
+name: Finalize Shell Ops Payload
 
 on:
   push:
@@ -8,119 +8,31 @@ permissions:
   contents: write
 
 jobs:
-  import:
+  finalize:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - uses: shivammathur/setup-php@v2
-        with:
-          php-version: '8.3'
-          extensions: pdo_sqlite, sqlite3, mbstring, xml, curl
-          coverage: none
-      - uses: actions/setup-node@v4
-        with:
-          node-version: '22'
-      - name: Safe extract and inspect
+      - name: Extract exact docs and CI payload
         shell: bash
         run: |
           set -euo pipefail
-          ZIP=talamala-shell-ops-smoke.zip
-          test -f "$ZIP"
-          echo "ZIP_SHA256=$(sha256sum "$ZIP" | awk '{print $1}')"
-          rm -rf /tmp/stage && mkdir -p /tmp/stage
-          python3 - <<'PY'
-          import os, stat, zipfile, shutil
-          from pathlib import Path, PurePosixPath
-          z='talamala-shell-ops-smoke.zip'; out=Path('/tmp/stage')
-          with zipfile.ZipFile(z) as f:
-              files=[]
-              for info in f.infolist():
-                  n=info.filename.replace('\\','/'); p=PurePosixPath(n)
-                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe path: {n}')
-                  mode=(info.external_attr>>16)&0xffff
-                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink rejected: {n}')
-                  if n.endswith('/'): continue
-                  base=os.path.basename(n)
-                  if base.startswith('.env') and base!='.env.example': raise SystemExit(f'secret-like file: {n}')
-                  if '/.github/' in '/'+n and '.github/workflows/ci.yml' not in n: raise SystemExit(f'unexpected github file: {n}')
-                  files.append(n)
-              print('ZIP_FILE_COUNT='+str(len(files)))
-              print('\n'.join(files))
-              f.extractall(out)
-          roots=list(out.iterdir()); src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
-          manifest=src/'MANIFEST.md'
-          if not manifest.exists(): raise SystemExit('MANIFEST missing')
-          shutil.copy2(manifest,'/tmp/MANIFEST.md')
-          for p in src.iterdir():
-              if p.name=='MANIFEST.md': continue
-              dst=Path.cwd()/p.name
-              if p.is_dir(): shutil.copytree(p,dst,dirs_exist_ok=True)
-              else: shutil.copy2(p,dst)
-          PY
-          cat /tmp/MANIFEST.md
-          git status --short
-      - name: Integration normalization
-        shell: bash
-        run: |
-          set -euo pipefail
-          for f in frontend/customer/package-lock.json frontend/backoffice/package-lock.json; do
-            [ ! -f "$f" ] || sed -i 's#http://35\.245\.43\.102/npm/#https://registry.npmjs.org/#g' "$f"
-          done
-      - name: Validate gates
-        shell: bash
-        run: |
-          set -euo pipefail
-          out=$(php backend/bin/http_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=43([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
-          out=$(php backend/bin/persist_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=9([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
-          out=$(php backend/bin/logger_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=7([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
-          out=$(php backend/bin/cors_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=10([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
-          out=$(php backend/bin/openapi_parity_check.php); printf '%s\n' "$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"; grep -qi 'parity OK' <<<"$out"
-          if [ -f backend/bin/check.php ]; then out=$(php backend/bin/check.php); printf '%s\n' "$out"; grep -q 'ALL CHECKS PASSED' <<<"$out"; fi
-      - name: Customer typecheck
-        shell: bash
-        run: |
-          set -euo pipefail
-          cd frontend/customer
-          npm ci --no-audit --no-fund
-          npm run typecheck
-      - name: Stage exact manifest scope except CI workflow
-        shell: bash
-        run: |
-          set -euo pipefail
-          python3 - <<'PY'
-          import re, pathlib, subprocess, glob
-          m=pathlib.Path('/tmp/MANIFEST.md').read_text()
-          sec=next((s for s in re.split(r'^##\s+',m,flags=re.M) if s.lower().startswith('commit-allowed')),'')
-          patterns=re.findall(r'`([^`]+)`',sec)
-          actual=[]
-          for pat in patterns:
-              if pat in ('MANIFEST.md','.github/workflows/ci.yml'): continue
-              matches=glob.glob(pat)
-              if not matches and not any(ch in pat for ch in '*?') and pathlib.Path(pat).suffix:
-                  matches=[pat]
-              for p in matches:
-                  if p=='.github/workflows/ci.yml': continue
-                  if pathlib.Path(p).exists() or subprocess.run(['git','ls-files','--error-unmatch',p],stdout=subprocess.DEVNULL,stderr=subprocess.DEVNULL).returncode==0:
-                      if p not in actual: actual.append(p)
-          print('STAGING:'); print('\n'.join(actual))
-          if not actual: raise SystemExit('no commit-allowed files resolved')
-          subprocess.check_call(['git','add','--',*actual])
-          staged=subprocess.check_output(['git','diff','--cached','--name-only'],text=True).splitlines()
-          bad=[p for p in staged if p not in actual]
-          if bad: raise SystemExit('unexpected staged: '+','.join(bad))
-          PY
-          git diff --cached --name-status
+          rm -rf /tmp/z && mkdir -p /tmp/z
+          unzip -q talamala-shell-ops-smoke.zip -d /tmp/z
+          src=$(find /tmp/z -mindepth 1 -maxdepth 1 -type d | head -1)
+          test -f "$src/docs/00-master/CURRENT_STATE.md"
+          test -f "$src/docs/00-master/LOCAL_RUN.md"
+          test -f "$src/docs/00-master/STAGE_SHELL_OPS_SMOKE.md"
+          test -f "$src/.github/workflows/ci.yml"
+          cp "$src/docs/00-master/CURRENT_STATE.md" docs/00-master/CURRENT_STATE.md
+          cp "$src/docs/00-master/LOCAL_RUN.md" docs/00-master/LOCAL_RUN.md
+          cp "$src/docs/00-master/STAGE_SHELL_OPS_SMOKE.md" docs/00-master/STAGE_SHELL_OPS_SMOKE.md
+          cp "$src/.github/workflows/ci.yml" .ci-shell-ops-payload.yml
+          grep -q 'PASS=43' .ci-shell-ops-payload.yml
+          grep -q 'logger-smoke' .ci-shell-ops-payload.yml
+          git add docs/00-master/CURRENT_STATE.md docs/00-master/LOCAL_RUN.md docs/00-master/STAGE_SHELL_OPS_SMOKE.md .ci-shell-ops-payload.yml
           git diff --cached --check -- ':(exclude)docs/**'
-      - name: Commit and push production files
-        shell: bash
-        run: |
-          set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git commit -m 'feat(customer): enter shell after OTP and expose ops counters'
-          echo "PRODUCTION_COMMIT=$(git rev-parse HEAD)"
+          git commit -m 'docs: record shell ops smoke stage payload'
           git push origin HEAD:main
