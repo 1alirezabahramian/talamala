@@ -26,4 +26,16 @@ final class InMemorySessionStore implements SessionStore
     {
         unset($this->sessions[$token]);
     }
+
+    public function purgeExpired(\DateTimeImmutable $now): int
+    {
+        $n = 0;
+        foreach ($this->sessions as $token => $session) {
+            if (!$session->isValid($now)) {
+                unset($this->sessions[$token]);
+                $n++;
+            }
+        }
+        return $n;
+    }
 }

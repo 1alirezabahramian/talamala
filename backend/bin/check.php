@@ -13,6 +13,7 @@ $bins = [
     'persist_smoke' => $root . '/bin/persist_smoke.php',
     'cors_smoke' => $root . '/bin/cors_smoke.php',
     'logger_smoke' => $root . '/bin/logger_smoke.php',
+    'maintenance_smoke' => $root . '/bin/maintenance_smoke.php',
     'openapi_parity' => $root . '/bin/openapi_parity_check.php',
 ];
 

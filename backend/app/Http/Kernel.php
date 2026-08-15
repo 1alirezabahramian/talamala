@@ -36,6 +36,7 @@ use Talamala\Infrastructure\Persistence\Sqlite\SqliteOrderRepository;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteQuoteRepository;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteSessionStore;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteRateLimiter;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteMaintenance;
 use Talamala\Infrastructure\Security\RateLimiter;
 use Talamala\Domain\Audit\AuditLogger;
 use Talamala\Domain\Idempotency\IdempotencyRegistry;
@@ -269,11 +270,19 @@ final class Kernel
                 $ready['checks']['sqlite'] = 'fail';
                 return ['status' => 503, 'body' => $ready];
             }
-            $ready['ops'] = [
+            $ops = [
                 'rate_limited' => $this->opsRateLimited,
                 'session_revoked' => $this->opsSessionRevoked,
                 'tenant_unresolved' => $this->opsTenantUnresolved,
             ];
+            try {
+                $ops['purged'] = (new SqliteMaintenance(
+                    \Talamala\Infrastructure\Persistence\Sqlite\SqliteConnection::fromEnv()
+                ))->purgeExpired();
+            } catch (\Throwable $e) {
+                $ops['purged'] = ['error' => 'purge_skipped'];
+            }
+            $ready['ops'] = $ops;
             return ['status' => 200, 'body' => $ready];
         }
 

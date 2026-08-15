@@ -59,4 +59,11 @@ SQL);
             'e' => $expiresAt->format(\DateTimeInterface::ATOM),
         ]);
     }
+
+    public function purgeExpired(\DateTimeImmutable $now): int
+    {
+        $st = $this->pdo->prepare('DELETE FROM idempotency_keys WHERE expires_at <= :now');
+        $st->execute(['now' => $now->format(\DateTimeInterface::ATOM)]);
+        return $st->rowCount();
+    }
 }

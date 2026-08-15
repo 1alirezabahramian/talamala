@@ -3,14 +3,16 @@
 ## Smokes
 | Check | Expect |
 |-------|--------|
-| http_smoke | **PASS=43 FAIL=0** |
+| http_smoke | PASS=43 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=10 FAIL=0 |
 | logger_smoke | PASS=7 FAIL=0 |
+| maintenance_smoke | PASS=7 FAIL=0 |
 | openapi_parity | PASS |
 
-## Customer UI
-OTP → (register pending | **CustomerShell** with token) → logout
+## Runtime
+readyz runs non-financial purge of expired sessions / idempotency / rate_limits  
+Customer UI: OTP → shell when authenticated
 
 ## BLOCKED
-Kimia Write · Pricing/Catalog · Settlement · Payment · Delta blind port
+Kimia Write · Pricing · Settlement · Payment · Delta blind port

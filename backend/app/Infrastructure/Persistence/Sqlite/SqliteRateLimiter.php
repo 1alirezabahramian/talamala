@@ -74,4 +74,12 @@ SQL);
             throw $e;
         }
     }
+
+    public function purgeExpired(): int
+    {
+        $now = time();
+        $st = $this->pdo->prepare('DELETE FROM rate_limits WHERE reset_at <= :now');
+        $st->execute(['now' => $now]);
+        return $st->rowCount();
+    }
 }
