@@ -67,13 +67,13 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
-      - name: Run persist_smoke (exact PASS=6 FAIL=0)
+      - name: Run persist_smoke (exact PASS=9 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/persist_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=6 FAIL=0' || {
-            echo "persist_smoke gate failed: expected PASS=6 FAIL=0"
+          echo "$out" | grep -q 'PASS=9 FAIL=0' || {
+            echo "persist_smoke gate failed: expected PASS=9 FAIL=0"
             exit 1
           }
 
@@ -159,7 +159,7 @@ jobs:
           echo "Gates required for green SHA:"
           echo "  - php-syntax"
           echo "  - http-smoke (PASS=33 FAIL=0)"
-          echo "  - persist-smoke (PASS=6 FAIL=0)"
+          echo "  - persist-smoke (PASS=9 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"
           echo "Stage gate: Phase-1 CI hardening + OpenAPI parity"
