@@ -1,0 +1,119 @@
+name: Import RateLimiter + Thin Vite delivery
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup PHP with SQLite
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, sqlite3, mbstring, xml, curl
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            frontend/customer/package-lock.json
+            frontend/backoffice/package-lock.json
+      - name: Safe inspect extract and overlay
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP=talamala-rate-limiter-thin-vite.zip
+          test -f "$ZIP"
+          echo "SHA256=$(sha256sum "$ZIP" | awk '{print $1}')"
+          rm -rf /tmp/draw /tmp/d && mkdir -p /tmp/draw /tmp/d
+          python3 - <<'PY'
+          import os, stat, zipfile, shutil
+          from pathlib import PurePosixPath, Path
+          z='talamala-rate-limiter-thin-vite.zip'; raw=Path('/tmp/draw')
+          with zipfile.ZipFile(z) as f:
+              files=[]
+              for info in f.infolist():
+                  n=info.filename.replace('\\','/'); p=PurePosixPath(n)
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe path: {n}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink rejected: {n}')
+                  if n.endswith('/'): continue
+                  base=os.path.basename(n)
+                  if base.startswith('.env') and base != '.env.example': raise SystemExit(f'secret-like file rejected: {n}')
+                  files.append(n)
+              print('ZIP_FILE_COUNT='+str(len(files)))
+              for n in sorted(files): print(n)
+              f.extractall(raw)
+          roots=list(raw.iterdir()); src=roots[0] if len(roots)==1 and roots[0].is_dir() else raw
+          for p in src.iterdir():
+              dst=Path('/tmp/d')/p.name
+              if p.is_dir(): shutil.copytree(p,dst)
+              else: shutil.copy2(p,dst)
+          PY
+          test -f /tmp/d/MANIFEST.md
+          echo '--- MANIFEST ---'; cat /tmp/d/MANIFEST.md
+          echo '--- TREE ---'; find /tmp/d -type f | sort
+          rsync -a --exclude='MANIFEST.md' /tmp/d/ ./
+          git diff --check -- . ':(exclude)docs/**'
+      - name: Validate backend gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -m | grep -qi pdo_sqlite
+          out1=$(php backend/bin/http_smoke.php); printf '%s\n' "$out1"
+          printf '%s\n' "$out1" | grep -Eq 'PASS=33([^0-9]|$)'
+          printf '%s\n' "$out1" | grep -Eq 'FAIL=0([^0-9]|$)'
+          out2=$(php backend/bin/persist_smoke.php); printf '%s\n' "$out2"
+          printf '%s\n' "$out2" | grep -Eq 'PASS=9([^0-9]|$)'
+          printf '%s\n' "$out2" | grep -Eq 'FAIL=0([^0-9]|$)'
+          out3=$(php backend/bin/openapi_parity_check.php); printf '%s\n' "$out3"
+          printf '%s\n' "$out3" | grep -Eq 'FAIL=0([^0-9]|$)'
+          printf '%s\n' "$out3" | grep -qi 'parity OK'
+      - name: Validate customer frontend
+        working-directory: frontend/customer
+        run: npm ci && npm run typecheck && npm run build
+      - name: Validate backoffice frontend
+        working-directory: frontend/backoffice
+        run: npm ci && npm run typecheck && npm run build
+      - name: Stage manifest scope except CI workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          import re, pathlib, subprocess
+          m=pathlib.Path('/tmp/d/MANIFEST.md').read_text()
+          sec=re.split(r'^##\s+', m, flags=re.M)
+          target=''
+          for s in sec:
+              if s.lower().startswith('commit-allowed'):
+                  target=s; break
+          paths=re.findall(r'`([^`]+)`', target)
+          paths=[p for p in paths if not any(ch in p for ch in '*?') and p!='MANIFEST.md' and p!='.github/workflows/ci.yml']
+          if not paths: raise SystemExit('no commit-allowed paths parsed')
+          print('COMMIT_ALLOWED_EXCEPT_CI:')
+          for p in paths: print(p)
+          subprocess.check_call(['git','add','--',*paths])
+          actual=subprocess.check_output(['git','diff','--cached','--name-only'], text=True).splitlines()
+          bad=[p for p in actual if p not in paths]
+          if bad: raise SystemExit('unexpected staged: '+','.join(bad))
+          PY
+          git diff --cached --name-status
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(platform): sqlite otp rate limiter and thin vite apps'
+          git push origin HEAD:main
