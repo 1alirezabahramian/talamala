@@ -101,6 +101,30 @@ jobs:
             exit 1
           }
 
+  logger-smoke:
+    name: Logger smoke gate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+      - name: Run logger_smoke (exact PASS=7 FAIL=0)
+        run: |
+          set -euo pipefail
+          out=$(php bin/logger_smoke.php)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=7 FAIL=0' || {
+            echo "logger_smoke gate failed: expected PASS=7 FAIL=0"
+            exit 1
+          }
+
   openapi-parity:
     name: OpenAPI parity gate
     runs-on: ubuntu-latest
@@ -193,7 +217,7 @@ jobs:
 
   report:
     name: Exact-SHA report
-    needs: [php-syntax, http-smoke, persist-smoke, cors-smoke, openapi-parity, secret-scan, frontend-typecheck]
+    needs: [php-syntax, http-smoke, persist-smoke, cors-smoke, logger-smoke, openapi-parity, secret-scan, frontend-typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -206,7 +230,8 @@ jobs:
           echo "  - http-smoke (PASS=41 FAIL=0)"
           echo "  - persist-smoke (PASS=9 FAIL=0)"
           echo "  - cors-smoke (PASS=10 FAIL=0)"
+          echo "  - logger-smoke (PASS=7 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"
           echo "  - frontend-typecheck"
-          echo "Stage gate: release readiness (SPA serve + CORS + ops)"
+          echo "Stage gate: release readiness (logout UI + structured logging + env)"
