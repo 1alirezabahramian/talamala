@@ -54,12 +54,13 @@ jobs:
           actual=set()
           for p in src.rglob('*'):
               if p.is_file() and p.name!='MANIFEST.md': actual.add(p.relative_to(src).as_posix())
-          if actual != allowed:
-              raise SystemExit(f'scope mismatch actual={sorted(actual)}')
+          if actual != allowed: raise SystemExit(f'scope mismatch actual={sorted(actual)}')
           for rel in sorted(allowed):
-              s=src/rel; d=Path.cwd()/rel
-              d.parent.mkdir(parents=True,exist_ok=True)
-              shutil.copy2(s,d)
+              s=src/rel
+              if rel=='.github/workflows/ci.yml':
+                  shutil.copy2(s,'/tmp/ci-landing.yml')
+                  continue
+              d=Path.cwd()/rel; d.parent.mkdir(parents=True,exist_ok=True); shutil.copy2(s,d)
           PY
       - name: Validate stage gates
         run: |
@@ -77,7 +78,6 @@ jobs:
             docs/00-master/OPERATORS.md
             README.md
             backend/bin/landing_smoke.php
-            .github/workflows/ci.yml
             backend/bin/check.php
             backend/public/robots.txt
             docs/00-master/STAGE_LANDING_OPERATORS.md
@@ -85,11 +85,19 @@ jobs:
           )
           git add -- "${paths[@]}"
           staged=$(git diff --cached --name-only); printf '%s\n' "$staged"
-          [ "$(printf '%s\n' "$staged" | sed '/^$/d' | wc -l)" -eq 10 ]
+          [ "$(printf '%s\n' "$staged" | sed '/^$/d' | wc -l)" -eq 9 ]
           for p in "${paths[@]}"; do grep -Fxq "$p" <<<"$staged"; done
           git diff --cached --check -- ':(exclude)docs/**'
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git commit -m 'feat(ops): add landing hub and operator runbook'
           echo "PRODUCTION_COMMIT=$(git rev-parse HEAD)"
+          git push origin HEAD:main
+      - name: Persist CI payload temporarily
+        run: |
+          set -euo pipefail
+          cp /tmp/ci-landing.yml .ci-landing-payload.yml
+          grep -q 'landing-smoke' .ci-landing-payload.yml
+          git add .ci-landing-payload.yml
+          git commit -m 'chore: stage landing CI payload'
           git push origin HEAD:main
