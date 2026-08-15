@@ -55,9 +55,20 @@ jobs:
           git status --short
       - name: Validate stage gates
         run: |
-          set -euo pipefail
-          out=$(php backend/bin/logger_smoke.php); echo "$out"; grep -q 'PASS=8 FAIL=0' <<<"$out"
-          out=$(php backend/bin/spa_router_smoke.php); echo "$out"; grep -q 'FAIL=0' <<<"$out"; grep -q 'PASS=6' <<<"$out"
+          set -uo pipefail
+          fail=0
+          for cmd in "php backend/bin/logger_smoke.php" "php backend/bin/spa_router_smoke.php"; do
+            echo "=== $cmd ==="
+            set +e
+            out=$(eval "$cmd" 2>&1); rc=$?
+            set -e
+            printf '%s\n' "$out"
+            echo "RC=$rc"
+            [ "$rc" -eq 0 ] || fail=1
+          done
+          [ "$fail" -eq 0 ] || exit 1
+          grep -q 'PASS=8 FAIL=0' <<<"$(php backend/bin/logger_smoke.php)"
+          spa=$(php backend/bin/spa_router_smoke.php); grep -q 'FAIL=0' <<<"$spa"; grep -q 'PASS=6' <<<"$spa"
           out=$(php backend/bin/http_smoke.php); echo "$out"; grep -q 'PASS=43 FAIL=0' <<<"$out"
           out=$(php backend/bin/maintenance_smoke.php); echo "$out"; grep -q 'PASS=7 FAIL=0' <<<"$out"
           out=$(php backend/bin/check.php); echo "$out"; grep -q 'ALL CHECKS PASSED' <<<"$out"
