@@ -3,7 +3,8 @@
 ## One-liner checks
 
 ```bash
-cd backend && php bin/check.php
+make check
+# or: cd backend && php bin/check.php
 ```
 
 Expect: http 43 · persist 9 · cors 10 · logger 8 · maintenance 7 · openapi parity · ALL CHECKS PASSED
@@ -37,3 +38,8 @@ cd frontend/backoffice && npm ci && npm run build
 ## Not enabled
 
 Kimia Write · live price · settlement · payment — BLOCKED BY GROUND TRUTH
+
+## Build identity
+
+- `VERSION` file at repo root
+- Optional `TALAMALA_BUILD_SHA` env (short SHA on landing)

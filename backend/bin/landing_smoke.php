@@ -34,5 +34,13 @@ $check('landing_rtl_fa', str_contains((string) $html, 'lang="fa"') && str_contai
 $check('router_serves_landing', str_contains((string) $rt, 'landing.html'), null);
 $check('operators_doc', is_file(dirname($root) . '/docs/00-master/OPERATORS.md'), null);
 
+$ver = dirname($root) . '/VERSION';
+$check('version_file', is_file($ver) && trim((string) file_get_contents($ver)) !== '', $ver);
+$html = (string) $html;
+$check('landing_version_placeholder', str_contains($html, '{{VERSION}}') && str_contains($html, '{{BUILD_SHA}}'), null);
+$rt = (string) $rt;
+$check('router_html_security_headers', str_contains($rt, 'X-Frame-Options') && str_contains($rt, 'serveHtmlFile'), null);
+$check('makefile_exists', is_file(dirname($root) . '/Makefile'), null);
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

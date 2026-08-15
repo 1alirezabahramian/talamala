@@ -17,20 +17,59 @@ declare(strict_types=1);
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $file = __DIR__ . $path;
 
-// Local operator hub (HTML)
+$htmlSecurityHeaders = static function (): void {
+    header('X-Content-Type-Options: nosniff');
+    header('X-Frame-Options: DENY');
+    header('Referrer-Policy: no-referrer');
+    header('Cache-Control: no-store');
+};
+
+$buildMeta = static function (): array {
+    $repoRoot = dirname(__DIR__, 2);
+    $version = 'dev';
+    $verFile = $repoRoot . '/VERSION';
+    if (is_file($verFile)) {
+        $version = trim((string) file_get_contents($verFile)) ?: 'dev';
+    }
+    $sha = getenv('TALAMALA_BUILD_SHA') ?: 'local';
+    if (is_string($sha)) {
+        $sha = substr(preg_replace('/[^a-fA-F0-9]/', '', $sha) ?: 'local', 0, 12);
+    }
+    return ['version' => $version, 'sha' => $sha === '' ? 'local' : $sha];
+};
+
+$serveHtmlFile = static function (string $absolutePath, bool $injectMeta = false) use ($htmlSecurityHeaders, $buildMeta): void {
+    header('Content-Type: text/html; charset=utf-8');
+    $htmlSecurityHeaders();
+    $body = (string) file_get_contents($absolutePath);
+    if ($injectMeta) {
+        $meta = $buildMeta();
+        $body = str_replace(
+            ['{{VERSION}}', '{{BUILD_SHA}}'],
+            [htmlspecialchars($meta['version'], ENT_QUOTES, 'UTF-8'), htmlspecialchars($meta['sha'], ENT_QUOTES, 'UTF-8')],
+            $body
+        );
+    }
+    echo $body;
+};
+
+// Local operator hub
 if ($path === '/' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     $landing = __DIR__ . '/landing.html';
     if (is_file($landing)) {
-        header('Content-Type: text/html; charset=utf-8');
-        header('Cache-Control: no-store');
-        header('X-Content-Type-Options: nosniff');
-        readfile($landing);
+        $serveHtmlFile($landing, true);
         exit;
     }
 }
 
+// Static HTML demos under public/ — same baseline security headers
+if ($path !== '/' && is_file($file) && str_ends_with(strtolower($path), '.html')) {
+    $serveHtmlFile($file, false);
+    exit;
+}
+
 if ($path !== '/' && is_file($file)) {
-    return false; // serve static file as-is
+    return false; // non-HTML static (css/js/img) as-is
 }
 
 /**
