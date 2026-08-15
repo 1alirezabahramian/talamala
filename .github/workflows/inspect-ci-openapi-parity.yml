@@ -20,11 +20,12 @@ jobs:
           set -euo pipefail
           test -f talamala-phase1-ci-openapi-parity.zip
           echo "SHA256=$(sha256sum talamala-phase1-ci-openapi-parity.zip | awk '{print $1}')"
-          rm -rf /tmp/ciop && mkdir -p /tmp/ciop
+          rm -rf /tmp/ciop-raw /tmp/ciop && mkdir -p /tmp/ciop-raw /tmp/ciop
           python3 - <<'PY'
-          import os, stat, zipfile
-          from pathlib import PurePosixPath
+          import os, stat, zipfile, shutil
+          from pathlib import PurePosixPath, Path
           z='talamala-phase1-ci-openapi-parity.zip'
+          raw=Path('/tmp/ciop-raw')
           with zipfile.ZipFile(z) as f:
               files=[]
               for info in f.infolist():
@@ -43,7 +44,16 @@ jobs:
                   files.append(name)
               print('ZIP_FILE_COUNT='+str(len(files)))
               for n in sorted(files): print(n)
-              f.extractall('/tmp/ciop')
+              f.extractall(raw)
+          roots=[p for p in raw.iterdir()]
+          src=raw
+          if len(roots)==1 and roots[0].is_dir():
+              src=roots[0]
+              print('WRAPPER='+src.name)
+          for p in src.iterdir():
+              dst=Path('/tmp/ciop')/p.name
+              if p.is_dir(): shutil.copytree(p,dst)
+              else: shutil.copy2(p,dst)
           PY
           test -f /tmp/ciop/MANIFEST.md
           echo '--- MANIFEST ---'
