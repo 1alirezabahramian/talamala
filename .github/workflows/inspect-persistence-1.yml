@@ -1,0 +1,54 @@
+name: Inspect Persistence-1 delivery
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Inspect ZIP safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f talamala-stage-persistence-1.zip
+          echo "SHA256=$(sha256sum talamala-stage-persistence-1.zip | awk '{print $1}')"
+          rm -rf /tmp/p1 && mkdir -p /tmp/p1
+          python3 - <<'PY'
+          import os, stat, zipfile
+          from pathlib import PurePosixPath
+          z='talamala-stage-persistence-1.zip'
+          with zipfile.ZipFile(z) as f:
+              files=[]
+              for info in f.infolist():
+                  name=info.filename.replace('\\','/')
+                  p=PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise SystemExit(f'unsafe path: {name}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f'symlink rejected: {name}')
+                  if name.endswith('/'):
+                      continue
+                  base=os.path.basename(name)
+                  if base.startswith('.env') and base != '.env.example':
+                      raise SystemExit(f'secret-like file rejected: {name}')
+                  if name.startswith('.github/'):
+                      raise SystemExit(f'unexpected workflow path: {name}')
+                  files.append(name)
+              print('ZIP_FILE_COUNT='+str(len(files)))
+              for n in sorted(files): print(n)
+              f.extractall('/tmp/p1')
+          PY
+          test -f /tmp/p1/MANIFEST.md
+          echo '--- MANIFEST ---'
+          cat /tmp/p1/MANIFEST.md
+          echo '--- TOP TREE ---'
+          find /tmp/p1 -maxdepth 4 -type f | sort
