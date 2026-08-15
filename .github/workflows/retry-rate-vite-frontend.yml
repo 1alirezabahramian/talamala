@@ -16,7 +16,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
-      - name: Extract delivery safely
+      - name: Extract and overlay delivery safely
         shell: bash
         run: |
           set -euo pipefail
@@ -24,7 +24,7 @@ jobs:
           test -f "$ZIP"
           rm -rf /tmp/ratevite && mkdir -p /tmp/ratevite
           python3 - <<'PY'
-          import os, stat, zipfile
+          import os, stat, zipfile, shutil
           from pathlib import Path, PurePosixPath
           z='talamala-rate-limiter-thin-vite.zip'; out=Path('/tmp/ratevite')
           with zipfile.ZipFile(z) as f:
@@ -37,37 +37,36 @@ jobs:
               f.extractall(out)
           roots=list(out.iterdir())
           src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
-          print(src)
-          Path('/tmp/srcpath').write_text(str(src))
+          for p in src.iterdir():
+              if p.name == 'MANIFEST.md':
+                  continue
+              dst=Path.cwd()/p.name
+              if p.is_dir():
+                  shutil.copytree(p,dst,dirs_exist_ok=True)
+              else:
+                  shutil.copy2(p,dst)
           PY
-      - name: Normalize private npm mirror URLs only in temp extraction
+      - name: Normalize private npm mirror URLs only in runner workspace
         shell: bash
         run: |
           set -euo pipefail
-          SRC=$(cat /tmp/srcpath)
-          grep -R "http://35.245.43.102/npm/" "$SRC/frontend"/customer/package-lock.json "$SRC/frontend"/backoffice/package-lock.json | head || true
-          sed -i 's#http://35\.245\.43\.102/npm/#https://registry.npmjs.org/#g' "$SRC/frontend/customer/package-lock.json" "$SRC/frontend/backoffice/package-lock.json"
-          if grep -R "35.245.43.102" "$SRC/frontend"/customer/package-lock.json "$SRC/frontend"/backoffice/package-lock.json; then
+          grep -R "http://35.245.43.102/npm/" frontend/customer/package-lock.json frontend/backoffice/package-lock.json | head || true
+          sed -i 's#http://35\.245\.43\.102/npm/#https://registry.npmjs.org/#g' frontend/customer/package-lock.json frontend/backoffice/package-lock.json
+          if grep -R "35.245.43.102" frontend/customer/package-lock.json frontend/backoffice/package-lock.json; then
             echo 'private mirror URL still present' >&2
             exit 1
           fi
       - name: Customer clean install typecheck build
         timeout-minutes: 10
-        shell: bash
+        working-directory: frontend/customer
         run: |
-          set -euo pipefail
-          SRC=$(cat /tmp/srcpath)
-          cd "$SRC/frontend/customer"
           npm ci --no-audit --no-fund
           npm run typecheck
           npm run build
       - name: Backoffice clean install typecheck build
         timeout-minutes: 10
-        shell: bash
+        working-directory: frontend/backoffice
         run: |
-          set -euo pipefail
-          SRC=$(cat /tmp/srcpath)
-          cd "$SRC/frontend/backoffice"
           npm ci --no-audit --no-fund
           npm run typecheck
           npm run build
