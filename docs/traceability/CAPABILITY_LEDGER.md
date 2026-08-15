@@ -19,11 +19,11 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-013 | Order | Accept from quote | IMPLEMENTED | |
 | CAP-014 | Order | Settlement write | BLOCKED | Ground truth |
 | CAP-015 | Custody | Lifecycle | IMPLEMENTED | Talamala truth |
-| CAP-016 | API | OpenAPI auth/customer/backoffice | PARTIAL | Skeletons |
+| CAP-016 | API | OpenAPI auth/customer/backoffice | IMPLEMENTED | Runtime parity + CI gate 2026-08-15 |
 | CAP-017 | Frontend | Customer screens | PARTIAL | Structure only |
 | CAP-018 | Frontend | Backoffice screens | PARTIAL | Structure only |
 | CAP-019 | Payment | Gateways | BLOCKED | Ground truth |
-| CAP-020 | Release | Exact-SHA CI | PARTIAL | Workflow present |
+| CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed + smoke gates 2026-08-15 |
 
 Do not copy GoldPlatform completion percentages.
 
