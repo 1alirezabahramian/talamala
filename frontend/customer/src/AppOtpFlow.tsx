@@ -1,9 +1,10 @@
 /**
  * OTP → registration_required → Registration form → done.
- * Local runnable path: /otp-demo.html
+ * Local runnable path: /otp-demo.html or Vite /app/customer
  */
 
 import { useState } from 'react';
+import { logout } from './api/auth';
 import { OtpRequestScreen } from './screens/auth/OtpRequestScreen';
 import { OtpVerifyScreen } from './screens/auth/OtpVerifyScreen';
 import { RegistrationScreen } from './screens/auth/RegistrationScreen';
@@ -23,6 +24,8 @@ type Step =
 
 export function AppOtpFlow() {
   const [step, setStep] = useState<Step>({ name: 'request' });
+  const [logoutBusy, setLogoutBusy] = useState(false);
+  const [logoutMsg, setLogoutMsg] = useState<string | null>(null);
 
   if (step.name === 'request') {
     return (
@@ -74,19 +77,45 @@ export function AppOtpFlow() {
     );
   }
 
+  // step narrowed to done
+  const done = step;
+  const token = done.accessToken;
+
+  async function onLogout() {
+    setLogoutMsg(null);
+    if (!token) {
+      setStep({ name: 'request' });
+      return;
+    }
+    setLogoutBusy(true);
+    const res = await logout(token);
+    setLogoutBusy(false);
+    if (!res.ok) {
+      setLogoutMsg(res.error || 'logout_failed');
+      return;
+    }
+    setStep({ name: 'request' });
+  }
+
   return (
     <div className="tal-screen" dir="rtl" lang="fa">
-      <h1>{step.kind === 'authenticated' ? 'ورود موفق' : 'ثبت‌نام ثبت شد'}</h1>
-      {step.customerId ? (
-        <p className="tal-muted">customer_id: {step.customerId}</p>
+      <h1>{done.kind === 'authenticated' ? 'ورود موفق' : 'ثبت‌نام ثبت شد'}</h1>
+      {done.customerId ? (
+        <p className="tal-muted">customer_id: {done.customerId}</p>
       ) : null}
-      {step.accessStatus ? (
-        <p className="tal-muted">access_status: {step.accessStatus}</p>
+      {done.accessStatus ? (
+        <p className="tal-muted">access_status: {done.accessStatus}</p>
       ) : null}
-      {step.kind === 'registered' ? (
+      {done.kind === 'registered' ? (
         <p className="tal-muted">
-          وضعیت پیش‌فرض محدود است تا staff approve (جدا از Jibit).
+          در انتظار تأیید کارکنان · kimia_bound: {done.kimiaBound ? 'yes' : 'no'}
         </p>
+      ) : null}
+      {logoutMsg ? <p style={{ color: '#e85d5d' }}>{logoutMsg}</p> : null}
+      {token ? (
+        <button type="button" onClick={onLogout} disabled={logoutBusy}>
+          {logoutBusy ? '...' : 'خروج (لغو نشست)'}
+        </button>
       ) : null}
       <button type="button" onClick={() => setStep({ name: 'request' })}>
         شروع دوباره

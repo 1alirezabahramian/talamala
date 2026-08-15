@@ -4,7 +4,7 @@
  */
 
 import { useState } from 'react';
-import { staffLogin, staffRotatePassword } from './api/auth';
+import { staffLogin, staffRotatePassword, logout } from './api/auth';
 import { RegistrationQueueScreen } from './screens/RegistrationQueueScreen';
 
 type Phase =
@@ -68,11 +68,27 @@ export function AppBackoffice() {
   if (phase.name === 'queue') {
     return (
       <div style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem' }}>
-        <header style={{ marginBottom: '1rem' }}>
-          <h1 style={{ fontSize: '1.25rem', margin: 0 }}>صف ثبت‌نام</h1>
-          <p style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
-            staff: {phase.staffId} · approve فقط وضعیت دسترسی را فعال می‌کند
-          </p>
+        <header style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
+          <div>
+            <h1 style={{ fontSize: '1.25rem', margin: 0 }}>صف ثبت‌نام</h1>
+            <p style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
+              staff: {phase.staffId} · approve فقط وضعیت دسترسی را فعال می‌کند
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={async () => {
+              setBusy(true);
+              await logout(phase.token);
+              setBusy(false);
+              setPhase({ name: 'login' });
+              setPassword('');
+            }}
+            disabled={busy}
+            style={{ padding: '8px 12px', height: 'fit-content' }}
+          >
+            خروج
+          </button>
         </header>
         <RegistrationQueueScreen token={phase.token} />
       </div>

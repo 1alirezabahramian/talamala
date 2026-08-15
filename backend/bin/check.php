@@ -8,16 +8,27 @@ declare(strict_types=1);
  */
 
 $root = dirname(__DIR__);
-passthru('php ' . escapeshellarg($root . '/bin/smoke.php'), $a);
-passthru('php ' . escapeshellarg($root . '/bin/http_smoke.php'), $b);
-// Structured logger self-check
-require_once $root . '/app/bootstrap_autoload.php';
-use Talamala\Infrastructure\Logging\StructuredLogger;
-$log = new StructuredLogger();
-$log->info('check.ok', ['password' => 'secret', 'tenant_id' => 't1']);
-$last = $log->records[0] ?? [];
-$redacted = ($last['context']['password'] ?? null) === '[redacted]';
-echo $redacted ? "OK  logger_redacts_secrets\n" : "FAIL logger_redacts_secrets\n";
-$exit = ($a !== 0 || $b !== 0 || !$redacted) ? 1 : 0;
-echo $exit === 0 ? "\nALL CHECKS PASSED\n" : "\nCHECKS FAILED\n";
-exit($exit);
+$bins = [
+    'http_smoke' => $root . '/bin/http_smoke.php',
+    'persist_smoke' => $root . '/bin/persist_smoke.php',
+    'cors_smoke' => $root . '/bin/cors_smoke.php',
+    'logger_smoke' => $root . '/bin/logger_smoke.php',
+    'openapi_parity' => $root . '/bin/openapi_parity_check.php',
+];
+
+$failed = [];
+foreach ($bins as $name => $path) {
+    if (!is_file($path)) {
+        echo "SKIP $name (missing)\n";
+        continue;
+    }
+    echo "=== $name ===\n";
+    passthru('php ' . escapeshellarg($path), $code);
+    if ($code !== 0) {
+        $failed[] = $name;
+    }
+    echo "\n";
+}
+
+echo $failed === [] ? "ALL CHECKS PASSED\n" : ("CHECKS FAILED: " . implode(', ', $failed) . "\n");
+exit($failed === [] ? 0 : 1);

@@ -137,7 +137,7 @@ final class Kernel
             $this->audit,
         );
         $this->otpRateLimiter = new SqliteRateLimiter($pdo, maxAttempts: 5, windowSeconds: 300);
-        $this->log = new StructuredLogger();
+        $this->log = StructuredLogger::fromEnv();
     }
 
     /** Issue a short-lived skeleton session (replace with signed JWT/DB later). */

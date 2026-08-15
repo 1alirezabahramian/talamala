@@ -17,6 +17,20 @@ final class StructuredLogger
         private readonly ?string $streamPath = null,
     ) {}
 
+    public static function fromEnv(string $channel = 'talamala'): self
+    {
+        $path = getenv('TALAMALA_LOG_PATH') ?: null;
+        if (is_string($path) && $path !== '') {
+            $dir = dirname($path);
+            if ($dir !== '' && $dir !== '.' && !is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            return new self($channel, $path);
+        }
+        return new self($channel, null);
+    }
+
+
     /**
      * @param array<string, mixed> $context
      */
