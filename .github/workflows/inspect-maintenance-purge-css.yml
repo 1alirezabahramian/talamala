@@ -1,0 +1,96 @@
+name: Inspect Maintenance Purge CSS
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite, sqlite3, mbstring, xml, curl
+          coverage: none
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Safe extract and inspect
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP=talamala-maintenance-purge-css.zip
+          test -f "$ZIP"
+          echo "ZIP_SHA256=$(sha256sum "$ZIP" | awk '{print $1}')"
+          rm -rf /tmp/stage && mkdir -p /tmp/stage
+          python3 - <<'PY'
+          import os, stat, zipfile, shutil
+          from pathlib import Path, PurePosixPath
+          z='talamala-maintenance-purge-css.zip'; out=Path('/tmp/stage')
+          with zipfile.ZipFile(z) as f:
+              files=[]
+              for info in f.infolist():
+                  n=info.filename.replace('\\','/'); p=PurePosixPath(n)
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe path: {n}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink rejected: {n}')
+                  if n.endswith('/'): continue
+                  base=os.path.basename(n)
+                  if base.startswith('.env') and base!='.env.example': raise SystemExit(f'secret-like file: {n}')
+                  if '/.github/' in '/'+n and not n.endswith('.github/workflows/ci.yml'): raise SystemExit(f'unexpected github file: {n}')
+                  files.append(n)
+              print('ZIP_FILE_COUNT='+str(len(files)))
+              print('\n'.join(files))
+              f.extractall(out)
+          roots=list(out.iterdir()); src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
+          manifest=src/'MANIFEST.md'
+          if not manifest.exists(): raise SystemExit('MANIFEST missing')
+          print('\n--- MANIFEST ---')
+          print(manifest.read_text())
+          for p in src.iterdir():
+              if p.name=='MANIFEST.md': continue
+              dst=Path.cwd()/p.name
+              if p.is_dir(): shutil.copytree(p,dst,dirs_exist_ok=True)
+              else: shutil.copy2(p,dst)
+          PY
+          git status --short
+      - name: Integration normalization
+        shell: bash
+        run: |
+          set -euo pipefail
+          for f in frontend/customer/package-lock.json frontend/backoffice/package-lock.json; do
+            [ ! -f "$f" ] || sed -i 's#http://35\.245\.43\.102/npm/#https://registry.npmjs.org/#g' "$f"
+          done
+      - name: Validate backend gates
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/maintenance_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=7([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
+          out=$(php backend/bin/http_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=43([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
+          out=$(php backend/bin/persist_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=9([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
+          out=$(php backend/bin/logger_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=7([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
+          out=$(php backend/bin/cors_smoke.php); printf '%s\n' "$out"; grep -Eq 'PASS=10([^0-9]|$)' <<<"$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"
+          out=$(php backend/bin/openapi_parity_check.php); printf '%s\n' "$out"; grep -Eq 'FAIL=0([^0-9]|$)' <<<"$out"; grep -qi 'parity OK' <<<"$out"
+          out=$(php backend/bin/check.php); printf '%s\n' "$out"; grep -q 'ALL CHECKS PASSED' <<<"$out"
+      - name: Customer typecheck
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd frontend/customer
+          npm ci --no-audit --no-fund
+          npm run typecheck
+      - name: Diff sanity
+        shell: bash
+        run: |
+          set -euo pipefail
+          git diff --check -- ':(exclude)docs/**'
+          git status --short
