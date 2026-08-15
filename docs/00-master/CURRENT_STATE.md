@@ -6,7 +6,23 @@
 ## Persistence-1
 SQLite PDO for customers / quotes / custody / orders.
 Default `:memory:`; file via `TALAMALA_DB_PATH`.
-`php backend/bin/persist_smoke.php` → PASS=6.
+`php backend/bin/persist_smoke.php` → **PASS=6 FAIL=0**
+
+## Phase 1 gate: CI + OpenAPI parity
+**CLOSED** — see `docs/00-master/STAGE_CI_OPENAPI_PARITY.md`
+
+- CI fail-closed (no swallowed failures on critical jobs)
+- Exact-SHA gates: http_smoke (33/0), persist_smoke (6/0)
+- OpenAPI runtime parity: production routes covered; `/v1/dev/*` excluded
+- Parity tool: `php backend/bin/openapi_parity_check.php` → PASS
+- `pdo_sqlite` required on CI runners
+
+### CI jobs that must be green for a meaningful SHA
+- `php-syntax`
+- `http-smoke`
+- `persist-smoke`
+- `openapi-parity`
+- `secret-scan`
 
 ## Closed stages
 | Stage | Status |
@@ -17,6 +33,8 @@ Default `:memory:`; file via `TALAMALA_DB_PATH`.
 | Backoffice reg queue + approve | CLOSED |
 | Customer Shell continuity | CLOSED (zero-build) |
 | Quote accept / Custody lifecycle | backend vertical present |
+| Persistence-1 (SQLite Identity+Custody+Quote+Order) | CLOSED |
+| CI hardening + OpenAPI parity | CLOSED |
 
 ## Customer local path
 1. `otp-demo.html` — OTP → register/auth → assets peek  
@@ -35,5 +53,5 @@ Default `:memory:`; file via `TALAMALA_DB_PATH`.
 - Settlement / payment
 
 ## Next
-- Backoffice custody ops polish if needed
-- Do not invent payment or Kimia write contracts
+**Persistence-2** — sessions + idempotency + audit on SQLite  
+(Do not invent payment or Kimia write contracts)
