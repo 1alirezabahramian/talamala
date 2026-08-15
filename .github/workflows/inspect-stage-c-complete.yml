@@ -1,0 +1,60 @@
+name: Inspect Stage C complete delivery
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Safely inspect Stage C complete ZIP
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f talamala-stage-C-complete.zip
+          python3 - <<'PY'
+          import os, stat, zipfile
+          from pathlib import PurePosixPath
+          zpath='talamala-stage-C-complete.zip'
+          allowed_roots={'backend','frontend','openapi','docs'}
+          with zipfile.ZipFile(zpath) as z:
+              files=[]
+              for info in z.infolist():
+                  name=info.filename.replace('\\','/')
+                  p=PurePosixPath(name)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise SystemExit(f'unsafe path: {name}')
+                  mode=(info.external_attr >> 16) & 0xFFFF
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f'symlink rejected: {name}')
+                  if name.endswith('/'):
+                      continue
+                  if os.path.basename(name).startswith('.env') and os.path.basename(name) != '.env.example':
+                      raise SystemExit(f'secret-like file rejected: {name}')
+                  root=p.parts[0] if p.parts else ''
+                  if root not in allowed_roots:
+                      raise SystemExit(f'outside allowed roots: {name}')
+                  if root=='frontend' and not name.startswith('frontend/customer/'):
+                      raise SystemExit(f'frontend outside customer scope: {name}')
+                  files.append(name)
+              if not files:
+                  raise SystemExit('empty ZIP')
+              print('ZIP_FILE_COUNT='+str(len(files)))
+              for n in sorted(files): print(n)
+              required=['backend/public/otp-demo.html','docs/00-master/CURRENT_STATE.md','docs/00-master/STAGE_C_OTP_FRONTEND.md']
+              for r in required:
+                  if r not in files:
+                      raise SystemExit(f'missing required file: {r}')
+              z.extractall('/tmp/stage-c-complete')
+          print('ZIP_OK')
+          PY
+          echo '--- DIFF PREVIEW ---'
+          rsync -a --delete /tmp/stage-c-complete/backend/ /tmp/overlay-backend/ 2>/dev/null || true
+          git status --short
