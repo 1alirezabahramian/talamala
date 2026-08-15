@@ -1,0 +1,61 @@
+name: Inspect CSP HTML Hardening
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  inspect:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Inspect delivery ZIP safely
+        run: |
+          set -euo pipefail
+          ZIP=talamala-csp-html-hardening-20260815.zip
+          test -f "$ZIP"
+          echo "HEAD=$(git rev-parse HEAD)"
+          echo "ZIP_SHA256=$(sha256sum "$ZIP" | awk '{print $1}')"
+          rm -rf /tmp/inspect && mkdir -p /tmp/inspect
+          python3 - <<'PY'
+          import os, stat, zipfile
+          from pathlib import Path, PurePosixPath
+          z='talamala-csp-html-hardening-20260815.zip'
+          out=Path('/tmp/inspect')
+          with zipfile.ZipFile(z) as f:
+              infos=f.infolist()
+              files=[i for i in infos if not i.is_dir()]
+              print('ZIP_FILE_COUNT=', len(files))
+              for info in infos:
+                  n=info.filename.replace('\\','/')
+                  p=PurePosixPath(n)
+                  if p.is_absolute() or '..' in p.parts:
+                      raise SystemExit(f'UNSAFE_PATH {n}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode):
+                      raise SystemExit(f'SYMLINK {n}')
+                  if n.endswith('/'):
+                      continue
+                  b=os.path.basename(n)
+                  if b.startswith('.env') and b != '.env.example':
+                      raise SystemExit(f'SECRET_LIKE {n}')
+                  if '/.github/' in '/'+n:
+                      raise SystemExit(f'UNEXPECTED_GITHUB {n}')
+                  print('FILE', n)
+              f.extractall(out)
+          roots=list(out.iterdir())
+          src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
+          m=src/'MANIFEST.txt'
+          if not m.exists():
+              raise SystemExit('MANIFEST.txt missing')
+          print('--- MANIFEST ---')
+          print(m.read_text())
+          print('--- CI PAYLOAD CHECK ---')
+          ci=src/'ci.yml'
+          if not ci.exists(): raise SystemExit('ci.yml missing')
+          txt=ci.read_text()
+          print('CI_LANDING_13=', 'PASS=13 FAIL=0' in txt)
+          PY
