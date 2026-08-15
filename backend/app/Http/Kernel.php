@@ -187,14 +187,18 @@ final class Kernel
 
     /**
      * Prefer Bearer customer session; X-Customer-Id only outside production.
+     * Session tenant must match Host-resolved tenant (fail-closed isolation).
      * @return array{0:?string,1:?array} [customerId, errorResponse]
      */
-    private function resolveCustomerId(array $headers): array
+    private function resolveCustomerId(array $headers, string $tenantId): array
     {
         $session = $this->sessionFromAuthHeader($headers);
         if ($session !== null) {
             if ($session->subjectType !== 'customer') {
                 return [null, ['status' => 403, 'body' => ['error' => 'customer_session_required']]];
+            }
+            if ($session->tenantId !== $tenantId) {
+                return [null, ['status' => 403, 'body' => ['error' => 'tenant_session_mismatch']]];
             }
             return [$session->subjectId, null];
         }
@@ -212,14 +216,18 @@ final class Kernel
 
     /**
      * Prefer Bearer staff session; X-Staff-Id only outside production.
+     * Session tenant must match Host-resolved tenant (fail-closed isolation).
      * @return array{0:?string,1:?array}
      */
-    private function resolveStaffId(array $headers): array
+    private function resolveStaffId(array $headers, string $tenantId): array
     {
         $session = $this->sessionFromAuthHeader($headers);
         if ($session !== null) {
             if ($session->subjectType !== 'staff') {
                 return [null, ['status' => 403, 'body' => ['error' => 'staff_session_required']]];
+            }
+            if ($session->tenantId !== $tenantId) {
+                return [null, ['status' => 403, 'body' => ['error' => 'tenant_session_mismatch']]];
             }
             return [$session->subjectId, null];
         }
@@ -360,7 +368,7 @@ final class Kernel
 
         // Customer assets — requires X-Customer-Id header in skeleton (session later)
         if ($method === 'GET' && $path === '/v1/customer/assets') {
-            [$customerId, $err] = $this->resolveCustomerId($headers);
+            [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -370,14 +378,14 @@ final class Kernel
 
         // Admin registration queue
         if ($method === 'GET' && $path === '/v1/admin/registrations') {
-            [$staffId, $err] = $this->resolveStaffId($headers);
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
             return (new RegistrationQueueController($this->customers, $this->registration))->index($tenant);
         }
         if ($method === 'POST' && preg_match('#^/v1/admin/registrations/([^/]+)/approve$#', $path, $m)) {
-            [$staffId, $err] = $this->resolveStaffId($headers);
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -387,7 +395,7 @@ final class Kernel
 
         // Custody ops (staff) — skeleton auth via X-Staff-Id
         if ($method === 'POST' && $path === '/v1/admin/custody/receive') {
-            [$staffId, $err] = $this->resolveStaffId($headers);
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -418,7 +426,7 @@ final class Kernel
             ];
         }
         if ($method === 'POST' && preg_match('#^/v1/admin/custody/([^/]+)/ready$#', $path, $m)) {
-            [$staffId, $err] = $this->resolveStaffId($headers);
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -430,7 +438,7 @@ final class Kernel
             return ['status' => 200, 'body' => ['id' => $item->id, 'status' => $item->status->value]];
         }
         if ($method === 'POST' && preg_match('#^/v1/admin/custody/([^/]+)/deliver$#', $path, $m)) {
-            [$staffId, $err] = $this->resolveStaffId($headers);
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -442,7 +450,7 @@ final class Kernel
             return ['status' => 200, 'body' => ['id' => $item->id, 'status' => $item->status->value]];
         }
         if ($method === 'GET' && $path === '/v1/customer/custody') {
-            [$customerId, $err] = $this->resolveCustomerId($headers);
+            [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -458,7 +466,7 @@ final class Kernel
 
         // Orders — accept from immutable quote (settlement remains blocked)
         if ($method === 'POST' && $path === '/v1/customer/orders/accept') {
-            [$customerId, $err] = $this->resolveCustomerId($headers);
+            [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }
@@ -482,7 +490,7 @@ final class Kernel
             ];
         }
         if ($method === 'GET' && $path === '/v1/customer/orders') {
-            [$customerId, $err] = $this->resolveCustomerId($headers);
+            [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
             if ($err !== null) {
                 return $err;
             }

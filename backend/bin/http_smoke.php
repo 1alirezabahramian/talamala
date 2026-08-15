@@ -268,5 +268,27 @@ $check('tenant_other_readyz', ($r['status'] ?? 0) === 200 && ($r['body']['tenant
 $r = $k->handle('GET', '/readyz', ['host' => 'not-a-tenant.test'], null);
 $check('tenant_unknown_still_fail_closed', ($r['status'] ?? 0) === 400, $r);
 
+// Cross-tenant bearer: demo session must not work under other.local Host
+$r = $k->handle('GET', '/v1/customer/assets', $hOther + ['authorization' => 'Bearer ' . $token], null);
+$check(
+    'session_cross_tenant_rejected',
+    ($r['status'] ?? 0) === 403 && (($r['body']['error'] ?? '') === 'tenant_session_mismatch'),
+    $r
+);
+
+// Malformed Authorization (missing Bearer scheme)
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => $token], null);
+$check('session_auth_missing_bearer_scheme', ($r['status'] ?? 0) === 401, $r);
+
+// Empty Bearer token
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer '], null);
+$check('session_empty_bearer', ($r['status'] ?? 0) === 401, $r);
+
+// Double logout: second call still requires valid semantics (token already dead → 401)
+$r = $k->handle('POST', '/v1/auth/logout', $h + ['authorization' => 'Bearer ' . $token], null);
+$check('logout_ok_again', ($r['status'] ?? 0) === 200 && ($r['body']['revoked'] ?? false) === true, $r);
+$r = $k->handle('POST', '/v1/auth/logout', $h + ['authorization' => 'Bearer ' . $token], null);
+$check('logout_second_still_ok_or_dead', in_array(($r['status'] ?? 0), [200, 401], true), $r);
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);
