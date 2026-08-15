@@ -10,7 +10,7 @@
 ```bash
 cd backend
 php bin/smoke.php        # domain vertical — expect PASS=8
-php bin/http_smoke.php   # HTTP Kernel — expect PASS=29
+php bin/http_smoke.php   # HTTP Kernel — expect PASS=43
 php bin/check.php         # smoke + domain + logger redact
 ```
 
@@ -110,4 +110,20 @@ CORS for Vite dev (optional):
 
 ```bash
 export TALAMALA_CORS_ORIGINS=http://127.0.0.1:5173,http://127.0.0.1:5174
+```
+
+
+## Structured log file (optional)
+
+```bash
+export TALAMALA_LOG_PATH=var/talamala.log
+mkdir -p var
+php -S 127.0.0.1:8080 -t public public/router.php
+# JSON lines appended; secrets redacted (password, otp, token, national_code, …)
+```
+
+## Aggregate check
+
+```bash
+php backend/bin/check.php   # http + persist + cors + logger + openapi parity
 ```
