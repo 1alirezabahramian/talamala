@@ -1,0 +1,6 @@
+# Local / skeleton demos — disallow indexing of operator hub noise
+User-agent: *
+Disallow: /otp-demo.html
+Disallow: /admin-reg-demo.html
+Disallow: /customer-shell-demo.html
+Disallow: /v1/dev/

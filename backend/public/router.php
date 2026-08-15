@@ -17,6 +17,18 @@ declare(strict_types=1);
 $path = parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH) ?: '/';
 $file = __DIR__ . $path;
 
+// Local operator hub (HTML)
+if ($path === '/' && ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
+    $landing = __DIR__ . '/landing.html';
+    if (is_file($landing)) {
+        header('Content-Type: text/html; charset=utf-8');
+        header('Cache-Control: no-store');
+        header('X-Content-Type-Options: nosniff');
+        readfile($landing);
+        exit;
+    }
+}
+
 if ($path !== '/' && is_file($file)) {
     return false; // serve static file as-is
 }

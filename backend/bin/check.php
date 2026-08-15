@@ -14,6 +14,7 @@ $bins = [
     'cors_smoke' => $root . '/bin/cors_smoke.php',
     'logger_smoke' => $root . '/bin/logger_smoke.php',
     'maintenance_smoke' => $root . '/bin/maintenance_smoke.php',
+    'landing_smoke' => $root . '/bin/landing_smoke.php',
     'openapi_parity' => $root . '/bin/openapi_parity_check.php',
 ];
 

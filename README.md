@@ -67,3 +67,14 @@ php -S 127.0.0.1:8080 -t public public/router.php
 
 Host for demo tenant: `demo.local`
 
+
+
+## Operator quick start
+
+See `docs/00-master/OPERATORS.md`.
+
+```bash
+cd backend && php bin/check.php
+php -S 127.0.0.1:8080 -t public public/router.php
+# open http://127.0.0.1:8080/
+```

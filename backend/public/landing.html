@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — محلی</title>
+  <style>
+    body { margin: 0; font-family: system-ui, Tahoma, sans-serif; background: #0f1419; color: #e7ecf3; padding: 1.5rem; }
+    h1 { font-size: 1.35rem; margin: 0 0 0.35rem; }
+    .muted { color: #9aa4b2; font-size: 0.9rem; margin-bottom: 1.25rem; }
+    .grid { display: grid; gap: 0.75rem; max-width: 520px; }
+    a.card {
+      display: block; padding: 0.9rem 1rem; border-radius: 12px;
+      background: #151b24; border: 1px solid #2a3548; color: #e7ecf3; text-decoration: none;
+    }
+    a.card:hover { border-color: #2d6cdf; }
+    a.card strong { display: block; margin-bottom: 0.25rem; }
+    code { font-size: 0.8rem; color: #9aa4b2; }
+    .sec { margin-top: 1.5rem; font-size: 0.85rem; color: #9aa4b2; }
+  </style>
+</head>
+<body>
+  <h1>طلا مالا — اجرای محلی</h1>
+  <p class="muted">Complex Backend — Simple Frontend · tenant از Host (demo.local)</p>
+  <div class="grid">
+    <a class="card" href="/app/customer/"><strong>اپ مشتری (Vite build)</strong><code>/app/customer/</code></a>
+    <a class="card" href="/app/backoffice/"><strong>بک‌آفیس (Vite build)</strong><code>/app/backoffice/</code></a>
+    <a class="card" href="/otp-demo.html"><strong>دمو OTP (zero-build)</strong><code>/otp-demo.html</code></a>
+    <a class="card" href="/customer-shell-demo.html"><strong>دمو پوسته مشتری</strong><code>/customer-shell-demo.html</code></a>
+    <a class="card" href="/admin-reg-demo.html"><strong>دمو صف ثبت‌نام</strong><code>/admin-reg-demo.html</code></a>
+    <a class="card" href="/healthz"><strong>healthz</strong><code>GET /healthz</code></a>
+    <a class="card" href="/readyz"><strong>readyz</strong><code>GET /readyz · Host: demo.local</code></a>
+  </div>
+  <p class="sec">
+    API JSON تحت <code>/v1/*</code> · بدون selector دستی tenant ·
+    برای SPA: <code>npm run build</code> در frontend/customer و backoffice
+  </p>
+</body>
+</html>
