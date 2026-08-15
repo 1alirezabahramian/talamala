@@ -40,15 +40,17 @@ jobs:
           print(src)
           Path('/tmp/srcpath').write_text(str(src))
           PY
-      - name: npm connectivity diagnostics
+      - name: Normalize private npm mirror URLs only in temp extraction
         shell: bash
         run: |
-          set -x
-          node --version
-          npm --version
-          npm config get registry
-          curl -I --max-time 20 https://registry.npmjs.org/react || true
-          npm ping --registry=https://registry.npmjs.org/ || true
+          set -euo pipefail
+          SRC=$(cat /tmp/srcpath)
+          grep -R "http://35.245.43.102/npm/" "$SRC/frontend"/customer/package-lock.json "$SRC/frontend"/backoffice/package-lock.json | head || true
+          sed -i 's#http://35\.245\.43\.102/npm/#https://registry.npmjs.org/#g' "$SRC/frontend/customer/package-lock.json" "$SRC/frontend/backoffice/package-lock.json"
+          if grep -R "35.245.43.102" "$SRC/frontend"/customer/package-lock.json "$SRC/frontend"/backoffice/package-lock.json; then
+            echo 'private mirror URL still present' >&2
+            exit 1
+          fi
       - name: Customer clean install typecheck build
         timeout-minutes: 10
         shell: bash
@@ -56,7 +58,7 @@ jobs:
           set -euo pipefail
           SRC=$(cat /tmp/srcpath)
           cd "$SRC/frontend/customer"
-          npm ci --no-audit --no-fund --loglevel=verbose
+          npm ci --no-audit --no-fund
           npm run typecheck
           npm run build
       - name: Backoffice clean install typecheck build
@@ -66,6 +68,6 @@ jobs:
           set -euo pipefail
           SRC=$(cat /tmp/srcpath)
           cd "$SRC/frontend/backoffice"
-          npm ci --no-audit --no-fund --loglevel=verbose
+          npm ci --no-audit --no-fund
           npm run typecheck
           npm run build
