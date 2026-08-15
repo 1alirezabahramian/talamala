@@ -93,3 +93,21 @@ unset TALAMALA_DB_PATH
 php bin/http_smoke.php
 php bin/persist_smoke.php
 ```
+
+## Production-ish SPA mounts (after Vite build)
+
+```bash
+cd frontend/customer && npm ci && npm run build
+cd frontend/backoffice && npm ci && npm run build
+cd backend && php -S 127.0.0.1:8080 -t public public/router.php
+```
+
+- Customer: http://127.0.0.1:8080/app/customer/
+- Backoffice: http://127.0.0.1:8080/app/backoffice/
+- API unchanged under `/v1/*`, `/healthz`, `/readyz`
+
+CORS for Vite dev (optional):
+
+```bash
+export TALAMALA_CORS_ORIGINS=http://127.0.0.1:5173,http://127.0.0.1:5174
+```

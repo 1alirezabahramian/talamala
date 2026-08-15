@@ -5,28 +5,24 @@
 |-------|--------|
 | http_smoke | **PASS=41 FAIL=0** |
 | persist_smoke | **PASS=9 FAIL=0** |
+| cors_smoke | **PASS=10 FAIL=0** |
 | openapi_parity | PASS |
-| frontend typecheck | customer + backoffice PASS |
+| frontend typecheck/build | customer + backoffice PASS |
+
+## Runtime
+- API: Kernel via `public/index.php`
+- SPA (optional): `/app/customer`, `/app/backoffice` from Vite `dist/` (router.php)
+- readyz: sqlite check + process ops counters
+- CORS: allow-list via `TALAMALA_CORS_ORIGINS` only
 
 ## Persistence
 SQLite: customers, quotes, custody, orders, sessions, idempotency, audit, rate_limits  
-Tenant resolver still InMemory (seeded hosts)
-
-## Auth / session
-- Bearer required in production
-- **POST /v1/auth/logout** revokes session
-- Cross-role session use → 403
-- Dev routes require non-production + `X-Talamala-Dev: 1`
-
-## Frontend
-Thin Vite customer (OTP flow) + backoffice (login → queue)  
-Zero-build HTML demos still in `backend/public/`
+Tenant resolver: InMemory seeded hosts
 
 ## BLOCKED BY GROUND TRUTH
-Kimia Write (except Pilot 350 with exact GT) · Price/Catalog · Settlement · Payment  
-No blind port from GoldPlatform V2 Delta
+Kimia Write · Price/Catalog · Settlement · Payment · Delta blind port
 
-## Next (safe engineering)
-- Optional static serve of Vite `dist/` under public
-- More observability metrics without financial invent
-- Tenant resolver durability only when multi-store model lands in this repo
+## Next (safe)
+- Wire logout button in UI shells
+- Structured log stream path via env for operators
+- Keep smokes exact-SHA gated

@@ -72,6 +72,11 @@ final class Kernel
     public readonly IdempotencyRegistry $idempotency;
     public readonly CustodyRepository $custodyRepo;
 
+    /** Process-local ops counters (not durable; for readiness/debug). */
+    public int $opsRateLimited = 0;
+    public int $opsSessionRevoked = 0;
+    public int $opsTenantUnresolved = 0;
+
     public function __construct()
     {
         $this->tenants = new InMemoryTenantResolver();
@@ -245,6 +250,7 @@ final class Kernel
         try {
             $tenant = $this->tenants->resolveFromHost($host);
         } catch (\Throwable $e) {
+            $this->opsTenantUnresolved++;
             $this->log->warning('tenant.unresolved', ['host' => $host, 'message' => $e->getMessage()]);
             return ['status' => 400, 'body' => ['error' => 'tenant_unresolved', 'message' => $e->getMessage()]];
         }
@@ -263,6 +269,11 @@ final class Kernel
                 $ready['checks']['sqlite'] = 'fail';
                 return ['status' => 503, 'body' => $ready];
             }
+            $ready['ops'] = [
+                'rate_limited' => $this->opsRateLimited,
+                'session_revoked' => $this->opsSessionRevoked,
+                'tenant_unresolved' => $this->opsTenantUnresolved,
+            ];
             return ['status' => 200, 'body' => $ready];
         }
 
@@ -274,6 +285,7 @@ final class Kernel
             $rlKey = $tenant->id . ':otp:' . preg_replace('/\D+/', '', $mobile);
             $rl = $this->otpRateLimiter->hit($rlKey);
             if (!$rl['allowed']) {
+                $this->opsRateLimited++;
                 $this->log->warning('otp.rate_limited', ['tenant_id' => $tenant->id, 'correlation_id' => $correlationId]);
                 return [
                     'status' => 429,
@@ -316,6 +328,7 @@ final class Kernel
                 return ['status' => 401, 'body' => ['error' => 'bearer_required']];
             }
             $this->sessions->revoke($m[1]);
+            $this->opsSessionRevoked++;
             $this->log->info('session.revoked', ['correlation_id' => $correlationId]);
             return ['status' => 200, 'body' => ['revoked' => true]];
         }
