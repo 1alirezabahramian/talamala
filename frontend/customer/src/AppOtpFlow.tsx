@@ -1,10 +1,11 @@
 /**
- * OTP → registration_required → Registration form → done.
- * Local runnable path: /otp-demo.html or Vite /app/customer
+ * OTP → registration_required → Registration form → done / shell.
+ * Authenticated with token → CustomerShell (existing screens only).
  */
 
 import { useState } from 'react';
 import { logout } from './api/auth';
+import { CustomerShell } from './CustomerShell';
 import { OtpRequestScreen } from './screens/auth/OtpRequestScreen';
 import { OtpVerifyScreen } from './screens/auth/OtpVerifyScreen';
 import { RegistrationScreen } from './screens/auth/RegistrationScreen';
@@ -77,7 +78,6 @@ export function AppOtpFlow() {
     );
   }
 
-  // step narrowed to done
   const done = step;
   const token = done.accessToken;
 
@@ -95,6 +95,36 @@ export function AppOtpFlow() {
       return;
     }
     setStep({ name: 'request' });
+  }
+
+  // Authenticated session → existing CustomerShell (no new business rules)
+  if (done.kind === 'authenticated' && token && done.customerId) {
+    return (
+      <div dir="rtl" lang="fa" style={{ maxWidth: 720, margin: '0 auto', padding: '1rem' }}>
+        <header
+          style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            gap: 12,
+            marginBottom: 12,
+            flexWrap: 'wrap',
+          }}
+        >
+          <div>
+            <strong>پوسته مشتری</strong>
+            <span style={{ color: '#9aa4b2', fontSize: '0.85rem', marginRight: 8 }}>
+              {done.customerId}
+            </span>
+          </div>
+          <button type="button" onClick={onLogout} disabled={logoutBusy}>
+            {logoutBusy ? '...' : 'خروج'}
+          </button>
+        </header>
+        {logoutMsg ? <p style={{ color: '#e85d5d' }}>{logoutMsg}</p> : null}
+        <CustomerShell token={token} customerId={done.customerId} />
+      </div>
+    );
   }
 
   return (

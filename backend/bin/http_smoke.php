@@ -175,6 +175,14 @@ for ($i = 0; $i < 6; $i++) {
     }
 }
 $check('otp_rate_limited', $limited, $r ?? null);
+$r = $k->handle('GET', '/readyz', $h, null);
+$check(
+    'readyz_ops_rate_limited',
+    ($r['status'] ?? 0) === 200
+        && (($r['body']['ops']['rate_limited'] ?? 0) >= 1)
+        && (($r['body']['checks']['sqlite'] ?? '') === 'ok'),
+    $r
+);
 
 
 // --- Session negative / revoke ---
@@ -211,6 +219,12 @@ $check('session_expired_rejected', ($r['status'] ?? 0) === 401, $r);
 // Logout revokes token
 $r = $k->handle('POST', '/v1/auth/logout', $h + ['authorization' => 'Bearer ' . $token], null);
 $check('logout_ok', ($r['status'] ?? 0) === 200 && ($r['body']['revoked'] ?? false) === true, $r);
+$rOps = $k->handle('GET', '/readyz', $h, null);
+$check(
+    'readyz_ops_session_revoked',
+    ($rOps['status'] ?? 0) === 200 && (($rOps['body']['ops']['session_revoked'] ?? 0) >= 1),
+    $rOps
+);
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $token], null);
 $check('logout_token_dead', ($r['status'] ?? 0) === 401, $r);
 $r = $k->handle('POST', '/v1/auth/logout', $h, null);
