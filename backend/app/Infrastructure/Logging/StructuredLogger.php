@@ -6,6 +6,8 @@ namespace Talamala\Infrastructure\Logging;
 
 /**
  * JSON line logger — no secrets, correlation-friendly.
+ * Optional stream path via TALAMALA_LOG_PATH.
+ * Soft rotate when file exceeds TALAMALA_LOG_MAX_BYTES (default 5_000_000).
  */
 final class StructuredLogger
 {
@@ -15,21 +17,26 @@ final class StructuredLogger
     public function __construct(
         private readonly string $channel = 'talamala',
         private readonly ?string $streamPath = null,
+        private readonly int $maxBytes = 5_000_000,
     ) {}
 
     public static function fromEnv(string $channel = 'talamala'): self
     {
         $path = getenv('TALAMALA_LOG_PATH') ?: null;
+        $max = getenv('TALAMALA_LOG_MAX_BYTES');
+        $maxBytes = is_string($max) && ctype_digit($max) ? (int) $max : 5_000_000;
+        if ($maxBytes < 10_000) {
+            $maxBytes = 10_000; // floor to avoid tiny thrash
+        }
         if (is_string($path) && $path !== '') {
             $dir = dirname($path);
             if ($dir !== '' && $dir !== '.' && !is_dir($dir)) {
                 @mkdir($dir, 0775, true);
             }
-            return new self($channel, $path);
+            return new self($channel, $path, $maxBytes);
         }
-        return new self($channel, null);
+        return new self($channel, null, $maxBytes);
     }
-
 
     /**
      * @param array<string, mixed> $context
@@ -71,8 +78,23 @@ final class StructuredLogger
         $this->records[] = $row;
         $line = json_encode($row, JSON_UNESCAPED_UNICODE) . "\n";
         if ($this->streamPath) {
-            @file_put_contents($this->streamPath, $line, FILE_APPEND);
+            $this->rotateIfNeeded();
+            @file_put_contents($this->streamPath, $line, FILE_APPEND | LOCK_EX);
         }
+    }
+
+    private function rotateIfNeeded(): void
+    {
+        if ($this->streamPath === null || !is_file($this->streamPath)) {
+            return;
+        }
+        $size = @filesize($this->streamPath);
+        if ($size === false || $size < $this->maxBytes) {
+            return;
+        }
+        $rotated = $this->streamPath . '.1';
+        @unlink($rotated);
+        @rename($this->streamPath, $rotated);
     }
 
     /**

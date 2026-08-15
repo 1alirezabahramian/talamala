@@ -21,6 +21,31 @@ if ($path !== '/' && is_file($file)) {
     return false; // serve static file as-is
 }
 
+/**
+ * Minimal RTL HTML error page (no framework).
+ */
+$spaHtml = static function (int $status, string $title, string $message, string $hint = ''): void {
+    http_response_code($status);
+    header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    $safeTitle = htmlspecialchars($title, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $safeMsg = htmlspecialchars($message, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    $safeHint = htmlspecialchars($hint, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+    echo '<!DOCTYPE html><html lang="fa" dir="rtl"><head><meta charset="UTF-8"/>';
+    echo '<meta name="viewport" content="width=device-width, initial-scale=1"/>';
+    echo '<title>' . $safeTitle . '</title>';
+    echo '<style>body{margin:0;font-family:system-ui,Tahoma,sans-serif;background:#0f1419;color:#e7ecf3;display:flex;min-height:100vh;align-items:center;justify-content:center;padding:1.5rem}';
+    echo '.card{max-width:420px;background:#151b24;border:1px solid #2a3548;border-radius:12px;padding:1.25rem}';
+    echo 'h1{font-size:1.2rem;margin:0 0 .5rem}.muted{color:#9aa4b2;font-size:.9rem;line-height:1.5}';
+    echo 'code{background:#0f1419;padding:.1rem .35rem;border-radius:4px;font-size:.85rem}</style></head><body>';
+    echo '<div class="card"><h1>' . $safeTitle . '</h1><p class="muted">' . $safeMsg . '</p>';
+    if ($safeHint !== '') {
+        echo '<p class="muted"><code>' . $safeHint . '</code></p>';
+    }
+    echo '</div></body></html>';
+};
+
 $repoRoot = dirname(__DIR__, 2);
 $spaMap = [
     '/app/customer' => $repoRoot . '/frontend/customer/dist',
@@ -29,16 +54,19 @@ $spaMap = [
 
 foreach ($spaMap as $prefix => $distRoot) {
     if ($path === $prefix || str_starts_with($path, $prefix . '/')) {
+        $appName = basename(dirname($distRoot));
         if (!is_dir($distRoot)) {
-            http_response_code(503);
-            header('Content-Type: text/plain; charset=utf-8');
-            echo "SPA build missing. Run: cd frontend/" . basename(dirname($distRoot)) . " && npm ci && npm run build\n";
+            $spaHtml(
+                503,
+                'ساخت فرانت موجود نیست',
+                'برای سرو این مسیر باید Vite build گرفته شود.',
+                'cd frontend/' . $appName . ' && npm ci && npm run build'
+            );
             exit;
         }
         $rel = substr($path, strlen($prefix));
         $rel = $rel === '' || $rel === false ? '/index.html' : $rel;
         $candidate = $distRoot . $rel;
-        // Prevent path traversal
         $realDist = realpath($distRoot);
         $realFile = is_file($candidate) ? realpath($candidate) : false;
         if ($realFile && $realDist && str_starts_with($realFile, $realDist)) {
@@ -59,7 +87,6 @@ foreach ($spaMap as $prefix => $distRoot) {
             readfile($realFile);
             exit;
         }
-        // SPA fallback
         $index = $distRoot . '/index.html';
         if (is_file($index)) {
             header('Content-Type: text/html; charset=utf-8');
@@ -68,9 +95,7 @@ foreach ($spaMap as $prefix => $distRoot) {
             readfile($index);
             exit;
         }
-        http_response_code(404);
-        header('Content-Type: text/plain; charset=utf-8');
-        echo "Not found\n";
+        $spaHtml(404, 'یافت نشد', 'فایل یا صفحه در build فرانت پیدا نشد.', $prefix);
         exit;
     }
 }

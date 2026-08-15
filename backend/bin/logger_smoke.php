@@ -49,5 +49,24 @@ $check('stream_redacts_otp', str_contains((string) $raw, '[redacted]') && !str_c
 @unlink($path);
 putenv('TALAMALA_LOG_PATH');
 
+// Soft rotate
+$path2 = sys_get_temp_dir() . '/talamala_logger_rotate.log';
+@unlink($path2);
+@unlink($path2 . '.1');
+putenv('TALAMALA_LOG_PATH=' . $path2);
+putenv('TALAMALA_LOG_MAX_BYTES=10000');
+$rot = StructuredLogger::fromEnv();
+for ($i = 0; $i < 100; $i++) {
+    $rot->info('rotate.pad', ['i' => $i, 'pad' => str_repeat('x', 40)]);
+}
+$check('log_rotate_created_bak', is_file($path2 . '.1') || (is_file($path2) && filesize($path2) <= 2000), [
+    'main' => is_file($path2) ? filesize($path2) : null,
+    'bak' => is_file($path2 . '.1') ? filesize($path2 . '.1') : null,
+]);
+@unlink($path2);
+@unlink($path2 . '.1');
+putenv('TALAMALA_LOG_PATH');
+putenv('TALAMALA_LOG_MAX_BYTES');
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);
