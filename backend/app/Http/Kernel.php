@@ -35,20 +35,21 @@ use Talamala\Infrastructure\Persistence\Sqlite\SqliteIdempotencyRegistry;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteOrderRepository;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteQuoteRepository;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteSessionStore;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteRateLimiter;
+use Talamala\Infrastructure\Security\RateLimiter;
 use Talamala\Domain\Audit\AuditLogger;
 use Talamala\Domain\Idempotency\IdempotencyRegistry;
 use Talamala\Domain\Session\SessionStore;
 use Talamala\Infrastructure\Sms\FakeSmsOtpSender;
 use Talamala\Integrations\Jibit\FakeJibitIdentityClient;
 use Talamala\Integrations\Kimia\FakeKimiaReadClient;
-use Talamala\Infrastructure\Security\InMemoryRateLimiter;
 use Talamala\Infrastructure\Logging\StructuredLogger;
 
 /**
  * Minimal composition root for Stage 1–3 skeleton.
  * Persistence-1: customers/quotes/custody/orders on SQLite (PDO).
  * Persistence-2: sessions + idempotency + audit on SQLite.
- * OTP rate-limit + tenant resolver still InMemory.
+ * OTP rate-limit on SQLite; tenant resolver still InMemory (seeded hosts).
  */
 final class Kernel
 {
@@ -65,7 +66,7 @@ final class Kernel
     public readonly QuoteRepository $quotes;
     public readonly OrderRepository $orderRepo;
     public readonly SessionStore $sessions;
-    public readonly InMemoryRateLimiter $otpRateLimiter;
+    public readonly RateLimiter $otpRateLimiter;
     public readonly StructuredLogger $log;
     public readonly AuditLogger $audit;
     public readonly IdempotencyRegistry $idempotency;
@@ -130,7 +131,7 @@ final class Kernel
             $this->idempotency,
             $this->audit,
         );
-        $this->otpRateLimiter = new InMemoryRateLimiter(maxAttempts: 5, windowSeconds: 300);
+        $this->otpRateLimiter = new SqliteRateLimiter($pdo, maxAttempts: 5, windowSeconds: 300);
         $this->log = new StructuredLogger();
     }
 

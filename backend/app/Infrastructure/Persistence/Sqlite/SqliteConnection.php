@@ -162,6 +162,13 @@ CREATE TABLE IF NOT EXISTS audit_events (
 CREATE INDEX IF NOT EXISTS idx_audit_tenant ON audit_events(tenant_id);
 CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_events(tenant_id, action);
 CREATE INDEX IF NOT EXISTS idx_audit_correlation ON audit_events(correlation_id);
+
+CREATE TABLE IF NOT EXISTS rate_limits (
+    bucket_key TEXT PRIMARY KEY,
+    hit_count  INTEGER NOT NULL DEFAULT 0,
+    reset_at   INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_rate_limits_reset ON rate_limits(reset_at);
 SQL);
     }
 }

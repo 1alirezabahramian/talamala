@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+vendor/
+
+# Build
+frontend/**/dist/
+*.tsbuildinfo
+
+# Local durable DB / env
+*.sqlite
+*.sqlite-journal
+var/
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+*.log
+.phpunit.result.cache

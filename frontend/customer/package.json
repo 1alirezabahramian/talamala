@@ -1,14 +1,25 @@
 {
   "name": "@talamala/customer",
   "private": true,
-  "version": "0.2.0",
-  "description": "Talamala customer PWA — Simple Frontend",
+  "version": "0.3.0",
+  "description": "Talamala customer PWA — Simple Frontend (thin Vite)",
   "type": "module",
   "scripts": {
-    "dev": "echo 'Use backend OTP demo: open http://127.0.0.1:8080/otp-demo.html after php -S'",
-    "check:auth": "node --check src/api/auth.ts 2>/dev/null || echo 'TS sources present — wire Vite when UI gate opens'"
+    "dev": "vite",
+    "build": "tsc -p tsconfig.json --noEmit && vite build",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "preview": "vite preview",
+    "check:auth": "npm run typecheck"
   },
-  "peerDependencies": {
-    "react": ">=18"
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "typescript": "^5.6.3",
+    "vite": "^5.4.11"
   }
 }

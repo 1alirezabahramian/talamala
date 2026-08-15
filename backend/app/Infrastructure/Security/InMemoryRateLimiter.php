@@ -8,7 +8,7 @@ namespace Talamala\Infrastructure\Security;
  * Process-local fixed window rate limiter (skeleton).
  * Production should use Redis/shared store per tenant+key.
  */
-final class InMemoryRateLimiter
+final class InMemoryRateLimiter implements RateLimiter
 {
     /** @var array<string, array{count:int, reset_at:int}> */
     private array $buckets = [];

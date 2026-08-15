@@ -4,17 +4,27 @@
 `php backend/bin/http_smoke.php` → **PASS=33 FAIL=0**
 
 ## Persistence
-- **P1:** SQLite customers / quotes / custody / orders
-- **P2:** SQLite sessions / idempotency / audit  
-  Default `:memory:`; file via `TALAMALA_DB_PATH`.  
-  `php backend/bin/persist_smoke.php` → **PASS=9 FAIL=0**
+- **P1:** customers / quotes / custody / orders (SQLite)
+- **P2:** sessions / idempotency / audit (SQLite)
+- **P2b:** OTP rate limiter (SQLite fixed window 5/300s — existing contract)
+- Tenant resolver still InMemory (seeded hosts)
+- Default `:memory:`; file via `TALAMALA_DB_PATH`
+- `php backend/bin/persist_smoke.php` → **PASS=9 FAIL=0**
+
+## Frontend (thin Vite)
+- `frontend/customer` — typecheck + production build OK (OTP flow entry)
+- `frontend/backoffice` — typecheck + production build OK (staff login → queue)
+- Zero-build HTML demos in `backend/public/*.html` still valid
+- No client financial math; tenant via `X-Talamala-Host`
 
 ## Phase 1 gates
 | Gate | Status |
 |------|--------|
 | Persistence-1 | CLOSED |
-| CI hardening + OpenAPI parity | CLOSED |
+| CI + OpenAPI parity | CLOSED |
 | Persistence-2 | CLOSED |
+| OTP rate limiter durable | CLOSED |
+| Thin Vite customer + backoffice | CLOSED |
 
 ### CI jobs for a meaningful SHA
 - `php-syntax`
@@ -22,36 +32,16 @@
 - `persist-smoke` (PASS=9 FAIL=0)
 - `openapi-parity`
 - `secret-scan`
-
-## Closed stages
-| Stage | Status |
-|-------|--------|
-| C OTP frontend → local | CLOSED |
-| D Registration | CLOSED |
-| 3 Kimia Read / assets | CLOSED |
-| Backoffice reg queue + approve | CLOSED |
-| Customer Shell continuity | CLOSED (zero-build) |
-| Quote accept / Custody lifecycle | backend vertical present |
-| Persistence-1 | CLOSED |
-| CI + OpenAPI parity | CLOSED |
-| Persistence-2 (session + idempotency + audit) | CLOSED |
-
-## Still InMemory
-- OTP rate limiter
-- Tenant resolver (seeded hosts)
-
-## Dev-only helpers (blocked in production)
-- `GET /v1/dev/last-otp`
-- `POST /v1/dev/seed-quote`
-- `POST /v1/dev/bind-kimia`
-- `POST /v1/dev/session`
+- `frontend-typecheck`
 
 ## Still BLOCKED BY GROUND TRUTH
-- Kimia Write / create account (Pilot AccountId=350 only with exact Ground Truth — see Delta)
-- Live price provider / coefficients
+- Kimia Write / create account (Pilot 350 only with exact Ground Truth)
+- Live price provider / coefficients / catalog defaults
 - Settlement / payment
+- GoldPlatform V2 Delta pricing/catalog — no blind port
 
-## Next
-Thin frontend / remaining Phase-1 polish only after owner direction.  
-Do not invent payment or Kimia write contracts.  
-Delta Handoff (Store Instance / Pricing / multi-Owner) applies to GoldPlatform V2 lineage — no blind port into Talamala skeleton.
+## Next (engineering-safe, no owner gate required)
+- Observability polish / Operational Health for outbox when present
+- Additional negative HTTP tests if gaps appear
+- Serve Vite `dist/` from PHP public optionally
+- Do **not** invent payment, pricing levers, or Kimia write payloads
