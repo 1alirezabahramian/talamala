@@ -268,12 +268,12 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-      - name: landing_smoke (PASS=8 FAIL=0)
+      - name: landing_smoke (PASS=12 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/landing_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=8 FAIL=0' || exit 1
+          echo "$out" | grep -q 'PASS=12 FAIL=0' || exit 1
 
   report:
     name: Exact-SHA report
@@ -293,7 +293,7 @@ jobs:
           echo "  - logger-smoke (PASS=8 FAIL=0)"
           echo "  - maintenance-smoke (PASS=7 FAIL=0)"
           echo "  - spa-router-smoke"
-          echo "  - landing-smoke (PASS=8 FAIL=0)"
+          echo "  - landing-smoke (PASS=12 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"
           echo "  - frontend-typecheck"
