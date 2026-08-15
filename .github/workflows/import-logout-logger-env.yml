@@ -1,30 +1,31 @@
-name: Inspect Logout Logger Env
+name: Finalize Logout Logger Env Payload
 
 on:
   push:
     branches: [main]
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inspect:
+  finalize:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Extract exact CI and docs metadata
+      - name: Extract exact docs and CI payload
         shell: bash
         run: |
           set -euo pipefail
           rm -rf /tmp/z && mkdir -p /tmp/z
           unzip -q talamala-logout-logger-env.zip -d /tmp/z
           src=$(find /tmp/z -mindepth 1 -maxdepth 1 -type d | head -1)
-          echo "FILES:"
-          find "$src" -type f | sed "s#^$src/##" | sort
-          echo "CI_B64=$(base64 -w0 "$src/.github/workflows/ci.yml")"
-          for f in "$src"/docs/00-master/*; do
-            [ -f "$f" ] || continue
-            echo "DOC=$(basename "$f")"
-            echo "DOC_B64=$(base64 -w0 "$f")"
-          done
+          cp "$src/docs/00-master/CURRENT_STATE.md" docs/00-master/CURRENT_STATE.md
+          cp "$src/docs/00-master/STAGE_LOGOUT_LOGGER_ENV.md" docs/00-master/STAGE_LOGOUT_LOGGER_ENV.md
+          cp "$src/.github/workflows/ci.yml" .ci-logout-logger-payload.yml
+          git add docs/00-master/CURRENT_STATE.md docs/00-master/STAGE_LOGOUT_LOGGER_ENV.md .ci-logout-logger-payload.yml
+          git diff --cached --check -- ':(exclude)docs/**'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'docs: record logout logger env stage payload'
+          git push origin HEAD:main
