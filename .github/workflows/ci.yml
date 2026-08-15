@@ -255,9 +255,29 @@ jobs:
           echo "$out"
           echo "$out" | grep -q 'FAIL=0' || exit 1
 
+  landing-smoke:
+    name: Landing hub
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: landing_smoke (PASS=8 FAIL=0)
+        run: |
+          set -euo pipefail
+          out=$(php bin/landing_smoke.php)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=8 FAIL=0' || exit 1
+
   report:
     name: Exact-SHA report
-    needs: [php-syntax, http-smoke, persist-smoke, cors-smoke, logger-smoke, maintenance-smoke, spa-router-smoke, openapi-parity, secret-scan, frontend-typecheck]
+    needs: [php-syntax, http-smoke, persist-smoke, cors-smoke, logger-smoke, maintenance-smoke, spa-router-smoke, landing-smoke, openapi-parity, secret-scan, frontend-typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -273,6 +293,7 @@ jobs:
           echo "  - logger-smoke (PASS=8 FAIL=0)"
           echo "  - maintenance-smoke (PASS=7 FAIL=0)"
           echo "  - spa-router-smoke"
+          echo "  - landing-smoke (PASS=8 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"
           echo "  - frontend-typecheck"
