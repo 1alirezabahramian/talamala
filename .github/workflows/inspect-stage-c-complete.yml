@@ -1,4 +1,4 @@
-name: Inspect backoffice registration delivery
+name: Import backoffice registration delivery
 
 on:
   push:
@@ -6,15 +6,17 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
-  inspect:
+  import:
     if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Safely inspect backoffice ZIP
+        with:
+          fetch-depth: 0
+      - name: Safe extract and overlay commit-allowed scope
         shell: bash
         run: |
           set -euo pipefail
@@ -26,7 +28,6 @@ jobs:
           zpath='talamala-stage-backoffice-reg.zip'
           allowed_prefixes=('backend/','frontend/backoffice/','openapi/','docs/')
           with zipfile.ZipFile(zpath) as z:
-              files=[]
               for info in z.infolist():
                   name=info.filename.replace('\\','/')
                   p=PurePosixPath(name)
@@ -42,14 +43,57 @@ jobs:
                       raise SystemExit(f'secret-like file rejected: {name}')
                   if not name.startswith(allowed_prefixes):
                       if len(p.parts)==1 and name.lower().endswith('.md'):
-                          print('BUNDLED_GUIDE='+name)
-                      else:
-                          raise SystemExit(f'outside commit-allowed/bundled-guide scope: {name}')
-                  files.append(name)
-              print('ZIP_FILE_COUNT='+str(len(files)))
-              for n in sorted(files): print(n)
+                          continue
+                      raise SystemExit(f'outside scope: {name}')
               z.extractall('/tmp/backoffice-reg')
-          print('ZIP_OK')
           PY
-          echo '--- STAGE/MANIFEST CANDIDATES ---'
-          find /tmp/backoffice-reg -type f \( -iname 'MANIFEST.md' -o -iname 'README*.md' -o -iname '*STAGE*BACKOFFICE*.md' -o -iname 'STAGE.md' \) -print -exec sh -c 'echo "--- $1 ---"; sed -n "1,220p" "$1"' _ {} \;
+          rsync -a /tmp/backoffice-reg/backend/ backend/
+          rsync -a /tmp/backoffice-reg/frontend/backoffice/ frontend/backoffice/
+          rsync -a /tmp/backoffice-reg/openapi/ openapi/
+          cp /tmp/backoffice-reg/docs/00-master/CURRENT_STATE.md docs/00-master/CURRENT_STATE.md
+          cp /tmp/backoffice-reg/docs/00-master/STAGE_BACKOFFICE_REG_QUEUE.md docs/00-master/STAGE_BACKOFFICE_REG_QUEUE.md
+          git diff --check
+      - name: Validate backend smoke PASS 33
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/http_smoke.php)
+          printf '%s\n' "$out"
+          printf '%s\n' "$out" | grep -q 'PASS=33'
+          printf '%s\n' "$out" | grep -q 'FAIL=0'
+      - name: Validate local vertical demo surfaces
+        shell: bash
+        run: |
+          set -euo pipefail
+          php -S 127.0.0.1:8080 -t backend/public backend/public/router.php >/tmp/talamala-php.log 2>&1 &
+          pid=$!
+          trap 'kill $pid 2>/dev/null || true' EXIT
+          for i in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8080/otp-demo.html >/tmp/otp.html; then break; fi
+            sleep 0.25
+          done
+          curl -fsS http://127.0.0.1:8080/admin-reg-demo.html >/tmp/admin.html
+          curl -fsS http://127.0.0.1:8080/assets-demo.html >/tmp/assets.html
+          grep -qi 'otp\|ثبت' /tmp/otp.html
+          grep -qi 'bind kimia\|kimia' /tmp/admin.html
+          grep -qi 'asset\|دارایی\|تومان' /tmp/assets.html
+          grep -q '/v1/dev/bind-kimia' backend/app/Http/Kernel.php
+          grep -q 'X-Talamala-Dev' backend/public/admin-reg-demo.html
+      - name: Stage exact allowed scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git add backend frontend/backoffice openapi docs/00-master/CURRENT_STATE.md docs/00-master/STAGE_BACKOFFICE_REG_QUEUE.md
+          echo '--- STAGED ---'
+          git diff --cached --name-status
+          bad=$(git diff --cached --name-only | grep -Ev '^(backend/|frontend/backoffice/|openapi/|docs/00-master/CURRENT_STATE\.md$|docs/00-master/STAGE_BACKOFFICE_REG_QUEUE\.md$)' || true)
+          if [ -n "$bad" ]; then echo "OUT_OF_SCOPE:"; echo "$bad"; exit 1; fi
+          test -n "$(git diff --cached --name-only)"
+      - name: Commit and push
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(backoffice): registration approve + dev Kimia bind'
+          git push origin HEAD:main
