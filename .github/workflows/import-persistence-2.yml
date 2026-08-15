@@ -74,29 +74,26 @@ jobs:
           out3=$(php backend/bin/openapi_parity_check.php); printf '%s\n' "$out3"
           printf '%s\n' "$out3" | grep -Eq 'FAIL=0([^0-9]|$)'
           printf '%s\n' "$out3" | grep -qi 'parity OK'
-      - name: Stage manifest scope only
+      - name: Stage production scope except CI workflow
         shell: bash
         run: |
           set -euo pipefail
           python3 - <<'PY'
           import re, pathlib, subprocess
           m=pathlib.Path('/tmp/p2/MANIFEST.md').read_text()
-          # Extract backtick paths from Commit-allowed section until next heading
           sec=re.split(r'^##\s+', m, flags=re.M)
           target=''
           for s in sec:
               if s.lower().startswith('commit-allowed'):
                   target=s; break
           paths=re.findall(r'`([^`]+)`', target)
-          paths=[p for p in paths if not any(ch in p for ch in '*?') and p!='MANIFEST.md']
-          if not paths:
-              raise SystemExit('no commit-allowed paths parsed')
-          print('COMMIT_ALLOWED:')
+          paths=[p for p in paths if not any(ch in p for ch in '*?') and p not in ('MANIFEST.md','.github/workflows/ci.yml')]
+          if not paths: raise SystemExit('no commit-allowed production paths parsed')
+          print('COMMIT_ALLOWED_NON_WORKFLOW:')
           for p in paths: print(p)
           subprocess.check_call(['git','add','--',*paths])
           actual=subprocess.check_output(['git','diff','--cached','--name-only'], text=True).splitlines()
-          bad=[p for p in actual if p not in paths]
-          if bad: raise SystemExit('unexpected staged: '+','.join(bad))
+          if sorted(actual) != sorted(paths): raise SystemExit('staged scope mismatch')
           PY
           git diff --cached --name-status
       - name: Commit and push
