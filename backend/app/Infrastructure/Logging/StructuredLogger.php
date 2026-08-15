@@ -67,7 +67,7 @@ final class StructuredLogger
      */
     private function redact(array $context): array
     {
-        $sensitive = ['password', 'code', 'otp', 'token', 'authorization', 'secret', 'api_key'];
+        $sensitive = ['password', 'code', 'otp', 'token', 'authorization', 'secret', 'api_key', 'access_token', 'national_code', 'national_id', 'bearer'];
         foreach ($context as $k => $v) {
             $lk = strtolower((string) $k);
             foreach ($sensitive as $s) {

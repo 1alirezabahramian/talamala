@@ -176,6 +176,53 @@ for ($i = 0; $i < 6; $i++) {
 }
 $check('otp_rate_limited', $limited, $r ?? null);
 
+
+// --- Session negative / revoke ---
+// Garbage bearer
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer not-a-real-token'], null);
+$check('session_garbage_bearer', ($r['status'] ?? 0) === 401, $r);
+
+// Staff token must not access customer assets
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $staffToken], null);
+$check('session_staff_token_on_customer', ($r['status'] ?? 0) === 403, $r);
+
+// Customer token must not list admin registrations
+$r = $k->handle('GET', '/v1/admin/registrations', $h + ['authorization' => 'Bearer ' . $token], null);
+$check('session_customer_token_on_staff', ($r['status'] ?? 0) === 403, $r);
+
+// Expired / revoked session rejected (explicit revoke simulates expiry cleanup)
+$expiredTok = $k->issueSession($k->tenants->resolveFromHost('demo.local')->id, 'customer', $customerId, 3600);
+$k->sessions->revoke($expiredTok);
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $expiredTok], null);
+$check('session_revoked_rejected', ($r['status'] ?? 0) === 401, $r);
+
+// Truly expired session (expires_at in the past)
+$pastTok = bin2hex(random_bytes(24));
+$k->sessions->put(new \Talamala\Domain\Session\SessionRecord(
+    token: $pastTok,
+    tenantId: $k->tenants->resolveFromHost('demo.local')->id,
+    subjectType: 'customer',
+    subjectId: $customerId,
+    expiresAt: (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('-60 seconds'),
+));
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $pastTok], null);
+$check('session_expired_rejected', ($r['status'] ?? 0) === 401, $r);
+
+// Logout revokes token
+$r = $k->handle('POST', '/v1/auth/logout', $h + ['authorization' => 'Bearer ' . $token], null);
+$check('logout_ok', ($r['status'] ?? 0) === 200 && ($r['body']['revoked'] ?? false) === true, $r);
+$r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $token], null);
+$check('logout_token_dead', ($r['status'] ?? 0) === 401, $r);
+$r = $k->handle('POST', '/v1/auth/logout', $h, null);
+$check('logout_requires_bearer', ($r['status'] ?? 0) === 401, $r);
+
+// Re-issue token for remaining production checks that need bearer
+$re = $k->handle('POST', '/v1/dev/session', $h + ['x-talamala-dev' => '1'], [
+    'subject_type' => 'customer',
+    'subject_id' => $customerId,
+]);
+$token = $re['body']['access_token'] ?? '';
+
 // Production mode: header identity fallbacks and dev routes disabled
 putenv('TALAMALA_ENV=production');
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);

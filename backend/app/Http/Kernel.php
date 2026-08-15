@@ -139,12 +139,14 @@ final class Kernel
     public function issueSession(string $tenantId, string $subjectType, string $subjectId, int $ttlSeconds = 3600): string
     {
         $token = bin2hex(random_bytes(24));
+        $seconds = (int) $ttlSeconds;
+        $modifier = ($seconds >= 0 ? '+' : '') . $seconds . ' seconds';
         $this->sessions->put(new SessionRecord(
             token: $token,
             tenantId: $tenantId,
             subjectType: $subjectType,
             subjectId: $subjectId,
-            expiresAt: (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify("+{$ttlSeconds} seconds"),
+            expiresAt: (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify($modifier),
         ));
         return $token;
     }
@@ -251,6 +253,16 @@ final class Kernel
             $ready = (new HealthController())->ready();
             $ready['tenant_id'] = $tenant->id;
             $ready['tenant_slug'] = $tenant->slug;
+            // Non-leaking durability probe (Persistence-1/2)
+            try {
+                $pdo = \Talamala\Infrastructure\Persistence\Sqlite\SqliteConnection::fromEnv();
+                $pdo->query('SELECT 1');
+                $ready['checks']['sqlite'] = 'ok';
+            } catch (\Throwable $e) {
+                $ready['status'] = 'degraded';
+                $ready['checks']['sqlite'] = 'fail';
+                return ['status' => 503, 'body' => $ready];
+            }
             return ['status' => 200, 'body' => $ready];
         }
 
@@ -294,6 +306,18 @@ final class Kernel
                 return ['status' => 401, 'body' => ['error' => 'staff_id_required']];
             }
             return (new StaffAuthController($this->staffAuth))->rotatePassword($tenant, $staffId, $body, $correlationId);
+        }
+
+
+        // Logout — revoke Bearer session (no body required)
+        if ($method === 'POST' && $path === '/v1/auth/logout') {
+            $auth = $headers['authorization'] ?? '';
+            if (!preg_match('/^Bearer\s+(\S+)/i', $auth, $m)) {
+                return ['status' => 401, 'body' => ['error' => 'bearer_required']];
+            }
+            $this->sessions->revoke($m[1]);
+            $this->log->info('session.revoked', ['correlation_id' => $correlationId]);
+            return ['status' => 200, 'body' => ['revoked' => true]];
         }
 
         // Registration (after OTP verify registration_required)

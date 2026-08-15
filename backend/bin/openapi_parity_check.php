@@ -26,6 +26,7 @@ $expected = [
     'POST /v1/auth/customer/register',
     'POST /v1/auth/staff/login',
     'POST /v1/auth/staff/password/rotate',
+    'POST /v1/auth/logout',
     'GET /v1/customer/assets',
     'GET /v1/customer/custody',
     'POST /v1/customer/orders/accept',

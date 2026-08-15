@@ -132,3 +132,14 @@ components:
     bearerAuth:
       type: http
       scheme: bearer
+  /v1/auth/logout:
+    post:
+      operationId: authLogout
+      summary: Revoke current Bearer session
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Session revoked
+        '401':
+          description: Bearer required

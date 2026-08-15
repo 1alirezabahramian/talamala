@@ -102,3 +102,8 @@ export async function registerCustomer(
 export async function fetchDevLastOtp(): Promise<ApiResult<DevLastOtp>> {
   return apiGet<DevLastOtp>('/v1/dev/last-otp', undefined, { 'X-Talamala-Dev': '1' });
 }
+
+/** Revoke current Bearer session. */
+export async function logout(token: string): Promise<ApiResult<{ revoked: boolean }>> {
+  return apiPost<{ revoked: boolean }>('/v1/auth/logout', {}, token);
+}

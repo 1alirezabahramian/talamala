@@ -38,3 +38,8 @@ export async function staffRotatePassword(
     { 'X-Staff-Id': staffId },
   );
 }
+
+/** Revoke current Bearer session. */
+export async function logout(token: string): Promise<ApiResult<{ revoked?: boolean }>> {
+  return apiPost<{ revoked?: boolean }>('/v1/auth/logout', {}, token);
+}
