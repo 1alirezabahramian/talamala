@@ -88,11 +88,14 @@ $check('admin_approve', ($r['status'] ?? 0) === 200 && ($r['body']['access_statu
 $r = $k->handle('GET', '/v1/admin/registrations', $h, null);
 $check('admin_unauthorized', ($r['status'] ?? 0) === 401, $r);
 
-// Bind kimia + seed balance for assets
-$k->registration->bindKimiaAccount('00000000-0000-0000-0000-000000000001', $customerId, 350, 'bind');
-$k->kimia->seedBalance(350, [
-    ['Weight' => '2.0', 'Money' => '10000000', 'CurrencyId' => 11, 'CurrencySymbol' => 'ریال'],
+// Bind kimia via dev route (local only) + optional fake balance seed
+$r = $k->handle('POST', '/v1/dev/bind-kimia', $h + ['x-talamala-dev' => '1'], [
+    'customer_id' => $customerId,
+    'kimia_account_id' => 350,
+    'seed_money_rial' => '10000000',
+    'seed_gold_weight_g' => '2.0',
 ]);
+$check('dev_bind_kimia', ($r['status'] ?? 0) === 200 && ($r['body']['kimia_bound'] ?? false) === true, $r);
 
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);
 $check('assets', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'] ?? '') === '1000000', $r);
@@ -178,7 +181,13 @@ putenv('TALAMALA_ENV=production');
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customerId], null);
 $check('production_blocks_header_fallback', ($r['status'] ?? 0) === 401, $r);
 $r = $k->handle('GET', '/v1/dev/last-otp', $h + ['x-talamala-dev' => '1'], null);
-$check('production_blocks_dev_routes', ($r['status'] ?? 0) === 404, $r);
+$blockedLast = ($r['status'] ?? 0) === 404;
+$r = $k->handle('POST', '/v1/dev/bind-kimia', $h + ['x-talamala-dev' => '1'], [
+    'customer_id' => $customerId,
+    'kimia_account_id' => 999,
+]);
+$blockedBind = ($r['status'] ?? 0) === 404;
+$check('production_blocks_dev_routes', $blockedLast && $blockedBind, ['last' => $blockedLast, 'bind' => $blockedBind]);
 // Bearer still works in production
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => 'Bearer ' . $token], null);
 $check('production_bearer_ok', ($r['status'] ?? 0) === 200, $r);

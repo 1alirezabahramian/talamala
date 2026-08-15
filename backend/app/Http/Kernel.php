@@ -487,6 +487,49 @@ final class Kernel
                 $token = $this->issueSession($tenant->id, $type, $id);
                 return ['status' => 200, 'body' => ['access_token' => $token, 'token_type' => 'Bearer']];
             }
+            // Manual Kimia account bind + optional fake balance seed (local vertical only)
+            // Does NOT create Kimia customer — account id is supplied by operator/test.
+            if ($method === 'POST' && $path === '/v1/dev/bind-kimia') {
+                $customerId = (string) ($body['customer_id'] ?? '');
+                $kimiaAccountId = (int) ($body['kimia_account_id'] ?? 0);
+                if ($customerId === '' || $kimiaAccountId <= 0) {
+                    return ['status' => 422, 'body' => ['error' => 'customer_id_and_kimia_account_id_required']];
+                }
+                $result = $this->registration->bindKimiaAccount(
+                    $tenant->id,
+                    $customerId,
+                    $kimiaAccountId,
+                    $correlationId,
+                );
+                if (!$result->success) {
+                    return [
+                        'status' => 400,
+                        'body' => ['error' => $result->errorCode, 'message' => $result->errorMessage],
+                    ];
+                }
+                // Optional seed for FakeKimia so GET /assets returns non-zero in local demos
+                if (isset($body['seed_money_rial']) || isset($body['seed_gold_weight_g'])) {
+                    $money = (string) ($body['seed_money_rial'] ?? '0');
+                    $weight = (string) ($body['seed_gold_weight_g'] ?? '0');
+                    $this->kimia->seedBalance($kimiaAccountId, [
+                        [
+                            'Weight' => $weight,
+                            'Money' => $money,
+                            'CurrencyId' => 11,
+                            'CurrencySymbol' => 'ریال',
+                        ],
+                    ]);
+                }
+                return [
+                    'status' => 200,
+                    'body' => [
+                        'customer_id' => $result->customer->id,
+                        'kimia_account_id' => $kimiaAccountId,
+                        'kimia_bound' => true,
+                        'note' => 'Dev-only bind — not Kimia Write / create account',
+                    ],
+                ];
+            }
         }
 
         return [

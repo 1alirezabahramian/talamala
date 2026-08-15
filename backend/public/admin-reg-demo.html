@@ -55,7 +55,7 @@
 </head>
 <body>
   <div class="wrap">
-    <span class="badge">Backoffice · RegistrationQueue + approve · no price / no Kimia Write</span>
+    <span class="badge">Backoffice · RegistrationQueue + approve · optional dev bind</span>
 
     <div class="card" id="login-card">
       <h1>ورود staff</h1>
@@ -123,7 +123,8 @@
             '<strong>' + (it.full_name || '—') + '</strong>' +
             '<div class="meta" dir="ltr">' + it.mobile + ' · ' + it.access_status +
             (it.kimia_bound ? ' · bound' : '') + '</div>' +
-            '<button type="button" class="btn-approve">تأیید</button>' +
+            '<button type="button" class="btn-approve">تأیید</button> ' +
+            (it.kimia_bound ? '' : '<button type="button" class="btn-bind secondary">Bind Kimia (dev)</button>') +
             '</div>'
           );
         }).join('');
@@ -139,6 +140,30 @@
             const d = await r.json().catch(() => ({}));
             if (!r.ok) {
               $('queue-err').textContent = d.message || d.error || 'approve failed';
+              $('queue-err').classList.remove('hidden');
+              btn.disabled = false;
+              return;
+            }
+            await loadQueue();
+          });
+        });
+        $('list').querySelectorAll('.btn-bind').forEach(function (btn) {
+          btn.addEventListener('click', async function () {
+            const id = btn.closest('.item').getAttribute('data-id');
+            btn.disabled = true;
+            const r = await fetch('/v1/dev/bind-kimia', {
+              method: 'POST',
+              headers: Object.assign(headers(), { 'X-Talamala-Dev': '1' }),
+              body: JSON.stringify({
+                customer_id: id,
+                kimia_account_id: 350,
+                seed_money_rial: '10000000',
+                seed_gold_weight_g: '2.0'
+              }),
+            });
+            const d = await r.json().catch(() => ({}));
+            if (!r.ok) {
+              $('queue-err').textContent = d.message || d.error || 'bind failed';
               $('queue-err').classList.remove('hidden');
               btn.disabled = false;
               return;

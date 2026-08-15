@@ -119,7 +119,20 @@
       <h1 id="done-title">نتیجه</h1>
       <p id="done-msg" class="muted"></p>
       <pre id="done-json"></pre>
-      <button type="button" id="btn-restart">شروع دوباره</button>
+      <div id="assets-box" class="hidden" style="margin-top:1rem;padding-top:1rem;border-top:1px solid var(--border)">
+        <p class="muted" style="margin:0 0 0.5rem">دارایی (Kimia Read — فقط از سرور)</p>
+        <dl style="margin:0">
+          <dt style="color:var(--muted);font-size:0.85rem">وضعیت</dt>
+          <dd id="a-status" style="margin:0.15rem 0 0.5rem;font-weight:600">—</dd>
+          <dt style="color:var(--muted);font-size:0.85rem">موجودی نقد (تومان)</dt>
+          <dd id="a-money" style="margin:0.15rem 0 0.5rem;font-weight:600" dir="ltr">—</dd>
+          <dt style="color:var(--muted);font-size:0.85rem">وزن طلا (گرم)</dt>
+          <dd id="a-gold" style="margin:0.15rem 0 0.5rem;font-weight:600" dir="ltr">—</dd>
+        </dl>
+        <p id="a-err" class="error hidden" style="margin:0.5rem 0"></p>
+        <button type="button" id="btn-assets" style="margin-top:0.35rem">خواندن دارایی</button>
+      </div>
+      <button type="button" class="link" id="btn-restart" style="margin-top:0.75rem">شروع دوباره</button>
     </div>
   </div>
 
@@ -131,6 +144,8 @@
 
       let challengeId = null;
       let mobile = null;
+      let lastCustomerId = null;
+      let lastToken = null;
 
       const $ = (id) => document.getElementById(id);
       const show = (id) => { document.querySelectorAll('.card').forEach(c => c.classList.add('hidden')); $(id).classList.remove('hidden'); };
@@ -226,15 +241,23 @@
             show('step-register');
             $('full_name').focus();
           } else if (data.status === 'authenticated') {
+            lastToken = data.access_token || data.token || null;
+            lastCustomerId = data.customer_id || null;
             show('step-done');
             $('done-title').textContent = 'ورود موفق';
             $('done-msg').textContent = 'session صادر شد.';
             $('done-json').textContent = JSON.stringify(data, null, 2);
+            $('assets-box').classList.remove('hidden');
+            $('a-status').textContent = '—';
+            $('a-money').textContent = '—';
+            $('a-gold').textContent = '—';
+            setErr('a-err', null);
           } else {
             show('step-done');
             $('done-title').textContent = 'پاسخ سرور';
             $('done-msg').textContent = '';
             $('done-json').textContent = JSON.stringify(data, null, 2);
+            $('assets-box').classList.add('hidden');
           }
         } catch (err) {
           setErr('err-verify', 'ارتباط با سرور برقرار نشد');
@@ -257,12 +280,46 @@
       $('btn-restart').addEventListener('click', () => {
         challengeId = null;
         mobile = null;
+        lastCustomerId = null;
+        lastToken = null;
         $('mobile').value = '';
         $('code').value = '';
         setErr('err-request', null);
         setErr('err-verify', null);
+        setErr('a-err', null);
         $('dev-code').textContent = '';
+        $('assets-box').classList.add('hidden');
         show('step-request');
+      });
+
+      $('btn-assets').addEventListener('click', async () => {
+        setErr('a-err', null);
+        if (!lastToken && !lastCustomerId) {
+          setErr('a-err', 'شناسه مشتری یا token موجود نیست');
+          return;
+        }
+        const btn = $('btn-assets');
+        btn.disabled = true;
+        btn.textContent = 'در حال خواندن…';
+        try {
+          const h = headers();
+          if (lastToken) h['Authorization'] = 'Bearer ' + lastToken;
+          else h['X-Customer-Id'] = lastCustomerId;
+          const res = await fetch(API + '/v1/customer/assets', { headers: h });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            setErr('a-err', data.message || data.error || ('HTTP ' + res.status));
+            return;
+          }
+          $('a-status').textContent = data.status || '—';
+          $('a-money').textContent = data.money_toman ?? '—';
+          $('a-gold').textContent = data.gold_weight_g ?? '—';
+        } catch (err) {
+          setErr('a-err', 'ارتباط با سرور برقرار نشد');
+        } finally {
+          btn.disabled = false;
+          btn.textContent = 'خواندن دارایی';
+        }
       });
 
 
@@ -296,10 +353,17 @@
             setErr('err-register', msg);
             return;
           }
+          lastCustomerId = data.customer_id || null;
+          lastToken = data.access_token || data.token || null;
           show('step-done');
           $('done-title').textContent = 'ثبت‌نام ثبت شد';
-          $('done-msg').textContent = 'دسترسی محدود تا staff approve — جدا از Jibit.';
+          $('done-msg').textContent = 'دسترسی محدود تا staff approve — جدا از Jibit. برای دارایی ابتدا staff باید Kimia bind کند.';
           $('done-json').textContent = JSON.stringify(data, null, 2);
+          $('assets-box').classList.remove('hidden');
+          $('a-status').textContent = '—';
+          $('a-money').textContent = '—';
+          $('a-gold').textContent = '—';
+          setErr('a-err', null);
         } catch (err) {
           setErr('err-register', 'ارتباط با سرور برقرار نشد');
         } finally {
