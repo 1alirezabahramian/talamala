@@ -48,14 +48,14 @@ jobs:
               if p.is_dir(): shutil.copytree(p,dst,dirs_exist_ok=True)
               else: shutil.copy2(p,dst)
           PY
-          # Integration-only test correction: production logger floors maxBytes at 10_000.
           python3 - <<'PY'
           from pathlib import Path
           p=Path('backend/bin/logger_smoke.php')
-          s=p.read_text()
-          s=s.replace("putenv('TALAMALA_LOG_MAX_BYTES=200');", "putenv('TALAMALA_LOG_MAX_BYTES=10000');")
+          s=p.read_text().replace("putenv('TALAMALA_LOG_MAX_BYTES=200');", "putenv('TALAMALA_LOG_MAX_BYTES=10000');")
           s=s.replace('for ($i = 0; $i < 30; $i++) {', 'for ($i = 0; $i < 100; $i++) {')
           p.write_text(s)
+          e=Path('.env.example')
+          e.write_text(e.read_text().rstrip('\n')+'\n')
           PY
       - name: Validate all gates
         run: |
@@ -71,17 +71,7 @@ jobs:
       - name: Commit exact production scope
         run: |
           set -euo pipefail
-          paths=(
-            .env.example
-            frontend/backoffice/src/styles.css
-            frontend/backoffice/src/main.tsx
-            docs/00-master/STAGE_BO_CSS_LOG_ROTATE_SPA_HTML.md
-            docs/00-master/CURRENT_STATE.md
-            backend/bin/logger_smoke.php
-            backend/bin/spa_router_smoke.php
-            backend/app/Infrastructure/Logging/StructuredLogger.php
-            backend/public/router.php
-          )
+          paths=(.env.example frontend/backoffice/src/styles.css frontend/backoffice/src/main.tsx docs/00-master/STAGE_BO_CSS_LOG_ROTATE_SPA_HTML.md docs/00-master/CURRENT_STATE.md backend/bin/logger_smoke.php backend/bin/spa_router_smoke.php backend/app/Infrastructure/Logging/StructuredLogger.php backend/public/router.php)
           git add -- "${paths[@]}"
           staged=$(git diff --cached --name-only); printf '%s\n' "$staged"
           [ "$(printf '%s\n' "$staged" | sed '/^$/d' | wc -l)" -eq 9 ]
