@@ -38,7 +38,10 @@ jobs:
                   if n.endswith('/'): continue
                   b=os.path.basename(n)
                   if b.startswith('.env') and b != '.env.example': raise SystemExit(f'SECRET_LIKE {n}')
-                  if '/.github/' in '/'+n: raise SystemExit(f'UNEXPECTED_GITHUB {n}')
+                  parts=list(p.parts)
+                  rel='/'.join(parts[1:]) if len(parts)>1 else n
+                  if rel.startswith('.github/') and rel != '.github/workflows/ci.yml':
+                      raise SystemExit(f'UNEXPECTED_GITHUB {n}')
                   print('FILE', n)
               f.extractall(out)
           roots=list(out.iterdir())
@@ -47,7 +50,7 @@ jobs:
           if not m.exists(): raise SystemExit('MANIFEST.txt missing')
           print('--- MANIFEST ---')
           print(m.read_text())
-          ci=src/'ci.yml'
+          ci=src/'.github/workflows/ci.yml'
           if not ci.exists(): raise SystemExit('ci.yml missing')
           txt=ci.read_text()
           print('CI_HTTP_48=', 'PASS=48 FAIL=0' in txt)
