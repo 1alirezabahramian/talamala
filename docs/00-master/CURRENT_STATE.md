@@ -3,6 +3,11 @@
 ## HTTP smoke
 `php backend/bin/http_smoke.php` → **PASS=33 FAIL=0**
 
+## Persistence-1
+SQLite PDO for customers / quotes / custody / orders.
+Default `:memory:`; file via `TALAMALA_DB_PATH`.
+`php backend/bin/persist_smoke.php` → PASS=6.
+
 ## Closed stages
 | Stage | Status |
 |-------|--------|

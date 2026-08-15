@@ -79,3 +79,17 @@ TypeScript sources (for future Vite):
 - `frontend/customer/src/api/auth.ts`
 - `frontend/customer/src/screens/auth/Otp*.tsx`
 - `frontend/customer/src/AppOtpFlow.tsx`
+
+
+## Persistence (SQLite)
+
+```bash
+# durable local DB
+export TALAMALA_DB_PATH=var/talamala.sqlite
+php -S 127.0.0.1:8080 -t public public/router.php
+
+# isolated smoke (default)
+unset TALAMALA_DB_PATH
+php bin/http_smoke.php
+php bin/persist_smoke.php
+```

@@ -26,3 +26,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-020 | Release | Exact-SHA CI | PARTIAL | Workflow present |
 
 Do not copy GoldPlatform completion percentages.
+
+
+## Persistence-1 note (2026-08-15)
+Customer / Custody / Quote / Order repositories: SQLite PDO implemented.
+Sessions, audit, idempotency, tenant resolver: still InMemory (Persistence-2).

@@ -22,14 +22,19 @@ use Talamala\Http\Controllers\Auth\CustomerOtpController;
 use Talamala\Http\Controllers\Auth\StaffAuthController;
 use Talamala\Http\Controllers\Customer\CustomerAssetsController;
 use Talamala\Http\Controllers\HealthController;
+use Talamala\Domain\Custody\CustodyRepository;
+use Talamala\Domain\Identity\CustomerRepository;
+use Talamala\Domain\Order\OrderRepository;
+use Talamala\Domain\Quote\QuoteRepository;
 use Talamala\Infrastructure\Persistence\InMemoryAuditLogger;
-use Talamala\Infrastructure\Persistence\InMemoryCustodyRepository;
-use Talamala\Infrastructure\Persistence\InMemoryCustomerRepository;
 use Talamala\Infrastructure\Persistence\InMemoryIdempotencyRegistry;
-use Talamala\Infrastructure\Persistence\InMemoryOrderRepository;
-use Talamala\Infrastructure\Persistence\InMemoryQuoteRepository;
 use Talamala\Infrastructure\Persistence\InMemorySessionStore;
 use Talamala\Infrastructure\Persistence\InMemoryTenantResolver;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteConnection;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteCustodyRepository;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteCustomerRepository;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteOrderRepository;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteQuoteRepository;
 use Talamala\Infrastructure\Sms\FakeSmsOtpSender;
 use Talamala\Integrations\Jibit\FakeJibitIdentityClient;
 use Talamala\Integrations\Kimia\FakeKimiaReadClient;
@@ -38,7 +43,8 @@ use Talamala\Infrastructure\Logging\StructuredLogger;
 
 /**
  * Minimal composition root for Stage 1–3 skeleton.
- * Replace InMemory/Fake bindings with DB/HTTP in later stages.
+ * Persistence-1: customers/quotes/custody/orders on SQLite (PDO).
+ * Sessions/OTP rate-limit/audit still InMemory until Persistence-2.
  */
 final class Kernel
 {
@@ -46,19 +52,19 @@ final class Kernel
     public readonly FakeSmsOtpSender $sms;
     public readonly OtpAuthApplicationService $otp;
     public readonly CustomerRegistrationService $registration;
-    public readonly InMemoryCustomerRepository $customers;
+    public readonly CustomerRepository $customers;
     public readonly CustomerFinancialReadService $financialRead;
     public readonly FakeKimiaReadClient $kimia;
     public readonly CustodyApplicationService $custody;
     public readonly StaffAuthApplicationService $staffAuth;
     public readonly OrderApplicationService $orders;
-    public readonly InMemoryQuoteRepository $quotes;
-    public readonly InMemoryOrderRepository $orderRepo;
+    public readonly QuoteRepository $quotes;
+    public readonly OrderRepository $orderRepo;
     public readonly InMemorySessionStore $sessions;
     public readonly InMemoryRateLimiter $otpRateLimiter;
     public readonly StructuredLogger $log;
     public readonly InMemoryAuditLogger $audit;
-    public readonly InMemoryCustodyRepository $custodyRepo;
+    public readonly CustodyRepository $custodyRepo;
 
     public function __construct()
     {
@@ -93,7 +99,10 @@ final class Kernel
             true,
         );
 
-        $this->customers = new InMemoryCustomerRepository();
+        // Persistence-1: SQLite (PDO). Default :memory: for smoke isolation.
+        // Set TALAMALA_DB_PATH=/path/to/talamala.sqlite for durable local server.
+        $pdo = SqliteConnection::fromEnv();
+        $this->customers = new SqliteCustomerRepository($pdo);
         $jibit = new FakeJibitIdentityClient();
         // Dev convenience: allow common test national/mobile pair
         $jibit->allowMatch('0012345678', '09121234567');
@@ -102,11 +111,11 @@ final class Kernel
         $this->kimia = new FakeKimiaReadClient();
         $this->financialRead = new CustomerFinancialReadService($this->kimia);
 
-        $this->custodyRepo = new InMemoryCustodyRepository();
+        $this->custodyRepo = new SqliteCustodyRepository($pdo);
         $this->custody = new CustodyApplicationService($this->custodyRepo, $this->audit);
 
-        $this->quotes = new InMemoryQuoteRepository();
-        $this->orderRepo = new InMemoryOrderRepository();
+        $this->quotes = new SqliteQuoteRepository($pdo);
+        $this->orderRepo = new SqliteOrderRepository($pdo);
         $this->orders = new OrderApplicationService(
             $this->quotes,
             $this->orderRepo,
