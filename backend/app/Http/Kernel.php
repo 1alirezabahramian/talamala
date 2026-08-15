@@ -26,15 +26,18 @@ use Talamala\Domain\Custody\CustodyRepository;
 use Talamala\Domain\Identity\CustomerRepository;
 use Talamala\Domain\Order\OrderRepository;
 use Talamala\Domain\Quote\QuoteRepository;
-use Talamala\Infrastructure\Persistence\InMemoryAuditLogger;
-use Talamala\Infrastructure\Persistence\InMemoryIdempotencyRegistry;
-use Talamala\Infrastructure\Persistence\InMemorySessionStore;
 use Talamala\Infrastructure\Persistence\InMemoryTenantResolver;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteAuditLogger;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteConnection;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteCustodyRepository;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteCustomerRepository;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteIdempotencyRegistry;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteOrderRepository;
 use Talamala\Infrastructure\Persistence\Sqlite\SqliteQuoteRepository;
+use Talamala\Infrastructure\Persistence\Sqlite\SqliteSessionStore;
+use Talamala\Domain\Audit\AuditLogger;
+use Talamala\Domain\Idempotency\IdempotencyRegistry;
+use Talamala\Domain\Session\SessionStore;
 use Talamala\Infrastructure\Sms\FakeSmsOtpSender;
 use Talamala\Integrations\Jibit\FakeJibitIdentityClient;
 use Talamala\Integrations\Kimia\FakeKimiaReadClient;
@@ -44,7 +47,8 @@ use Talamala\Infrastructure\Logging\StructuredLogger;
 /**
  * Minimal composition root for Stage 1–3 skeleton.
  * Persistence-1: customers/quotes/custody/orders on SQLite (PDO).
- * Sessions/OTP rate-limit/audit still InMemory until Persistence-2.
+ * Persistence-2: sessions + idempotency + audit on SQLite.
+ * OTP rate-limit + tenant resolver still InMemory.
  */
 final class Kernel
 {
@@ -60,15 +64,15 @@ final class Kernel
     public readonly OrderApplicationService $orders;
     public readonly QuoteRepository $quotes;
     public readonly OrderRepository $orderRepo;
-    public readonly InMemorySessionStore $sessions;
+    public readonly SessionStore $sessions;
     public readonly InMemoryRateLimiter $otpRateLimiter;
     public readonly StructuredLogger $log;
-    public readonly InMemoryAuditLogger $audit;
+    public readonly AuditLogger $audit;
+    public readonly IdempotencyRegistry $idempotency;
     public readonly CustodyRepository $custodyRepo;
 
     public function __construct()
     {
-        $this->audit = new InMemoryAuditLogger();
         $this->tenants = new InMemoryTenantResolver();
         $this->tenants->register(new Tenant(
             id: '00000000-0000-0000-0000-000000000001',
@@ -86,6 +90,13 @@ final class Kernel
             isVerified: true,
         ));
 
+        // Persistence-1+2: SQLite (PDO). Default :memory: for smoke isolation.
+        // Set TALAMALA_DB_PATH=/path/to/talamala.sqlite for durable local server.
+        $pdo = SqliteConnection::fromEnv();
+        $this->audit = new SqliteAuditLogger($pdo);
+        $this->idempotency = new SqliteIdempotencyRegistry($pdo);
+        $this->sessions = new SqliteSessionStore($pdo);
+
         $this->sms = new FakeSmsOtpSender();
         $this->otp = new OtpAuthApplicationService($this->sms, $this->audit);
 
@@ -99,9 +110,6 @@ final class Kernel
             true,
         );
 
-        // Persistence-1: SQLite (PDO). Default :memory: for smoke isolation.
-        // Set TALAMALA_DB_PATH=/path/to/talamala.sqlite for durable local server.
-        $pdo = SqliteConnection::fromEnv();
         $this->customers = new SqliteCustomerRepository($pdo);
         $jibit = new FakeJibitIdentityClient();
         // Dev convenience: allow common test national/mobile pair
@@ -119,10 +127,9 @@ final class Kernel
         $this->orders = new OrderApplicationService(
             $this->quotes,
             $this->orderRepo,
-            new InMemoryIdempotencyRegistry(),
+            $this->idempotency,
             $this->audit,
         );
-        $this->sessions = new InMemorySessionStore();
         $this->otpRateLimiter = new InMemoryRateLimiter(maxAttempts: 5, windowSeconds: 300);
         $this->log = new StructuredLogger();
     }

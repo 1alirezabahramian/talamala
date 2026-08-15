@@ -7,7 +7,7 @@ namespace Talamala\Infrastructure\Persistence\Sqlite;
 use PDO;
 
 /**
- * Stage Persistence-1: SQLite via PDO (no Composer).
+ * Stage Persistence-1+2: SQLite via PDO (no Composer).
  * Path from TALAMALA_DB_PATH; default :memory: for isolated smoke.
  * Schema mirrors conceptual migrations (SQLite dialect).
  */
@@ -123,6 +123,45 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_orders_tenant_idem ON orders(tenant_id, id
     WHERE idempotency_key IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_orders_tenant_customer ON orders(tenant_id, customer_id);
 CREATE INDEX IF NOT EXISTS idx_orders_quote ON orders(tenant_id, quote_id);
+
+-- Persistence-2: sessions / idempotency / audit
+CREATE TABLE IF NOT EXISTS sessions (
+    token        TEXT PRIMARY KEY,
+    tenant_id    TEXT NOT NULL,
+    subject_type TEXT NOT NULL,
+    subject_id   TEXT NOT NULL,
+    expires_at   TEXT NOT NULL,
+    meta_json    TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS idx_sessions_tenant ON sessions(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_sessions_expires ON sessions(expires_at);
+
+CREATE TABLE IF NOT EXISTS idempotency_keys (
+    tenant_id    TEXT NOT NULL,
+    scope        TEXT NOT NULL,
+    key          TEXT NOT NULL,
+    result_json  TEXT NOT NULL,
+    expires_at   TEXT NOT NULL,
+    PRIMARY KEY (tenant_id, scope, key)
+);
+CREATE INDEX IF NOT EXISTS idx_idem_expires ON idempotency_keys(expires_at);
+
+CREATE TABLE IF NOT EXISTS audit_events (
+    id             TEXT PRIMARY KEY,
+    tenant_id      TEXT NOT NULL,
+    actor_id       TEXT NULL,
+    actor_type     TEXT NOT NULL,
+    action         TEXT NOT NULL,
+    target_type    TEXT NULL,
+    target_id      TEXT NULL,
+    reason         TEXT NULL,
+    correlation_id TEXT NOT NULL,
+    metadata_json  TEXT NOT NULL DEFAULT '{}',
+    occurred_at    TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_audit_tenant ON audit_events(tenant_id);
+CREATE INDEX IF NOT EXISTS idx_audit_action ON audit_events(tenant_id, action);
+CREATE INDEX IF NOT EXISTS idx_audit_correlation ON audit_events(correlation_id);
 SQL);
     }
 }

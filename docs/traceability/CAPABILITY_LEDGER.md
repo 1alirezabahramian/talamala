@@ -5,8 +5,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | ID | Domain | Capability | Status | Notes |
 |----|--------|------------|--------|-------|
 | CAP-001 | Tenant | Host resolution fail-closed | IMPLEMENTED | ADR-001 |
-| CAP-002 | Audit | Audit events | IMPLEMENTED | InMemory |
-| CAP-003 | Idempotency | Tenant-scoped keys | IMPLEMENTED | Order accept uses it |
+| CAP-002 | Audit | Audit events | IMPLEMENTED | SQLite Persistence-2 |
+| CAP-003 | Idempotency | Tenant-scoped keys | IMPLEMENTED | SQLite Persistence-2 |
 | CAP-004 | Identity | Customer OTP | IMPLEMENTED | Fake SMS |
 | CAP-005 | Identity | Staff auth + rotation | IMPLEMENTED | |
 | CAP-006 | Identity | Registration + Jibit gate | IMPLEMENTED | Fake Jibit |

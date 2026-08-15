@@ -3,13 +3,16 @@
 declare(strict_types=1);
 
 /**
- * Persistence-1: durable SQLite file round-trip across Kernel instances.
+ * Persistence-1+2: durable SQLite file round-trip across Kernel instances.
+ * Covers customers (P1) + sessions + idempotency + audit (P2).
  * php backend/bin/persist_smoke.php
  */
 
 require_once __DIR__ . '/../app/bootstrap_autoload.php';
 
 use Talamala\Http\Kernel;
+use Talamala\Domain\Idempotency\IdempotencyKey;
+use Talamala\Domain\Session\SessionRecord;
 
 $path = sys_get_temp_dir() . '/talamala_persist_smoke.sqlite';
 @unlink($path);
@@ -68,6 +71,48 @@ $check('bind', ($r['status'] ?? 0) === 200, $r);
 $k3 = new Kernel();
 $bound = $k3->customers->findById($tenantId, $customerId);
 $check('bind_survives_reboot', $bound?->kimiaAccountId === 350, $bound?->kimiaAccountId);
+
+// --- Persistence-2: session survives reboot ---
+$token = $k3->issueSession($tenantId, 'customer', $customerId, 3600);
+$k4 = new Kernel();
+$session = $k4->sessions->get($token);
+$check(
+    'session_survives_reboot',
+    $session !== null
+        && $session->tenantId === $tenantId
+        && $session->subjectId === $customerId
+        && $session->subjectType === 'customer',
+    $session?->subjectId
+);
+
+// --- Persistence-2: idempotency survives reboot ---
+$idemKey = new IdempotencyKey($tenantId, 'persist-smoke-key-1', 'order.accept');
+$resultPayload = ['order_id' => 'ord-persist-1', 'status' => 'accepted'];
+$expires = (new \DateTimeImmutable('now', new \DateTimeZone('UTC')))->modify('+1 hour');
+$k4->idempotency->store($idemKey, $resultPayload, $expires);
+$k5 = new Kernel();
+$cached = $k5->idempotency->find($idemKey);
+$check(
+    'idempotency_survives_reboot',
+    is_array($cached) && ($cached['order_id'] ?? '') === 'ord-persist-1',
+    $cached
+);
+
+// --- Persistence-2: audit survives reboot (registration produced events) ---
+$events = [];
+if (method_exists($k5->audit, 'listForTenant')) {
+    $events = $k5->audit->listForTenant($tenantId, 50);
+}
+$actions = array_map(static fn ($e) => $e->action, $events);
+$check(
+    'audit_survives_reboot',
+    count($events) > 0 && (
+        in_array('registration.completed', $actions, true)
+        || in_array('customer.kimia_bound', $actions, true)
+        || count(array_filter($actions, static fn ($a) => str_contains($a, 'registration') || str_contains($a, 'otp'))) > 0
+    ),
+    ['count' => count($events), 'actions' => array_slice($actions, 0, 8)]
+);
 
 @unlink($path);
 putenv('TALAMALA_DB_PATH');
