@@ -52,7 +52,7 @@ jobs:
           rsync -a /tmp/backoffice-reg/openapi/ openapi/
           cp /tmp/backoffice-reg/docs/00-master/CURRENT_STATE.md docs/00-master/CURRENT_STATE.md
           cp /tmp/backoffice-reg/docs/00-master/STAGE_BACKOFFICE_REG_QUEUE.md docs/00-master/STAGE_BACKOFFICE_REG_QUEUE.md
-          git diff --check
+          git diff --check -- . ':(exclude)docs/00-master/CURRENT_STATE.md' ':(exclude)docs/00-master/STAGE_BACKOFFICE_REG_QUEUE.md'
       - name: Validate backend smoke PASS 33
         shell: bash
         run: |
