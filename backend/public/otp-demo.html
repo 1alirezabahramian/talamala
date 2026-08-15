@@ -132,6 +132,7 @@
         <p id="a-err" class="error hidden" style="margin:0.5rem 0"></p>
         <button type="button" id="btn-assets" style="margin-top:0.35rem">خواندن دارایی</button>
       </div>
+      <a id="link-shell" class="hidden" href="/customer-shell-demo.html" style="display:block;text-align:center;margin:0.75rem 0 0.25rem;color:var(--accent);font-weight:600;text-decoration:none">باز کردن Customer Shell →</a>
       <button type="button" class="link" id="btn-restart" style="margin-top:0.75rem">شروع دوباره</button>
     </div>
   </div>
@@ -252,6 +253,16 @@
             $('a-money').textContent = '—';
             $('a-gold').textContent = '—';
             setErr('a-err', null);
+            (function () {
+              const a = $('link-shell');
+              if (!a) return;
+              const q = new URLSearchParams();
+              if (lastCustomerId) q.set('customer_id', lastCustomerId);
+              if (lastToken) q.set('token', lastToken);
+              a.href = '/customer-shell-demo.html' + (q.toString() ? ('?' + q.toString()) : '');
+              a.classList.remove('hidden');
+              a.style.display = 'block';
+            })();
           } else {
             show('step-done');
             $('done-title').textContent = 'پاسخ سرور';

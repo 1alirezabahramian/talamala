@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Talamala — Customer Shell (local)</title>
+  <style>
+    :root {
+      --bg: #0f1419; --card: #1a2332; --text: #e7ecf3; --muted: #8b9bb4;
+      --accent: #c9a227; --danger: #e85d5d; --ok: #3dba7e; --border: #2a3548;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, Tahoma, sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; justify-content: center;
+      padding: 1.25rem 1rem 2rem;
+    }
+    .wrap { width: 100%; max-width: 440px; }
+    .badge {
+      display: inline-block; font-size: 0.75rem; padding: 0.2rem 0.5rem;
+      border-radius: 6px; background: #243044; color: var(--muted); margin-bottom: 0.75rem;
+    }
+    .card {
+      background: var(--card); border: 1px solid var(--border);
+      border-radius: 12px; padding: 1.1rem; margin-bottom: 0.85rem;
+    }
+    h1 { font-size: 1.2rem; margin: 0 0 0.3rem; }
+    .muted { color: var(--muted); font-size: 0.88rem; margin: 0 0 0.85rem; }
+    label { display: block; font-size: 0.82rem; color: var(--muted); margin-bottom: 0.3rem; }
+    input {
+      width: 100%; padding: 0.65rem 0.8rem; border-radius: 8px;
+      border: 1px solid var(--border); background: var(--bg); color: var(--text);
+      margin-bottom: 0.65rem; direction: ltr; text-align: left; font-size: 0.95rem;
+    }
+    button {
+      width: 100%; padding: 0.7rem; border: none; border-radius: 8px;
+      background: var(--accent); color: #111; font-weight: 700; cursor: pointer;
+      font-size: 0.95rem; margin-bottom: 0.4rem;
+    }
+    button.secondary { background: #2a3548; color: var(--text); font-weight: 600; }
+    button:disabled { opacity: 0.55; cursor: not-allowed; }
+    .error { color: var(--danger); font-size: 0.88rem; margin: 0.35rem 0; }
+    .ok { color: var(--ok); font-size: 0.88rem; }
+    .nav {
+      display: flex; gap: 0.35rem; margin-bottom: 0.85rem; flex-wrap: wrap;
+    }
+    .nav button {
+      flex: 1; min-width: 4.5rem; padding: 0.55rem 0.4rem; font-size: 0.85rem;
+      background: #243044; color: var(--muted); font-weight: 600; margin: 0;
+    }
+    .nav button.active { background: var(--accent); color: #111; }
+    .panel { display: none; }
+    .panel.active { display: block; }
+    dl { margin: 0; }
+    dt { color: var(--muted); font-size: 0.8rem; margin-top: 0.55rem; }
+    dd { margin: 0.15rem 0 0; font-size: 1.15rem; font-weight: 600; }
+    .item {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.7rem; margin-bottom: 0.45rem;
+    }
+    .item strong { display: block; margin-bottom: 0.2rem; }
+    .meta { color: var(--muted); font-size: 0.82rem; direction: ltr; text-align: left; }
+    .hint { font-size: 0.78rem; color: var(--muted); line-height: 1.45; margin-top: 0.75rem; }
+    .hidden { display: none !important; }
+    pre {
+      background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
+      padding: 0.65rem; font-size: 0.72rem; overflow: auto; direction: ltr;
+      color: var(--muted); max-height: 140px; margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <span class="badge">Customer Shell · read vertical · demo.local</span>
+
+    <div class="card" id="auth-card">
+      <h1>ورود به شل مشتری</h1>
+      <p class="muted">بعد از OTP/ثبت‌نام — Customer ID یا Bearer</p>
+      <label for="customer_id">Customer ID</label>
+      <input id="customer_id" type="text" placeholder="از response ثبت‌نام" autocomplete="off" />
+      <label for="token">Bearer token (اختیاری)</label>
+      <input id="token" type="text" placeholder="از authenticated" autocomplete="off" />
+      <p id="auth-err" class="error hidden"></p>
+      <button type="button" id="btn-enter">ورود به شل</button>
+      <p class="hint">
+        Tenant: <code>X-Talamala-Host: demo.local</code><br />
+        فقط خواندن دارایی / امانات / سفارش + accept از quote ثابت
+      </p>
+    </div>
+
+    <div id="shell" class="hidden">
+      <div class="nav" id="nav">
+        <button type="button" data-tab="assets" class="active">دارایی</button>
+        <button type="button" data-tab="custody">امانات</button>
+        <button type="button" data-tab="orders">سفارش‌ها</button>
+        <button type="button" data-tab="accept">پذیرش</button>
+      </div>
+
+      <div class="card panel active" id="panel-assets">
+        <h1>دارایی من</h1>
+        <p class="muted">فقط از Kimia Read — بدون محاسبهٔ کلاینت</p>
+        <button type="button" id="btn-assets">خواندن</button>
+        <p id="assets-err" class="error hidden"></p>
+        <dl id="assets-view" class="hidden">
+          <dt>وضعیت</dt><dd id="a-status">—</dd>
+          <dt>موجودی نقد (تومان)</dt><dd id="a-money" dir="ltr">—</dd>
+          <dt>وزن طلا (گرم)</dt><dd id="a-gold" dir="ltr">—</dd>
+        </dl>
+      </div>
+
+      <div class="card panel" id="panel-custody">
+        <h1>امانات من</h1>
+        <p class="muted">Talamala sole truth — فقط لیست</p>
+        <button type="button" id="btn-custody">خواندن</button>
+        <p id="custody-err" class="error hidden"></p>
+        <div id="custody-list"></div>
+      </div>
+
+      <div class="card panel" id="panel-orders">
+        <h1>سفارش‌ها</h1>
+        <p class="muted">مبالغ به صورت decimal string از سرور</p>
+        <button type="button" id="btn-orders">خواندن</button>
+        <p id="orders-err" class="error hidden"></p>
+        <div id="orders-list"></div>
+      </div>
+
+      <div class="card panel" id="panel-accept">
+        <h1>پذیرش از Quote</h1>
+        <p class="muted">Quote immutable · settlement مسدود</p>
+        <button type="button" class="secondary" id="btn-seed">Seed Quote (dev fixture)</button>
+        <label for="quote_id">quote_id</label>
+        <input id="quote_id" type="text" placeholder="از seed یا fixture" />
+        <button type="button" id="btn-accept">پذیرش سفارش</button>
+        <p id="accept-err" class="error hidden"></p>
+        <p id="accept-ok" class="ok hidden"></p>
+        <pre id="accept-json" class="hidden"></pre>
+        <p class="hint">Seed فقط لوکال با <code>X-Talamala-Dev: 1</code> — قیمت زنده نیست.</p>
+      </div>
+
+      <button type="button" class="secondary" id="btn-exit" style="margin-top:0.5rem">خروج از شل</button>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      const TENANT = 'demo.local';
+      const $ = (id) => document.getElementById(id);
+      let customerId = '';
+      let token = '';
+
+      function headers(extra) {
+        const h = {
+          Accept: 'application/json',
+          'Content-Type': 'application/json',
+          'X-Talamala-Host': TENANT,
+        };
+        if (token) h.Authorization = 'Bearer ' + token;
+        else if (customerId) h['X-Customer-Id'] = customerId;
+        if (extra) Object.assign(h, extra);
+        return h;
+      }
+
+      function showErr(id, msg) {
+        const el = $(id);
+        if (!msg) { el.classList.add('hidden'); el.textContent = ''; return; }
+        el.textContent = msg; el.classList.remove('hidden');
+      }
+
+      function setTab(name) {
+        document.querySelectorAll('.nav button').forEach((b) => {
+          b.classList.toggle('active', b.getAttribute('data-tab') === name);
+        });
+        document.querySelectorAll('.panel').forEach((p) => {
+          p.classList.toggle('active', p.id === 'panel-' + name);
+        });
+      }
+
+      $('nav').addEventListener('click', (e) => {
+        const btn = e.target.closest('button[data-tab]');
+        if (!btn) return;
+        setTab(btn.getAttribute('data-tab'));
+      });
+
+      $('btn-enter').addEventListener('click', () => {
+        showErr('auth-err', null);
+        customerId = $('customer_id').value.trim();
+        token = $('token').value.trim();
+        if (!customerId && !token) {
+          showErr('auth-err', 'Customer ID یا Bearer لازم است');
+          return;
+        }
+        $('auth-card').classList.add('hidden');
+        $('shell').classList.remove('hidden');
+        setTab('assets');
+      });
+
+      $('btn-exit').addEventListener('click', () => {
+        $('shell').classList.add('hidden');
+        $('auth-card').classList.remove('hidden');
+      });
+
+      $('btn-assets').addEventListener('click', async () => {
+        showErr('assets-err', null);
+        $('assets-view').classList.add('hidden');
+        $('btn-assets').disabled = true;
+        try {
+          const res = await fetch('/v1/customer/assets', { headers: headers() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showErr('assets-err', data.message || data.error || ('HTTP ' + res.status));
+            return;
+          }
+          $('a-status').textContent = data.status || '—';
+          $('a-money').textContent = data.money_toman ?? '—';
+          $('a-gold').textContent = data.gold_weight_g ?? '—';
+          $('assets-view').classList.remove('hidden');
+        } catch (e) {
+          showErr('assets-err', 'ارتباط برقرار نشد');
+        } finally {
+          $('btn-assets').disabled = false;
+        }
+      });
+
+      const statusFa = {
+        held: 'نگهداری',
+        ready_for_pickup: 'آماده تحویل',
+        delivered: 'تحویل‌شده',
+      };
+
+      $('btn-custody').addEventListener('click', async () => {
+        showErr('custody-err', null);
+        $('custody-list').innerHTML = '';
+        $('btn-custody').disabled = true;
+        try {
+          const res = await fetch('/v1/customer/custody', { headers: headers() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showErr('custody-err', data.message || data.error || ('HTTP ' + res.status));
+            return;
+          }
+          const items = data.items || [];
+          if (!items.length) {
+            $('custody-list').innerHTML = '<p class="muted">امانتی ثبت نشده</p>';
+            return;
+          }
+          $('custody-list').innerHTML = items.map((it) => (
+            '<div class="item"><strong>' + (it.description || '—') + '</strong>' +
+            '<div class="meta">' + (statusFa[it.status] || it.status) +
+            ' · ' + (it.weight_grams || '—') + ' g</div></div>'
+          )).join('');
+        } catch (e) {
+          showErr('custody-err', 'ارتباط برقرار نشد');
+        } finally {
+          $('btn-custody').disabled = false;
+        }
+      });
+
+      $('btn-orders').addEventListener('click', async () => {
+        showErr('orders-err', null);
+        $('orders-list').innerHTML = '';
+        $('btn-orders').disabled = true;
+        try {
+          const res = await fetch('/v1/customer/orders', { headers: headers() });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showErr('orders-err', data.message || data.error || ('HTTP ' + res.status));
+            return;
+          }
+          const items = data.items || [];
+          if (!items.length) {
+            $('orders-list').innerHTML = '<p class="muted">سفارشی نیست</p>';
+            return;
+          }
+          $('orders-list').innerHTML = items.map((it) => (
+            '<div class="item"><strong dir="ltr">' + (it.order_id || '—') + '</strong>' +
+            '<div class="meta">status: ' + (it.status || '—') +
+            ' · qty ' + (it.quantity || '—') +
+            ' · total_rial ' + (it.total_rial || '—') + '</div></div>'
+          )).join('');
+        } catch (e) {
+          showErr('orders-err', 'ارتباط برقرار نشد');
+        } finally {
+          $('btn-orders').disabled = false;
+        }
+      });
+
+      $('btn-seed').addEventListener('click', async () => {
+        showErr('accept-err', null);
+        $('accept-ok').classList.add('hidden');
+        if (!customerId) {
+          showErr('accept-err', 'برای seed به Customer ID نیاز است');
+          return;
+        }
+        $('btn-seed').disabled = true;
+        try {
+          const res = await fetch('/v1/dev/seed-quote', {
+            method: 'POST',
+            headers: headers({ 'X-Talamala-Dev': '1' }),
+            body: JSON.stringify({
+              customer_id: customerId,
+              quantity: '1.000',
+              unit_price_rial: '350000000',
+              total_rial: '350000000',
+            }),
+          });
+          const data = await res.json().catch(() => ({}));
+          if (!res.ok) {
+            showErr('accept-err', data.message || data.error || 'seed failed');
+            return;
+          }
+          $('quote_id').value = data.quote_id || '';
+          $('accept-ok').textContent = 'Quote fixture آماده شد (نه قیمت زنده)';
+          $('accept-ok').classList.remove('hidden');
+        } catch (e) {
+          showErr('accept-err', 'ارتباط برقرار نشد');
+        } finally {
+          $('btn-seed').disabled = false;
+        }
+      });
+
+      $('btn-accept').addEventListener('click', async () => {
+        showErr('accept-err', null);
+        $('accept-ok').classList.add('hidden');
+        $('accept-json').classList.add('hidden');
+        const quoteId = $('quote_id').value.trim();
+        if (!quoteId) {
+          showErr('accept-err', 'quote_id لازم است');
+          return;
+        }
+        const idem = 'shell-' + Date.now() + '-' + Math.random().toString(16).slice(2, 8);
+        $('btn-accept').disabled = true;
+        try {
+          const res = await fetch('/v1/customer/orders/accept', {
+            method: 'POST',
+            headers: headers({ 'Idempotency-Key': idem }),
+            body: JSON.stringify({ quote_id: quoteId }),
+          });
+          const data = await res.json().catch(() => ({}));
+          $('accept-json').textContent = JSON.stringify(data, null, 2);
+          $('accept-json').classList.remove('hidden');
+          if (!res.ok) {
+            showErr('accept-err', data.message || data.error || ('HTTP ' + res.status));
+            return;
+          }
+          $('accept-ok').textContent =
+            'سفارش پذیرفته شد · settlement: ' + (data.settlement || 'blocked');
+          $('accept-ok').classList.remove('hidden');
+        } catch (e) {
+          showErr('accept-err', 'ارتباط برقرار نشد');
+        } finally {
+          $('btn-accept').disabled = false;
+        }
+      });
+
+      // Prefill from query string for continuity after otp-demo
+      try {
+        const q = new URLSearchParams(location.search);
+        if (q.get('customer_id')) $('customer_id').value = q.get('customer_id');
+        if (q.get('token')) $('token').value = q.get('token');
+      } catch (e) {}
+    })();
+  </script>
+</body>
+</html>
