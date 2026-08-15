@@ -115,13 +115,13 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
-      - name: Run logger_smoke (exact PASS=7 FAIL=0)
+      - name: Run logger_smoke (exact PASS=8 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/logger_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=7 FAIL=0' || {
-            echo "logger_smoke gate failed: expected PASS=7 FAIL=0"
+          echo "$out" | grep -q 'PASS=8 FAIL=0' || {
+            echo "logger_smoke gate failed: expected PASS=8 FAIL=0"
             exit 1
           }
 
@@ -162,8 +162,6 @@ jobs:
           fi
           echo "No obvious secrets"
 
-  # Optional: composer is present in skeleton but not required for smokes.
-  # Fail-closed when files exist; does not block smoke gates if composer is incomplete.
   composer-check:
     name: Composer validate (non-blocking for smoke path)
     runs-on: ubuntu-latest
@@ -236,9 +234,30 @@ jobs:
           echo "$out"
           echo "$out" | grep -q 'PASS=7 FAIL=0' || exit 1
 
+  spa-router-smoke:
+    name: SPA router safety
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring
+          coverage: none
+      - name: spa_router_smoke
+        run: |
+          set -euo pipefail
+          out=$(php bin/spa_router_smoke.php)
+          echo "$out"
+          echo "$out" | grep -q 'FAIL=0' || exit 1
+
   report:
     name: Exact-SHA report
-    needs: [php-syntax, http-smoke, persist-smoke, cors-smoke, logger-smoke, maintenance-smoke, openapi-parity, secret-scan, frontend-typecheck]
+    needs: [php-syntax, http-smoke, persist-smoke, cors-smoke, logger-smoke, maintenance-smoke, spa-router-smoke, openapi-parity, secret-scan, frontend-typecheck]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -251,8 +270,9 @@ jobs:
           echo "  - http-smoke (PASS=43 FAIL=0)"
           echo "  - persist-smoke (PASS=9 FAIL=0)"
           echo "  - cors-smoke (PASS=10 FAIL=0)"
-          echo "  - logger-smoke (PASS=7 FAIL=0)"
+          echo "  - logger-smoke (PASS=8 FAIL=0)"
           echo "  - maintenance-smoke (PASS=7 FAIL=0)"
+          echo "  - spa-router-smoke"
           echo "  - openapi-parity"
           echo "  - secret-scan"
           echo "  - frontend-typecheck"
