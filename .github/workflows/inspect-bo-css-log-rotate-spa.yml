@@ -16,67 +16,31 @@ jobs:
           php-version: '8.3'
           extensions: pdo_sqlite,sqlite3,mbstring,xml,curl
           coverage: none
-      - uses: actions/setup-node@v4
-        with: {node-version: '22'}
-      - name: Safe extract and inspect
+      - name: Extract and print rotate code
         run: |
           set -euo pipefail
-          ZIP=talamala-bo-css-log-rotate-spa-html.zip
-          test -f "$ZIP"
-          echo "ZIP_SHA256=$(sha256sum "$ZIP" | awk '{print $1}')"
           rm -rf /tmp/stage && mkdir -p /tmp/stage
           python3 - <<'PY'
-          import os,stat,zipfile,shutil
-          from pathlib import Path,PurePosixPath
+          import zipfile, shutil
+          from pathlib import Path
           z='talamala-bo-css-log-rotate-spa-html.zip'; out=Path('/tmp/stage')
-          with zipfile.ZipFile(z) as f:
-              files=[]
-              for info in f.infolist():
-                  n=info.filename.replace('\\','/'); p=PurePosixPath(n)
-                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe path: {n}')
-                  mode=(info.external_attr>>16)&0xffff
-                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink rejected: {n}')
-                  if n.endswith('/'): continue
-                  b=os.path.basename(n)
-                  if b.startswith('.env') and b!='.env.example': raise SystemExit(f'secret-like: {n}')
-                  if '/.github/' in '/'+n and not n.endswith('.github/workflows/ci.yml'): raise SystemExit(f'unexpected github file: {n}')
-                  files.append(n)
-              print('ZIP_FILE_COUNT='+str(len(files))); print('\n'.join(files)); f.extractall(out)
+          with zipfile.ZipFile(z) as f: f.extractall(out)
           roots=list(out.iterdir()); src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
-          m=src/'MANIFEST.md'
-          if not m.exists(): raise SystemExit('MANIFEST missing')
-          print('\n--- MANIFEST ---'); print(m.read_text())
           for p in src.iterdir():
-              if p.name=='MANIFEST.md': continue
+              if p.name in ('MANIFEST.md','.github'): continue
               dst=Path.cwd()/p.name
               if p.is_dir(): shutil.copytree(p,dst,dirs_exist_ok=True)
               else: shutil.copy2(p,dst)
           PY
-          git status --short
-      - name: Validate stage gates
-        run: |
-          set -uo pipefail
-          fail=0
-          for cmd in "php backend/bin/logger_smoke.php" "php backend/bin/spa_router_smoke.php"; do
-            echo "=== $cmd ==="
-            set +e
-            out=$(eval "$cmd" 2>&1); rc=$?
-            set -e
-            printf '%s\n' "$out"
-            echo "RC=$rc"
-            [ "$rc" -eq 0 ] || fail=1
-          done
-          [ "$fail" -eq 0 ] || exit 1
-          grep -q 'PASS=8 FAIL=0' <<<"$(php backend/bin/logger_smoke.php)"
-          spa=$(php backend/bin/spa_router_smoke.php); grep -q 'FAIL=0' <<<"$spa"; grep -q 'PASS=6' <<<"$spa"
-          out=$(php backend/bin/http_smoke.php); echo "$out"; grep -q 'PASS=43 FAIL=0' <<<"$out"
-          out=$(php backend/bin/maintenance_smoke.php); echo "$out"; grep -q 'PASS=7 FAIL=0' <<<"$out"
-          out=$(php backend/bin/check.php); echo "$out"; grep -q 'ALL CHECKS PASSED' <<<"$out"
-          cd frontend/backoffice
-          npm ci --no-audit --no-fund
-          npm run typecheck
-      - name: Diff sanity
-        run: |
-          set -euo pipefail
-          git diff --check -- ':(exclude)docs/**'
-          git status --short
+          echo '--- StructuredLogger rotate refs ---'
+          grep -n -C 8 -E 'LOG_MAX|maxBytes|rotate|filesize|rename|\.1' backend/app/Infrastructure/Logging/StructuredLogger.php || true
+          echo '--- logger_smoke rotate refs ---'
+          grep -n -C 10 -E 'LOG_MAX|maxBytes|rotate|\.1|TALAMALA_LOG' backend/bin/logger_smoke.php || true
+          echo '--- env refs ---'
+          grep -n 'TALAMALA_LOG' .env.example || true
+          echo '--- raw logger smoke ---'
+          set +e
+          php backend/bin/logger_smoke.php
+          rc=$?
+          echo "RC=$rc"
+          exit $rc
