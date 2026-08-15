@@ -77,11 +77,19 @@ jobs:
           printf '%s\n' "$out3" | grep -Eq 'FAIL=0([^0-9]|$)'
           printf '%s\n' "$out3" | grep -qi 'parity OK'
       - name: Validate customer frontend
+        timeout-minutes: 3
         working-directory: frontend/customer
-        run: npm ci && npm run typecheck && npm run build
+        run: |
+          npm ci --no-audit --no-fund --prefer-offline
+          npm run typecheck
+          npm run build
       - name: Validate backoffice frontend
+        timeout-minutes: 3
         working-directory: frontend/backoffice
-        run: npm ci && npm run typecheck && npm run build
+        run: |
+          npm ci --no-audit --no-fund --prefer-offline
+          npm run typecheck
+          npm run build
       - name: Stage manifest scope except CI workflow
         shell: bash
         run: |
