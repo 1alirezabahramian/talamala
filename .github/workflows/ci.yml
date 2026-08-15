@@ -43,13 +43,13 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
-      - name: Run http_smoke (exact PASS=33 FAIL=0)
+      - name: Run http_smoke (exact PASS=41 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/http_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=33 FAIL=0' || {
-            echo "http_smoke gate failed: expected PASS=33 FAIL=0"
+          echo "$out" | grep -q 'PASS=41 FAIL=0' || {
+            echo "http_smoke gate failed: expected PASS=41 FAIL=0"
             exit 1
           }
 
@@ -181,7 +181,7 @@ jobs:
           echo "Ref: ${{ github.ref }}"
           echo "Gates required for green SHA:"
           echo "  - php-syntax"
-          echo "  - http-smoke (PASS=33 FAIL=0)"
+          echo "  - http-smoke (PASS=41 FAIL=0)"
           echo "  - persist-smoke (PASS=9 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"
