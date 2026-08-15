@@ -1,4 +1,4 @@
-name: Inspect Stage C complete delivery
+name: Inspect backoffice registration delivery
 
 on:
   push:
@@ -14,20 +14,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Safely inspect Stage C complete ZIP
+      - name: Safely inspect backoffice ZIP
         shell: bash
         run: |
           set -euo pipefail
-          test -f talamala-stage-C-complete.zip
+          test -f talamala-stage-backoffice-reg.zip
+          rm -rf /tmp/backoffice-reg && mkdir -p /tmp/backoffice-reg
           python3 - <<'PY'
           import os, stat, zipfile
           from pathlib import PurePosixPath
-          zpath='talamala-stage-C-complete.zip'
-          allowed_roots={'backend','frontend','openapi','docs'}
+          zpath='talamala-stage-backoffice-reg.zip'
+          allowed_prefixes=('backend/','frontend/backoffice/','openapi/','docs/')
           with zipfile.ZipFile(zpath) as z:
               files=[]
-              prod=[]
-              guides=[]
               for info in z.infolist():
                   name=info.filename.replace('\\','/')
                   p=PurePosixPath(name)
@@ -38,28 +37,19 @@ jobs:
                       raise SystemExit(f'symlink rejected: {name}')
                   if name.endswith('/'):
                       continue
-                  if os.path.basename(name).startswith('.env') and os.path.basename(name) != '.env.example':
+                  base=os.path.basename(name)
+                  if base.startswith('.env') and base != '.env.example':
                       raise SystemExit(f'secret-like file rejected: {name}')
-                  root=p.parts[0] if p.parts else ''
-                  if root in allowed_roots:
-                      if root=='frontend' and not name.startswith('frontend/customer/'):
-                          raise SystemExit(f'frontend outside customer scope: {name}')
-                      prod.append(name)
-                  elif len(p.parts)==1 and name.lower().endswith('.md'):
-                      guides.append(name)
-                  else:
-                      raise SystemExit(f'outside allowed roots: {name}')
+                  if not name.startswith(allowed_prefixes):
+                      if len(p.parts)==1 and name.lower().endswith('.md'):
+                          print('BUNDLED_GUIDE='+name)
+                      else:
+                          raise SystemExit(f'outside commit-allowed/bundled-guide scope: {name}')
                   files.append(name)
-              if not prod:
-                  raise SystemExit('no production files')
               print('ZIP_FILE_COUNT='+str(len(files)))
-              print('PRODUCTION_FILE_COUNT='+str(len(prod)))
-              print('GUIDES='+repr(sorted(guides)))
               for n in sorted(files): print(n)
-              required=['backend/public/otp-demo.html','docs/00-master/CURRENT_STATE.md','docs/00-master/STAGE_C_OTP_FRONTEND.md']
-              for r in required:
-                  if r not in prod:
-                      raise SystemExit(f'missing required file: {r}')
-              z.extractall('/tmp/stage-c-complete')
+              z.extractall('/tmp/backoffice-reg')
           print('ZIP_OK')
           PY
+          echo '--- STAGE/MANIFEST CANDIDATES ---'
+          find /tmp/backoffice-reg -type f \( -iname 'MANIFEST.md' -o -iname 'README*.md' -o -iname '*STAGE*BACKOFFICE*.md' -o -iname 'STAGE.md' \) -print -exec sh -c 'echo "--- $1 ---"; sed -n "1,220p" "$1"' _ {} \;
