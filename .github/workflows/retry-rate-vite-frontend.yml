@@ -1,0 +1,71 @@
+name: Retry Rate Vite Frontend Validation
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  frontend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Extract delivery safely
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP=talamala-rate-limiter-thin-vite.zip
+          test -f "$ZIP"
+          rm -rf /tmp/ratevite && mkdir -p /tmp/ratevite
+          python3 - <<'PY'
+          import os, stat, zipfile
+          from pathlib import Path, PurePosixPath
+          z='talamala-rate-limiter-thin-vite.zip'; out=Path('/tmp/ratevite')
+          with zipfile.ZipFile(z) as f:
+              for info in f.infolist():
+                  n=info.filename.replace('\\','/')
+                  p=PurePosixPath(n)
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe path: {n}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink: {n}')
+              f.extractall(out)
+          roots=list(out.iterdir())
+          src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
+          print(src)
+          Path('/tmp/srcpath').write_text(str(src))
+          PY
+      - name: npm connectivity diagnostics
+        shell: bash
+        run: |
+          set -x
+          node --version
+          npm --version
+          npm config get registry
+          curl -I --max-time 20 https://registry.npmjs.org/react || true
+          npm ping --registry=https://registry.npmjs.org/ || true
+      - name: Customer clean install typecheck build
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=$(cat /tmp/srcpath)
+          cd "$SRC/frontend/customer"
+          npm ci --no-audit --no-fund --loglevel=verbose
+          npm run typecheck
+          npm run build
+      - name: Backoffice clean install typecheck build
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          SRC=$(cat /tmp/srcpath)
+          cd "$SRC/frontend/backoffice"
+          npm ci --no-audit --no-fund --loglevel=verbose
+          npm run typecheck
+          npm run build
