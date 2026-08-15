@@ -114,6 +114,8 @@ jobs:
           fi
           echo "No obvious secrets"
 
+  # Optional: composer is present in skeleton but not required for smokes.
+  # Fail-closed when files exist; does not block smoke gates if composer is incomplete.
   composer-check:
     name: Composer validate (non-blocking for smoke path)
     runs-on: ubuntu-latest
@@ -135,6 +137,8 @@ jobs:
           else
             echo "No composer.json"
           fi
+      # Install is best-effort for skeleton; failure does not hide smoke gates
+      # (smokes run without vendor). Logged for visibility only.
       - name: Attempt composer install (informational)
         continue-on-error: true
         run: |
