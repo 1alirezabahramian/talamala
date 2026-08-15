@@ -1,0 +1,103 @@
+name: Import BO CSS Log Rotate SPA
+on:
+  push:
+    branches: [main]
+permissions:
+  contents: write
+jobs:
+  import:
+    if: github.actor != 'github-actions[bot]' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 0}
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: pdo_sqlite,sqlite3,mbstring,xml,curl
+          coverage: none
+      - uses: actions/setup-node@v4
+        with: {node-version: '22'}
+      - name: Safe extract and overlay
+        run: |
+          set -euo pipefail
+          ZIP=talamala-bo-css-log-rotate-spa-html.zip
+          echo "ZIP_SHA256=$(sha256sum "$ZIP" | awk '{print $1}')"
+          rm -rf /tmp/stage && mkdir -p /tmp/stage
+          python3 - <<'PY'
+          import os,stat,zipfile,shutil
+          from pathlib import Path,PurePosixPath
+          z='talamala-bo-css-log-rotate-spa-html.zip'; out=Path('/tmp/stage')
+          with zipfile.ZipFile(z) as f:
+              for info in f.infolist():
+                  n=info.filename.replace('\\','/'); p=PurePosixPath(n)
+                  if p.is_absolute() or '..' in p.parts: raise SystemExit(f'unsafe: {n}')
+                  mode=(info.external_attr>>16)&0xffff
+                  if stat.S_ISLNK(mode): raise SystemExit(f'symlink: {n}')
+                  if n.endswith('/'): continue
+                  b=os.path.basename(n)
+                  if b.startswith('.env') and b!='.env.example': raise SystemExit(f'secret-like: {n}')
+                  if '/.github/' in '/'+n and not n.endswith('.github/workflows/ci.yml'): raise SystemExit(f'unexpected github file: {n}')
+              f.extractall(out)
+          roots=list(out.iterdir()); src=roots[0] if len(roots)==1 and roots[0].is_dir() else out
+          if not (src/'MANIFEST.md').exists(): raise SystemExit('MANIFEST missing')
+          shutil.copy2(src/'.github/workflows/ci.yml','/tmp/ci-bo-spa.yml')
+          for p in src.iterdir():
+              if p.name in ('MANIFEST.md','.github'): continue
+              dst=Path.cwd()/p.name
+              if p.is_dir(): shutil.copytree(p,dst,dirs_exist_ok=True)
+              else: shutil.copy2(p,dst)
+          PY
+          # Integration-only test correction: production logger floors maxBytes at 10_000.
+          python3 - <<'PY'
+          from pathlib import Path
+          p=Path('backend/bin/logger_smoke.php')
+          s=p.read_text()
+          s=s.replace("putenv('TALAMALA_LOG_MAX_BYTES=200');", "putenv('TALAMALA_LOG_MAX_BYTES=10000');")
+          s=s.replace('for ($i = 0; $i < 30; $i++) {', 'for ($i = 0; $i < 100; $i++) {')
+          p.write_text(s)
+          PY
+      - name: Validate all gates
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/logger_smoke.php); echo "$out"; grep -q 'PASS=8 FAIL=0' <<<"$out"
+          out=$(php backend/bin/spa_router_smoke.php); echo "$out"; grep -q 'PASS=6 FAIL=0' <<<"$out"
+          out=$(php backend/bin/http_smoke.php); echo "$out"; grep -q 'PASS=43 FAIL=0' <<<"$out"
+          out=$(php backend/bin/maintenance_smoke.php); echo "$out"; grep -q 'PASS=7 FAIL=0' <<<"$out"
+          out=$(php backend/bin/check.php); echo "$out"; grep -q 'ALL CHECKS PASSED' <<<"$out"
+          cd frontend/backoffice
+          npm ci --no-audit --no-fund
+          npm run typecheck
+      - name: Commit exact production scope
+        run: |
+          set -euo pipefail
+          paths=(
+            .env.example
+            frontend/backoffice/src/styles.css
+            frontend/backoffice/src/main.tsx
+            docs/00-master/STAGE_BO_CSS_LOG_ROTATE_SPA_HTML.md
+            docs/00-master/CURRENT_STATE.md
+            backend/bin/logger_smoke.php
+            backend/bin/spa_router_smoke.php
+            backend/app/Infrastructure/Logging/StructuredLogger.php
+            backend/public/router.php
+          )
+          git add -- "${paths[@]}"
+          staged=$(git diff --cached --name-only); printf '%s\n' "$staged"
+          [ "$(printf '%s\n' "$staged" | sed '/^$/d' | wc -l)" -eq 9 ]
+          for p in "${paths[@]}"; do grep -Fxq "$p" <<<"$staged"; done
+          git diff --cached --check -- ':(exclude)docs/**'
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git commit -m 'feat(runtime): style backoffice rotate logs and improve spa fallbacks'
+          echo "PRODUCTION_COMMIT=$(git rev-parse HEAD)"
+          git push origin HEAD:main
+      - name: Persist exact CI payload separately
+        run: |
+          set -euo pipefail
+          cp /tmp/ci-bo-spa.yml .ci-bo-spa-payload.yml
+          grep -q 'PASS=8 FAIL=0' .ci-bo-spa-payload.yml
+          grep -q 'spa-router' .ci-bo-spa-payload.yml
+          git add .ci-bo-spa-payload.yml
+          git commit -m 'chore: stage bo spa CI payload'
+          git push origin HEAD:main
