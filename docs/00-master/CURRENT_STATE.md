@@ -3,7 +3,7 @@
 ## Smokes
 | Check | Expect |
 |-------|--------|
-| http_smoke | PASS=48 FAIL=0 |
+| http_smoke | PASS=49 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=10 FAIL=0 |
 | logger_smoke | PASS=8 FAIL=0 |
@@ -19,8 +19,8 @@
 - HTML demos share baseline security headers + minimal CSP (inline allowed for zero-build demos)
 
 ## Hardening
-- Bearer session must match Host tenant (`tenant_session_mismatch` → 403)
-- http_smoke PASS=48 (cross-tenant + auth scheme negatives)
+- Bearer session must match Host tenant (`tenant_session_mismatch` → 403) for **customer and staff**
+- http_smoke PASS=49 (customer + staff cross-tenant + auth scheme negatives)
 - Frontend typecheck is **optional** in CI (`continue-on-error`) — does not block green SHA
 
 ## BLOCKED

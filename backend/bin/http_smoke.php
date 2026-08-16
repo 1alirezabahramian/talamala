@@ -276,6 +276,14 @@ $check(
     $r
 );
 
+// Cross-tenant staff bearer: demo staff token under other.local must fail closed
+$r = $k->handle('GET', '/v1/admin/registrations', $hOther + ['authorization' => 'Bearer ' . $staffToken], null);
+$check(
+    'session_staff_cross_tenant_rejected',
+    ($r['status'] ?? 0) === 403 && (($r['body']['error'] ?? '') === 'tenant_session_mismatch'),
+    $r
+);
+
 // Malformed Authorization (missing Bearer scheme)
 $r = $k->handle('GET', '/v1/customer/assets', $h + ['authorization' => $token], null);
 $check('session_auth_missing_bearer_scheme', ($r['status'] ?? 0) === 401, $r);
