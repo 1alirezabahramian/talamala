@@ -1,5 +1,8 @@
 # Talamala — Current State (2026-08-16)
 
+## VERSION
+`0.3.1-phase1`
+
 ## Smokes
 | Check | Expect |
 |-------|--------|
@@ -8,20 +11,20 @@
 | cors_smoke | PASS=10 FAIL=0 |
 | logger_smoke | PASS=8 FAIL=0 |
 | maintenance_smoke | PASS=7 FAIL=0 |
-| spa_router_smoke | FAIL=0 |
-| landing_smoke | **PASS=13 FAIL=0** |
+| spa_router_smoke | **PASS=6 FAIL=0** |
+| landing_smoke | PASS=13 FAIL=0 |
 | openapi_parity | PASS |
 
 ## Operator
 - `make check` / `make serve`
 - `make frontend-typecheck` / `make frontend-build` (optional; Node required)
 - `/` landing shows VERSION + optional BUILD_SHA
-- HTML demos share baseline security headers + minimal CSP (inline allowed for zero-build demos)
+- HTML demos: baseline security headers + minimal CSP
 
 ## Hardening
-- Bearer session must match Host tenant (`tenant_session_mismatch` → 403) for **customer and staff**
-- http_smoke PASS=49 (customer + staff cross-tenant + auth scheme negatives)
-- Frontend typecheck is **optional** in CI (`continue-on-error`) — does not block green SHA
+- Bearer session ↔ Host tenant match for **customer and staff** (`tenant_session_mismatch` → 403)
+- http_smoke PASS=49 · spa_router exact PASS=6 in CI
+- Frontend typecheck **optional** in CI (`continue-on-error`)
 
 ## BLOCKED
 Kimia Write · Pricing · Settlement · Payment · Delta blind port

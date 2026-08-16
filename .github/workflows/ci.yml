@@ -250,12 +250,12 @@ jobs:
           php-version: '8.3'
           extensions: mbstring
           coverage: none
-      - name: spa_router_smoke
+      - name: spa_router_smoke (exact PASS=6 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/spa_router_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'FAIL=0' || exit 1
+          echo "$out" | grep -q 'PASS=6 FAIL=0' || { echo "spa_router_smoke gate failed: expected PASS=6 FAIL=0"; exit 1; }
 
   landing-smoke:
     name: Landing hub
@@ -294,7 +294,7 @@ jobs:
           echo "  - cors-smoke (PASS=10 FAIL=0)"
           echo "  - logger-smoke (PASS=8 FAIL=0)"
           echo "  - maintenance-smoke (PASS=7 FAIL=0)"
-          echo "  - spa-router-smoke"
+          echo "  - spa-router-smoke (PASS=6 FAIL=0)"
           echo "  - landing-smoke (PASS=13 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"

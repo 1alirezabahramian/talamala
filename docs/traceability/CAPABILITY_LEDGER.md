@@ -4,10 +4,10 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 
 | ID | Domain | Capability | Status | Notes |
 |----|--------|------------|--------|-------|
-| CAP-001 | Tenant | Host resolution fail-closed | IMPLEMENTED | ADR-001 |
+| CAP-001 | Tenant | Host resolution fail-closed | IMPLEMENTED | ADR-001 · InMemory seed hosts |
 | CAP-002 | Audit | Audit events | IMPLEMENTED | SQLite Persistence-2 |
 | CAP-003 | Idempotency | Tenant-scoped keys | IMPLEMENTED | SQLite Persistence-2 |
-| CAP-004 | Identity | Customer OTP | IMPLEMENTED | Fake SMS |
+| CAP-004 | Identity | Customer OTP | IMPLEMENTED | Fake SMS · rate limit 5/300s |
 | CAP-005 | Identity | Staff auth + rotation | IMPLEMENTED | |
 | CAP-006 | Identity | Registration + Jibit gate | IMPLEMENTED | Fake Jibit |
 | CAP-007 | Identity | Admin approval queue | IMPLEMENTED | |
@@ -19,16 +19,23 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-013 | Order | Accept from quote | IMPLEMENTED | |
 | CAP-014 | Order | Settlement write | BLOCKED | Ground truth |
 | CAP-015 | Custody | Lifecycle | IMPLEMENTED | Talamala truth |
-| CAP-016 | API | OpenAPI auth/customer/backoffice | IMPLEMENTED | Runtime parity + CI gate 2026-08-15 |
-| CAP-017 | Frontend | Customer screens | PARTIAL | Structure only |
-| CAP-018 | Frontend | Backoffice screens | PARTIAL | Structure only |
+| CAP-016 | API | OpenAPI auth/customer/backoffice | IMPLEMENTED | Runtime parity + CI gate |
+| CAP-017 | Frontend | Customer screens | PARTIAL | Thin Vite · structure only |
+| CAP-018 | Frontend | Backoffice screens | PARTIAL | Thin Vite · structure only |
 | CAP-019 | Payment | Gateways | BLOCKED | Ground truth |
-| CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed + smoke gates 2026-08-15 |
+| CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed smoke gates (http 49) |
+| CAP-021 | Security | Session↔tenant isolation | IMPLEMENTED | Customer + staff · 403 mismatch |
+| CAP-022 | Security | Minimal CSP on static HTML | IMPLEMENTED | unsafe-inline for zero-build demos |
 
 Do not copy GoldPlatform completion percentages.
 
-
-## Persistence notes (2026-08-15)
+## Persistence notes (2026-08-16)
 - Persistence-1: Customer / Custody / Quote / Order → SQLite PDO
 - Persistence-2: Sessions / Idempotency / Audit / OTP rate limiter → SQLite PDO
 - Tenant resolver: still InMemory (host seed only; durable multi-tenant resolver deferred)
+
+## Release notes (2026-08-16)
+- Frontend typecheck optional in CI (`continue-on-error`)
+- http_smoke PASS=49 (staff cross-tenant negative gated)
+- spa_router_smoke exact PASS=6 in CI
+- VERSION 0.3.1-phase1
