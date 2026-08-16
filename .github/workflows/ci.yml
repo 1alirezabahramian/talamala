@@ -91,13 +91,13 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
-      - name: Run cors_smoke (exact PASS=10 FAIL=0)
+      - name: Run cors_smoke (exact PASS=11 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/cors_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=10 FAIL=0' || {
-            echo "cors_smoke gate failed: expected PASS=10 FAIL=0"
+          echo "$out" | grep -q 'PASS=11 FAIL=0' || {
+            echo "cors_smoke gate failed: expected PASS=11 FAIL=0"
             exit 1
           }
 
@@ -270,12 +270,12 @@ jobs:
         with:
           php-version: '8.3'
           coverage: none
-      - name: landing_smoke (PASS=13 FAIL=0)
+      - name: landing_smoke (PASS=16 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php bin/landing_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=13 FAIL=0' || exit 1
+          echo "$out" | grep -q 'PASS=16 FAIL=0' || exit 1
 
   report:
     name: Exact-SHA report
@@ -291,11 +291,11 @@ jobs:
           echo "  - php-syntax"
           echo "  - http-smoke (PASS=49 FAIL=0)"
           echo "  - persist-smoke (PASS=9 FAIL=0)"
-          echo "  - cors-smoke (PASS=10 FAIL=0)"
+          echo "  - cors-smoke (PASS=11 FAIL=0)"
           echo "  - logger-smoke (PASS=8 FAIL=0)"
           echo "  - maintenance-smoke (PASS=7 FAIL=0)"
           echo "  - spa-router-smoke (PASS=6 FAIL=0)"
-          echo "  - landing-smoke (PASS=13 FAIL=0)"
+          echo "  - landing-smoke (PASS=16 FAIL=0)"
           echo "  - openapi-parity"
           echo "  - secret-scan"
           echo "  - frontend-typecheck (optional / continue-on-error — advisory only)"

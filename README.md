@@ -2,17 +2,33 @@
 
 White-label multi-tenant platform for gold & precious-metal businesses.
 
-**Slogan:** Complex Backend — Simple Frontend
+**Slogan:** Complex Backend — Simple Frontend  
+**VERSION:** see `VERSION` file (`0.3.2-phase1`)
 
 ## Status (talago continuous build)
 
 | Stage | Status |
 |-------|--------|
 | 0 Truth & Governance | Closed |
-| 1 Foundation | Skeleton complete |
+| 1 Foundation | Skeleton complete + Phase-1 hardening |
 | 2 Identity | OTP + Staff + Registration vertical (fakes) |
 | 3 Kimia Read | Http client + FinancialReadService + /assets |
 | Quote / Order / Custody | Domain + services; price & settlement blocked |
+
+## Smokes (exact CI gates)
+
+| Check | Expect |
+|-------|--------|
+| http_smoke | PASS=49 FAIL=0 |
+| persist_smoke | PASS=9 FAIL=0 |
+| cors_smoke | PASS=11 FAIL=0 |
+| logger_smoke | PASS=8 FAIL=0 |
+| maintenance_smoke | PASS=7 FAIL=0 |
+| spa_router_smoke | PASS=6 FAIL=0 |
+| landing_smoke | PASS=16 FAIL=0 |
+| openapi_parity | PASS |
+
+Frontend typecheck is **optional** in CI (`continue-on-error`).
 
 ## Non-negotiables
 
@@ -25,7 +41,7 @@ White-label multi-tenant platform for gold & precious-metal businesses.
 - After any Kimia write → readback (writes not enabled yet)
 - Never invent Action codes, price coefficients, or payment contracts
 
-## Working vertical (in-memory)
+## Working vertical
 
 ```
 OTP → verify → register (Jibit gate) → staff approve
@@ -49,32 +65,15 @@ infra/       containers
 See `docs/00-master/GROUND_TRUTH_BLOCKERS.md`  
 Price provider · Kimia write · Payment · live credentials
 
-## Snapshot
+## Local run / operators
 
-`talamala-snapshot.zip` in artifacts parent directory.
+- `docs/00-master/LOCAL_RUN.md`
+- `docs/00-master/OPERATORS.md`
+
+```bash
+make check
+make serve
+# open http://127.0.0.1:8080/   Host: demo.local
+```
 
 Proprietary — owner.
-
-## Local run
-
-See `docs/00-master/LOCAL_RUN.md`.
-
-```bash
-cd backend
-php bin/http_smoke.php          # PASS=32
-php -S 127.0.0.1:8080 -t public public/router.php
-```
-
-Host for demo tenant: `demo.local`
-
-
-
-## Operator quick start
-
-See `docs/00-master/OPERATORS.md`.
-
-```bash
-cd backend && php bin/check.php
-php -S 127.0.0.1:8080 -t public public/router.php
-# open http://127.0.0.1:8080/
-```

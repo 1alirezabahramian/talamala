@@ -26,6 +26,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed smoke gates (http 49) |
 | CAP-021 | Security | Session↔tenant isolation | IMPLEMENTED | Customer + staff · 403 mismatch |
 | CAP-022 | Security | Minimal CSP on static HTML | IMPLEMENTED | unsafe-inline for zero-build demos |
+| CAP-023 | Security | Permissions-Policy baseline | IMPLEMENTED | API + HTML · camera/mic/geo off |
+| CAP-024 | Ops | robots.txt demo isolation | IMPLEMENTED | blocks demos /app /v1/dev |
 
 Do not copy GoldPlatform completion percentages.
 
@@ -38,4 +40,4 @@ Do not copy GoldPlatform completion percentages.
 - Frontend typecheck optional in CI (`continue-on-error`)
 - http_smoke PASS=49 (staff cross-tenant negative gated)
 - spa_router_smoke exact PASS=6 in CI
-- VERSION 0.3.1-phase1
+- VERSION 0.3.2-phase1 · cors 11 · landing 16 · Permissions-Policy

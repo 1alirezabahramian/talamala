@@ -42,6 +42,11 @@ $rt = (string) $rt;
 $check('router_html_security_headers', str_contains($rt, 'X-Frame-Options') && str_contains($rt, 'serveHtmlFile'), null);
 $check('router_html_csp', str_contains($rt, 'Content-Security-Policy') && str_contains($rt, "frame-ancestors 'none'"), null);
 $check('makefile_exists', is_file(dirname($root) . '/Makefile'), null);
+$check('router_permissions_policy', str_contains($rt, 'Permissions-Policy'), null);
+$robots = $root . '/public/robots.txt';
+$rb = is_file($robots) ? (string) file_get_contents($robots) : '';
+$check('robots_exists', is_file($robots), $robots);
+$check('robots_blocks_dev_and_demos', str_contains($rb, '/v1/dev/') && str_contains($rb, '/otp-demo.html') && str_contains($rb, '/app/'), $rb);
 
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

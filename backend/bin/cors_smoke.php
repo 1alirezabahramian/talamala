@@ -29,6 +29,7 @@ $check('cors_deny_unknown_origin', !isset($h['Access-Control-Allow-Origin']), $h
 $check('security_nosniff', ($h['X-Content-Type-Options'] ?? '') === 'nosniff', $h);
 $check('security_frame_deny', ($h['X-Frame-Options'] ?? '') === 'DENY', $h);
 $check('security_no_store', ($h['Cache-Control'] ?? '') === 'no-store', $h);
+$check('security_permissions_policy', str_contains($h['Permissions-Policy'] ?? '', 'camera=()'), $h);
 
 putenv('TALAMALA_CORS_ORIGINS=https://app.example,http://127.0.0.1:5173');
 $h = SecurityHeaders::defaults('https://app.example');

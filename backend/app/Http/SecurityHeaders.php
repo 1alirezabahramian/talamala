@@ -18,6 +18,7 @@ final class SecurityHeaders
             'X-Content-Type-Options' => 'nosniff',
             'X-Frame-Options' => 'DENY',
             'Referrer-Policy' => 'no-referrer',
+            'Permissions-Policy' => 'camera=(), microphone=(), geolocation=()',
             'Cache-Control' => 'no-store',
             'Content-Type' => 'application/json; charset=utf-8',
         ];

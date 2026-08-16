@@ -1,4 +1,4 @@
-# Local / skeleton demos — disallow indexing of operator hub noise
+# Talamala local / skeleton — keep operator demos out of indexers
 User-agent: *
 Disallow: /otp-demo.html
 Disallow: /admin-reg-demo.html
@@ -8,3 +8,6 @@ Disallow: /custody-demo.html
 Disallow: /assets-demo.html
 Disallow: /order-demo.html
 Disallow: /v1/dev/
+Disallow: /app/
+Disallow: /readyz
+# Allow landing + health for operators; demos and SPA builds blocked
