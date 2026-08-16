@@ -1,4 +1,4 @@
-# Talamala — Current State (2026-08-15)
+# Talamala — Current State (2026-08-16)
 
 ## Smokes
 | Check | Expect |
@@ -14,12 +14,14 @@
 
 ## Operator
 - `make check` / `make serve`
+- `make frontend-typecheck` / `make frontend-build` (optional; Node required)
 - `/` landing shows VERSION + optional BUILD_SHA
 - HTML demos share baseline security headers + minimal CSP (inline allowed for zero-build demos)
 
-## Hardening (this stage)
+## Hardening
 - Bearer session must match Host tenant (`tenant_session_mismatch` → 403)
 - http_smoke PASS=48 (cross-tenant + auth scheme negatives)
+- Frontend typecheck is **optional** in CI (`continue-on-error`) — does not block green SHA
 
 ## BLOCKED
 Kimia Write · Pricing · Settlement · Payment · Delta blind port

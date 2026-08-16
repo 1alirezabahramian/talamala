@@ -22,13 +22,17 @@ cd backend && php -S 127.0.0.1:8080 -t public public/router.php
 Open http://127.0.0.1:8080/ (landing hub).  
 Tenant demos: send `Host: demo.local` or `X-Talamala-Host: demo.local`.
 
-## SPA builds
+## SPA / frontend (optional)
 
 ```bash
-cd frontend/customer && npm ci && npm run build
-cd frontend/backoffice && npm ci && npm run build
-# then /app/customer/ and /app/backoffice/
+make frontend-typecheck   # tsc only
+make frontend-build       # tsc + vite build → dist served under /app/customer /app/backoffice
+# or manual:
+#   cd frontend/customer && npm ci && npm run typecheck
+#   cd frontend/backoffice && npm ci && npm run typecheck
 ```
+
+Frontend typecheck is **advisory** in CI (`continue-on-error`); a Node/npm failure does not fail the green SHA.
 
 ## Production flags
 

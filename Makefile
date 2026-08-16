@@ -1,6 +1,7 @@
 # Talamala — operator shortcuts (no invent financial targets)
 
-.PHONY: check smokes http persist cors logger maintenance landing spa parity php-syntax
+.PHONY: check smokes http persist cors logger maintenance landing spa parity php-syntax \
+	frontend-typecheck frontend-build serve
 
 check:
 	php backend/bin/check.php
@@ -33,6 +34,15 @@ parity:
 
 php-syntax:
 	find backend/app backend/bin -name '*.php' -print0 | xargs -0 -n1 php -l
+
+# Optional / advisory (Node required). Does not block CI green SHA.
+frontend-typecheck:
+	cd frontend/customer && npm ci && npm run typecheck
+	cd frontend/backoffice && npm ci && npm run typecheck
+
+frontend-build:
+	cd frontend/customer && npm ci && npm run build
+	cd frontend/backoffice && npm ci && npm run build
 
 serve:
 	cd backend && php -S 127.0.0.1:8080 -t public public/router.php
