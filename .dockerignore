@@ -1,0 +1,15 @@
+.git
+.github
+node_modules
+frontend/**/node_modules
+frontend/**/dist
+vendor
+var
+.env
+.env.*
+!.env.example
+*.sqlite
+*.sqlite-journal
+*.log
+*.zip
+Talamala_COMPLETE_ONE_SHOT_HANDOFF.zip
