@@ -1,0 +1,180 @@
+name: Talamala Chabokan Control
+
+on:
+  workflow_dispatch:
+    inputs:
+      action:
+        description: "Operation against talamala-kimia-runner"
+        required: true
+        type: choice
+        default: logs
+        options:
+          - status
+          - logs
+          - deploy
+          - restart
+          - start
+          - stop
+          - preflight
+      confirm:
+        description: "For deploy/restart/start/stop/preflight type TALAMALA"
+        required: false
+        default: ""
+  push:
+    branches:
+      - main
+      - ops/chabokan-github-control
+    paths:
+      - .github/workflows/chabokan-talamala-control.yml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: talamala-chabokan-control
+  cancel-in-progress: false
+
+env:
+  CHABOKAN_SERVICE: talamala-kimia-runner
+  TALAMALA_RUNNER_REF: ops/chabokan-kimia-runner
+  CHABOKAN_CLI_VERSION: 0.9.0
+
+jobs:
+  validate:
+    name: Validate control contract
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Validate pinned Chabokan CLI contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
+          chabok version
+          chabok deploy --help | grep -F -- "--service"
+          chabok service logs --help | grep -F -- "--service"
+          chabok service restart --help | grep -F -- "--service"
+          chabok service start --help | grep -F -- "--service"
+          chabok service stop --help | grep -F -- "--service"
+
+      - name: Validate service lock and source ref
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "${CHABOKAN_SERVICE}" = "talamala-kimia-runner"
+          test "${TALAMALA_RUNNER_REF}" = "ops/chabokan-kimia-runner"
+
+  operate:
+    name: "Chabokan: ${{ inputs.action }}"
+    if: github.event_name == 'workflow_dispatch'
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Validate requested operation
+        shell: bash
+        env:
+          ACTION: ${{ inputs.action }}
+          CONFIRM: ${{ inputs.confirm }}
+        run: |
+          set -euo pipefail
+          case "$ACTION" in
+            status|logs)
+              ;;
+            deploy|restart|start|stop|preflight)
+              if [ "$CONFIRM" != "TALAMALA" ]; then
+                echo "::error::Confirmation required. Type TALAMALA."
+                exit 64
+              fi
+              ;;
+            *)
+              echo "::error::Unsupported action: $ACTION"
+              exit 64
+              ;;
+          esac
+
+      - name: Checkout dedicated Talamala runner source
+        if: inputs.action == 'deploy'
+        uses: actions/checkout@v4
+        with:
+          ref: ops/chabokan-kimia-runner
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pinned Chabokan CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
+          chabok version
+
+      - name: Authenticate to Chabokan
+        shell: bash
+        env:
+          CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ -z "${CHABOKAN_TOKEN:-}" ]; then
+            echo "::error::Repository secret CHABOKAN_TOKEN is not configured."
+            exit 78
+          fi
+          echo "::add-mask::$CHABOKAN_TOKEN"
+          chabok login -t "$CHABOKAN_TOKEN"
+          chabok account info
+
+      - name: Verify dedicated service exists
+        shell: bash
+        run: |
+          set -euo pipefail
+          chabok service list | tee /tmp/chabokan-services.txt
+          grep -Fq "${CHABOKAN_SERVICE}" /tmp/chabokan-services.txt || {
+            echo "::error::Dedicated service ${CHABOKAN_SERVICE} not found."
+            exit 69
+          }
+
+      - name: Execute service-locked operation
+        shell: bash
+        env:
+          ACTION: ${{ inputs.action }}
+        run: |
+          set -euo pipefail
+          case "$ACTION" in
+            status)
+              chabok service list
+              ;;
+            logs)
+              chabok service logs -s "${CHABOKAN_SERVICE}"
+              ;;
+            deploy)
+              echo "source_ref=${TALAMALA_RUNNER_REF}"
+              echo "source_sha=$(git rev-parse HEAD)"
+              chabok deploy -s "${CHABOKAN_SERVICE}"
+              sleep 15
+              chabok service logs -s "${CHABOKAN_SERVICE}" || true
+              ;;
+            restart)
+              chabok service restart -s "${CHABOKAN_SERVICE}"
+              sleep 10
+              chabok service logs -s "${CHABOKAN_SERVICE}" || true
+              ;;
+            start)
+              chabok service start -s "${CHABOKAN_SERVICE}"
+              ;;
+            stop)
+              chabok service stop -s "${CHABOKAN_SERVICE}"
+              ;;
+            preflight)
+              chabok service restart -s "${CHABOKAN_SERVICE}"
+              sleep 10
+              chabok service logs -s "${CHABOKAN_SERVICE}" || true
+              ;;
+          esac
