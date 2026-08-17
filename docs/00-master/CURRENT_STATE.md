@@ -28,3 +28,8 @@ No speculative domain development until valid Ground Truth is archived.
 
 ## BLOCKED (requires official GT)
 Kimia Write · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
+
+## Kimia Write Verification (separate track)
+**STOPPED** at Read-Only Preflight gate. Resume: `docs/providers/official/KIMIA_WRITE_VERIFICATION_RESUME.md`
+Runner (read-only): `php backend/bin/kimia_preflight_readonly.php`
+Write default-deny until live swagger hash + env creds + baseline Read + Owner enable.
