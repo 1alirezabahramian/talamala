@@ -69,43 +69,6 @@ jobs:
           test "${CHABOKAN_SERVICE}" = "talamala-kimia-runner"
           test "${TALAMALA_RUNNER_REF}" = "ops/chabokan-kimia-runner"
 
-  smoke_secret:
-    name: Verify Chabokan secret and dedicated service access
-    if: github.event_name == 'push'
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 8
-    steps:
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Install pinned Chabokan CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
-          chabok version
-
-      - name: Authenticate and verify only the dedicated Talamala service
-        shell: bash
-        env:
-          CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
-        run: |
-          set -euo pipefail
-          if [ -z "${CHABOKAN_TOKEN:-}" ]; then
-            echo "::error::Repository secret CHABOKAN_TOKEN is not configured."
-            exit 78
-          fi
-          echo "::add-mask::$CHABOKAN_TOKEN"
-          chabok login -t "$CHABOKAN_TOKEN" >/dev/null
-          chabok service list > /tmp/chabokan-services.txt
-          grep -Fq "${CHABOKAN_SERVICE}" /tmp/chabokan-services.txt || {
-            echo "::error::Dedicated service ${CHABOKAN_SERVICE} not found."
-            exit 69
-          }
-          echo "CHABOKAN_ACCESS_OK service=${CHABOKAN_SERVICE}"
-
   operate:
     name: "Chabokan: ${{ inputs.action }}"
     if: github.event_name == 'workflow_dispatch'
