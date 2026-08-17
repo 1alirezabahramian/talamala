@@ -37,6 +37,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-031 | Identity | Register validation/duplicate gated | IMPLEMENTED | http_smoke |
 | CAP-032 | Identity | Staff password rotate negatives | IMPLEMENTED | weak/invalid current |
 | CAP-033 | Custody | Receive validation/auth gated | IMPLEMENTED | 401/422 http_smoke |
+| CAP-034 | Order | quote_not_found 409 gated | IMPLEMENTED | http_smoke |
+| CAP-035 | Ops | healthz version file parity | IMPLEMENTED | VERSION file |
 
 Do not copy GoldPlatform completion percentages.
 
@@ -49,4 +51,4 @@ Do not copy GoldPlatform completion percentages.
 - Frontend typecheck optional in CI (`continue-on-error`)
 - http_smoke PASS=49 (staff cross-tenant negative gated)
 - spa_router_smoke exact PASS=6 in CI
-- VERSION 0.3.7-phase1 · cors 11 · landing 16 · Permissions-Policy
+- VERSION 0.3.8-phase1 · cors 11 · landing 16 · Permissions-Policy

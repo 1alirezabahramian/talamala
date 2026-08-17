@@ -3,7 +3,7 @@
 White-label multi-tenant platform for gold & precious-metal businesses.
 
 **Slogan:** Complex Backend — Simple Frontend  
-**VERSION:** see `VERSION` file (`0.3.7-phase1`)
+**VERSION:** see `VERSION` file (`0.3.8-phase1`)
 
 ## Status (talago continuous build)
 
@@ -20,13 +20,13 @@ White-label multi-tenant platform for gold & precious-metal businesses.
 | Check | Expect |
 |-------|--------|
 | domain_smoke | PASS=8 FAIL=0 |
-| http_smoke | PASS=71 FAIL=0 |
+| http_smoke | PASS=78 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=13 FAIL=0 |
 | logger_smoke | PASS=8 FAIL=0 |
 | maintenance_smoke | PASS=7 FAIL=0 |
 | spa_router_smoke | PASS=6 FAIL=0 |
-| landing_smoke | PASS=17 FAIL=0 |
+| landing_smoke | PASS=18 FAIL=0 |
 | openapi_parity | PASS |
 
 Frontend typecheck is **optional** in CI (`continue-on-error`).

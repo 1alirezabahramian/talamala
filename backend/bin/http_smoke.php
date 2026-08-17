@@ -29,6 +29,13 @@ $h = ['host' => 'demo.local', 'x-correlation-id' => 'http-smoke'];
 $r = $k->handle('GET', '/healthz', $h, null);
 $check('healthz', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ok', $r);
 $check('healthz_has_version', is_string($r['body']['version'] ?? null) && ($r['body']['version'] ?? '') !== '', $r);
+$verFile = dirname(__DIR__, 2) . '/VERSION';
+$verExpected = is_file($verFile) ? trim((string) file_get_contents($verFile)) : '';
+$check(
+    'healthz_version_matches_file',
+    $verExpected !== '' && ($r['body']['version'] ?? '') === $verExpected,
+    ['body' => $r['body']['version'] ?? null, 'file' => $verExpected]
+);
 $check(
     'healthz_time_iso',
     is_string($r['body']['time'] ?? null) && str_contains((string) ($r['body']['time'] ?? ''), 'T'),
@@ -38,6 +45,9 @@ $check(
 $r = $k->handle('GET', '/readyz', $h, null);
 $check('readyz', ($r['status'] ?? 0) === 200 && ($r['body']['tenant_slug'] ?? '') === 'demo', $r);
 $check('readyz_has_version', is_string($r['body']['version'] ?? null) && ($r['body']['version'] ?? '') !== '', $r);
+
+$r = $k->handle('GET', '/readyz', ['x-talamala-host' => 'demo.local', 'x-correlation-id' => 'http-smoke-xhost'], null);
+$check('readyz_x_talamala_host', ($r['status'] ?? 0) === 200 && ($r['body']['tenant_slug'] ?? '') === 'demo', $r);
 
 $r = $k->handle('GET', '/readyz', ['host' => 'evil.example'], null);
 $check('tenant_fail_closed', ($r['status'] ?? 0) === 400, $r);
@@ -128,6 +138,12 @@ $staffId = $r['body']['staff_id'] ?? '';
 $staffToken = $r['body']['access_token'] ?? '';
 $check('staff_token_issued', $staffToken !== '', $r);
 
+$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h, [
+    'current_password' => 'ChangeMe-Now-1',
+    'new_password' => 'Strong-Pass-99',
+]);
+$check('staff_rotate_requires_staff_id', ($r['status'] ?? 0) === 401 && (($r['body']['error'] ?? '') === 'staff_id_required'), $r);
+
 $r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
     'current_password' => 'ChangeMe-Now-1',
     'new_password' => 'short',
@@ -145,6 +161,12 @@ $r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => 
     'new_password' => 'Strong-Pass-99',
 ]);
 $check('staff_rotate', ($r['status'] ?? 0) === 200, $r);
+
+$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
+    'current_password' => 'Strong-Pass-99',
+    'new_password' => 'Strong-Pass-99',
+]);
+$check('staff_rotate_password_reuse', ($r['status'] ?? 0) === 400 && (($r['body']['error'] ?? '') === 'password_reuse'), $r);
 
 $staffH = $h + ['authorization' => 'Bearer ' . $staffToken];
 
@@ -194,6 +216,9 @@ $r = $k->handle('POST', '/v1/admin/custody/receive', $staffH, [
 $check('custody_receive', ($r['status'] ?? 0) === 201, $r);
 $custodyId = $r['body']['id'] ?? '';
 
+$r = $k->handle('POST', '/v1/admin/custody/not-a-real-id/ready', $staffH, null);
+$check('custody_ready_invalid_id', ($r['status'] ?? 0) === 400 && (($r['body']['error'] ?? '') === 'custody_transition_failed'), $r);
+
 $r = $k->handle('POST', '/v1/admin/custody/' . $custodyId . '/ready', $staffH, null);
 $check('custody_ready', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ready_for_pickup', $r);
 
@@ -204,6 +229,11 @@ $r = $k->handle('GET', '/v1/customer/custody', $h + ['x-customer-id' => $custome
 $check('customer_custody_list', ($r['status'] ?? 0) === 200 && count($r['body']['items'] ?? []) >= 1, $r);
 
 // Order: seed fixture quote → accept (idempotent) → list (settlement blocked)
+$r = $k->handle('POST', '/v1/dev/seed-quote', $h + ['x-talamala-dev' => '1'], [
+    'customer_id' => '',
+]);
+$check('seed_quote_customer_required', ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'customer_id_required'), $r);
+
 $r = $k->handle('POST', '/v1/dev/seed-quote', $h + ['x-talamala-dev' => '1'], [
     'customer_id' => $customerId,
     'quantity' => '1.000',
@@ -218,6 +248,16 @@ $r = $k->handle('POST', '/v1/customer/orders/accept', $h + [
     'idempotency-key' => 'idem-http-1',
 ], ['quote_id' => $quoteId]);
 $check('order_accept', ($r['status'] ?? 0) === 200 && ($r['body']['settlement'] ?? '') === 'blocked_by_ground_truth', $r);
+
+$r = $k->handle('POST', '/v1/customer/orders/accept', $h + [
+    'x-customer-id' => $customerId,
+    'idempotency-key' => 'idem-missing-quote-id',
+], ['quote_id' => 'quote-does-not-exist']);
+$check(
+    'order_accept_quote_not_found',
+    ($r['status'] ?? 0) === 409 && (($r['body']['error'] ?? '') === 'quote_not_found'),
+    $r
+);
 
 $r2 = $k->handle('POST', '/v1/customer/orders/accept', $h + [
     'x-customer-id' => $customerId,

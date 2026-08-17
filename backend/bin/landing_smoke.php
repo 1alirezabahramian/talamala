@@ -48,6 +48,7 @@ $robots = $root . '/public/robots.txt';
 $rb = is_file($robots) ? (string) file_get_contents($robots) : '';
 $check('robots_exists', is_file($robots), $robots);
 $check('robots_blocks_dev_and_demos', str_contains($rb, '/v1/dev/') && str_contains($rb, '/otp-demo.html') && str_contains($rb, '/app/'), $rb);
+$check('robots_allows_healthz', str_contains($rb, 'Allow: /healthz') || str_contains($rb, 'Allow:/healthz'), $rb);
 
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

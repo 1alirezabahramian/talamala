@@ -5,7 +5,7 @@ help:
 
 # Talamala — operator shortcuts (no invent financial targets)
 
-.PHONY: help check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
+.PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
 	frontend-typecheck frontend-build serve version
 
 check:
@@ -57,3 +57,8 @@ serve:
 
 version:
 	@cat VERSION
+
+info:
+	@echo VERSION=$$(cat VERSION 2>/dev/null || echo unknown)
+	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
+	@echo 'Blocked: Kimia Write · Pricing · Settlement · Payment'
