@@ -63,6 +63,11 @@ paths:
                 fineness: { type: string }
       responses:
         '201': { description: Created }
+        '422':
+          description: customer_description_weight_required
+        '401':
+          description: staff auth required
+
   /v1/admin/custody/{id}/ready:
     post:
       operationId: custodyReady

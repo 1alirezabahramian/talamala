@@ -1,13 +1,13 @@
 # Talamala — Current State (2026-08-17)
 
 ## VERSION
-`0.3.6-phase1`
+`0.3.7-phase1`
 
 ## Smokes
 | Check | Expect |
 |-------|--------|
 | domain_smoke | PASS=8 FAIL=0 |
-| http_smoke | PASS=65 FAIL=0 |
+| http_smoke | PASS=71 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=13 FAIL=0 |
 | logger_smoke | PASS=8 FAIL=0 |
@@ -18,14 +18,14 @@
 
 ## Operator
 - `make help` · `make check` · `make serve` · `make version` · `make domain`
-- Customer/backoffice clients send `X-Correlation-Id`
-- Contract negatives expanded (OTP purpose/fields, register validation/duplicate, wrong method)
+- OTP 429 includes `retry_after` + `Retry-After` header
+- Staff rotate / custody validation negatives gated
 
-## Hardening (batch 0.3.6)
-- http_smoke PASS 59 → **65**
-- Frontend correlation-id on all API calls
-- Makefile `help` · robots Allow /healthz
-- OpenAPI auth 422 for OTP validation
+## Hardening (batch 0.3.7)
+- staff_rotate_password_too_weak · staff_rotate_invalid_current
+- custody_receive_unauthorized · custody_receive_validation
+- otp_rate_limited_retry_after · healthz_time_iso
+- http_smoke PASS 65 → **71**
 
 ## BLOCKED
 Kimia Write · Pricing · Settlement · Payment · Delta blind port

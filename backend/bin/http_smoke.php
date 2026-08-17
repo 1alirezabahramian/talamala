@@ -29,6 +29,11 @@ $h = ['host' => 'demo.local', 'x-correlation-id' => 'http-smoke'];
 $r = $k->handle('GET', '/healthz', $h, null);
 $check('healthz', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ok', $r);
 $check('healthz_has_version', is_string($r['body']['version'] ?? null) && ($r['body']['version'] ?? '') !== '', $r);
+$check(
+    'healthz_time_iso',
+    is_string($r['body']['time'] ?? null) && str_contains((string) ($r['body']['time'] ?? ''), 'T'),
+    $r
+);
 
 $r = $k->handle('GET', '/readyz', $h, null);
 $check('readyz', ($r['status'] ?? 0) === 200 && ($r['body']['tenant_slug'] ?? '') === 'demo', $r);
@@ -125,6 +130,18 @@ $check('staff_token_issued', $staffToken !== '', $r);
 
 $r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
     'current_password' => 'ChangeMe-Now-1',
+    'new_password' => 'short',
+]);
+$check('staff_rotate_password_too_weak', ($r['status'] ?? 0) === 400 && (($r['body']['error'] ?? '') === 'password_too_weak'), $r);
+
+$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
+    'current_password' => 'Wrong-Current-Pass',
+    'new_password' => 'Strong-Pass-99',
+]);
+$check('staff_rotate_invalid_current', ($r['status'] ?? 0) === 400 && (($r['body']['error'] ?? '') === 'invalid_current_password'), $r);
+
+$r = $k->handle('POST', '/v1/auth/staff/password/rotate', $h + ['x-staff-id' => $staffId], [
+    'current_password' => 'ChangeMe-Now-1',
     'new_password' => 'Strong-Pass-99',
 ]);
 $check('staff_rotate', ($r['status'] ?? 0) === 200, $r);
@@ -154,6 +171,20 @@ $r = $k->handle('GET', '/v1/customer/assets', $h + ['x-customer-id' => $customer
 $check('assets', ($r['status'] ?? 0) === 200 && ($r['body']['money_toman'] ?? '') === '1000000', $r);
 
 // Custody lifecycle via staff Bearer
+$r = $k->handle('POST', '/v1/admin/custody/receive', $h, [
+    'customer_id' => $customerId,
+    'description' => 'x',
+    'weight_grams' => '1',
+]);
+$check('custody_receive_unauthorized', ($r['status'] ?? 0) === 401, $r);
+
+$r = $k->handle('POST', '/v1/admin/custody/receive', $staffH, [
+    'customer_id' => '',
+    'description' => '',
+    'weight_grams' => '',
+]);
+$check('custody_receive_validation', ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'customer_description_weight_required'), $r);
+
 $r = $k->handle('POST', '/v1/admin/custody/receive', $staffH, [
     'customer_id' => $customerId,
     'description' => 'سکه امانت تست',
@@ -248,6 +279,15 @@ for ($i = 0; $i < 6; $i++) {
     }
 }
 $check('otp_rate_limited', $limited, $r ?? null);
+$check(
+    'otp_rate_limited_retry_after',
+    $limited
+        && (($r['status'] ?? 0) === 429)
+        && isset($r['body']['retry_after'])
+        && (int) $r['body']['retry_after'] >= 1
+        && isset($r['headers']['Retry-After']),
+    $r ?? null
+);
 $r = $k->handle('GET', '/readyz', $h, null);
 $check(
     'readyz_ops_rate_limited',
