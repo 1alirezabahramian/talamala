@@ -1,13 +1,13 @@
 # Talamala — Current State (2026-08-17)
 
 ## VERSION
-`0.3.4-phase1`
+`0.3.5-phase1`
 
 ## Smokes
 | Check | Expect |
 |-------|--------|
 | domain_smoke | PASS=8 FAIL=0 |
-| http_smoke | PASS=54 FAIL=0 |
+| http_smoke | PASS=59 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=13 FAIL=0 |
 | logger_smoke | PASS=8 FAIL=0 |
@@ -18,15 +18,14 @@
 
 ## Operator
 - `make check` / `make serve` / `make version` / `make domain`
-- healthz + readyz expose non-secret `version`
-- API: X-Correlation-Id · security headers baseline
+- healthz/readyz include `version`
+- Identity/order contract negatives gated in http_smoke
 
-## Hardening (batch 0.3.4)
-- healthz/readyz `version` from VERSION file
-- order accept missing Idempotency-Key → 422 (gated)
-- ADR_INDEX statuses aligned with skeleton reality
-- OpenAPI auth notes correlation + version
-- Makefile `domain` target
+## Hardening (batch 0.3.5)
+- staff_login_bad_password · credentials_required
+- otp_request_mobile_required · otp_verify_bad_code
+- order_accept_missing_quote_id (+ existing missing idempotency)
+- http_smoke PASS 54 → **59**
 
 ## BLOCKED
 Kimia Write · Pricing · Settlement · Payment · Delta blind port

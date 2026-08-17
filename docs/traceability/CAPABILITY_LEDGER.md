@@ -32,6 +32,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-026 | Security | Cross-Domain-Policies none | IMPLEMENTED | API + HTML |
 | CAP-027 | Ops | healthz/readyz version | IMPLEMENTED | from VERSION file |
 | CAP-028 | API | Order accept idempotency required | IMPLEMENTED | 422 without key |
+| CAP-029 | Identity | Auth contract negatives gated | IMPLEMENTED | staff/OTP http_smoke |
 
 Do not copy GoldPlatform completion percentages.
 
@@ -44,4 +45,4 @@ Do not copy GoldPlatform completion percentages.
 - Frontend typecheck optional in CI (`continue-on-error`)
 - http_smoke PASS=49 (staff cross-tenant negative gated)
 - spa_router_smoke exact PASS=6 in CI
-- VERSION 0.3.4-phase1 · cors 11 · landing 16 · Permissions-Policy
+- VERSION 0.3.5-phase1 · cors 11 · landing 16 · Permissions-Policy

@@ -37,6 +37,25 @@ $check('readyz_has_version', is_string($r['body']['version'] ?? null) && ($r['bo
 $r = $k->handle('GET', '/readyz', ['host' => 'evil.example'], null);
 $check('tenant_fail_closed', ($r['status'] ?? 0) === 400, $r);
 
+// Staff login negatives (before successful login mutates password state)
+$r = $k->handle('POST', '/v1/auth/staff/login', $h, [
+    'username' => 'operator',
+    'password' => 'Definitely-Wrong-Password',
+]);
+$check('staff_login_bad_password', ($r['status'] ?? 0) === 401, $r);
+
+$r = $k->handle('POST', '/v1/auth/staff/login', $h, [
+    'username' => '',
+    'password' => '',
+]);
+$check('staff_login_credentials_required', ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'credentials_required'), $r);
+
+$r = $k->handle('POST', '/v1/auth/customer/otp/request', $h, [
+    'mobile' => '',
+    'purpose' => 'registration',
+]);
+$check('otp_request_mobile_required', ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'mobile_required'), $r);
+
 $r = $k->handle('POST', '/v1/auth/customer/otp/request', $h, [
     'mobile' => '09121234567',
     'purpose' => 'registration',
@@ -47,6 +66,12 @@ $challengeId = $r['body']['challenge_id'] ?? '';
 $dev = $k->handle('GET', '/v1/dev/last-otp', $h + ['x-talamala-dev' => '1'], null);
 $code = $dev['body']['code'] ?? '';
 $check('dev_last_otp', $code !== '' && strlen($code) === 6, $dev);
+
+$r = $k->handle('POST', '/v1/auth/customer/otp/verify', $h, [
+    'challenge_id' => $challengeId,
+    'code' => '000000',
+]);
+$check('otp_verify_bad_code', ($r['status'] ?? 0) === 401, $r);
 
 $r = $k->handle('POST', '/v1/auth/customer/otp/verify', $h, [
     'challenge_id' => $challengeId,
@@ -152,6 +177,16 @@ $r = $k->handle('POST', '/v1/customer/orders/accept', $h + ['x-customer-id' => $
 ]);
 $check(
     'order_accept_missing_idempotency',
+    ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'quote_id_and_idempotency_key_required'),
+    $r
+);
+
+$r = $k->handle('POST', '/v1/customer/orders/accept', $h + [
+    'x-customer-id' => $customerId,
+    'idempotency-key' => 'idem-missing-quote',
+], ['quote_id' => '']);
+$check(
+    'order_accept_missing_quote_id',
     ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'quote_id_and_idempotency_key_required'),
     $r
 );

@@ -1,7 +1,7 @@
 openapi: 3.0.3
 info:
   title: Talamala Customer API
-  version: 1.3.0
+  version: 1.4.0
   description: |
     Customer API. Financial values are server-normalized (Toman).
     Tenant from Host. Bearer preferred; X-Customer-Id only outside production.
@@ -42,6 +42,8 @@ paths:
       responses:
         '200': { description: Accepted (settlement may be blocked) }
         '409': { description: Quote not acceptable }
+        '422':
+          description: quote_id and Idempotency-Key required
   /v1/customer/custody:
     get:
       operationId: customerCustody
