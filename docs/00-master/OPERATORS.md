@@ -1,4 +1,8 @@
-# Talamala — Operator quick start
+# OPERATORS
+
+> **PHASE-1 SAFE CLOSURE** at `0.3.8-phase1` — no speculative financial/provider work. See `PHASE1_SAFE_CLOSURE.md`.
+
+alamala — Operator quick start
 
 ## One-liner checks
 

@@ -3,7 +3,13 @@
 ## VERSION
 `0.3.8-phase1`
 
-## Smokes
+## Phase status
+**PHASE-1 SAFE CLOSURE — FROZEN**  
+See `docs/00-master/PHASE1_SAFE_CLOSURE.md`.
+
+No speculative domain development until valid Ground Truth is archived.
+
+## Smokes (freeze baseline)
 | Check | Expect |
 |-------|--------|
 | domain_smoke | PASS=8 FAIL=0 |
@@ -18,17 +24,7 @@
 
 ## Operator
 - `make help` · `make info` · `make check` · `make serve`
-- X-Talamala-Host works for tenant resolve (readyz)
-- healthz version matches VERSION file
+- Freeze baseline SHA: `f1e9eb2` (Owner-confirmed)
 
-## Hardening (batch 0.3.8)
-- staff_rotate_requires_staff_id · password_reuse
-- custody_ready_invalid_id
-- order_accept_quote_not_found (409)
-- seed_quote_customer_required
-- readyz_x_talamala_host · healthz_version_matches_file
-- robots_allows_healthz
-- http 71→**78** · landing 17→**18**
-
-## BLOCKED
-Kimia Write · Pricing · Settlement · Payment · Delta blind port
+## BLOCKED (requires official GT)
+Kimia Write · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta

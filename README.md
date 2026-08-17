@@ -3,7 +3,7 @@
 White-label multi-tenant platform for gold & precious-metal businesses.
 
 **Slogan:** Complex Backend — Simple Frontend  
-**VERSION:** see `VERSION` file (`0.3.8-phase1`)
+**VERSION:** see `VERSION` file (`0.3.8-phase1` (**Phase-1 Safe Closure — FROZEN**))
 
 ## Status (talago continuous build)
 

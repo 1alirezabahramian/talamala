@@ -11,6 +11,7 @@ Build from business truth. Never invent Kimia, pricing, payment or settlement be
 5. Check current Git branch / SHA / open PRs
 
 ## Stop Conditions
+- **Phase-1 is FROZEN** at `0.3.8-phase1` (`PHASE1_SAFE_CLOSURE.md`). Do not invent Kimia Write, Pricing, Settlement, Payment, live SMS/Jibit, or Delta/tenant durability without archived Ground Truth.
 Stop and surface the exact unknown when:
 - A financial or Kimia write path lacks ground truth
 - Two authoritative sources contradict each other

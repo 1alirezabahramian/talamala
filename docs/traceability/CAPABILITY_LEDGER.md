@@ -2,6 +2,9 @@
 
 Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 
+**Phase-1 Safe Closure:** FROZEN at VERSION `0.3.8-phase1` (SHA `f1e9eb2`). No new domain capability without archived Ground Truth. See `docs/00-master/PHASE1_SAFE_CLOSURE.md`.
+
+
 | ID | Domain | Capability | Status | Notes |
 |----|--------|------------|--------|-------|
 | CAP-001 | Tenant | Host resolution fail-closed | IMPLEMENTED | ADR-001 · InMemory seed hosts |

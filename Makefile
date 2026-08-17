@@ -61,4 +61,5 @@ version:
 info:
 	@echo VERSION=$$(cat VERSION 2>/dev/null || echo unknown)
 	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
-	@echo 'Blocked: Kimia Write · Pricing · Settlement · Payment'
+	@echo 'Phase-1: SAFE CLOSURE (frozen at 0.3.8-phase1)'
+	@echo 'Blocked: Kimia Write · Pricing · Settlement · Payment · SMS/Jibit live · Delta'
