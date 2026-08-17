@@ -1,12 +1,15 @@
 # Talamala — operator shortcuts (no invent financial targets)
 
-.PHONY: check smokes http persist cors logger maintenance landing spa parity php-syntax \
+.PHONY: check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
 	frontend-typecheck frontend-build serve version
 
 check:
 	php backend/bin/check.php
 
 smokes: check
+
+domain:
+	php backend/bin/smoke.php
 
 http:
 	php backend/bin/http_smoke.php

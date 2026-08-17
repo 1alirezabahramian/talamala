@@ -28,9 +28,11 @@ $h = ['host' => 'demo.local', 'x-correlation-id' => 'http-smoke'];
 
 $r = $k->handle('GET', '/healthz', $h, null);
 $check('healthz', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ok', $r);
+$check('healthz_has_version', is_string($r['body']['version'] ?? null) && ($r['body']['version'] ?? '') !== '', $r);
 
 $r = $k->handle('GET', '/readyz', $h, null);
 $check('readyz', ($r['status'] ?? 0) === 200 && ($r['body']['tenant_slug'] ?? '') === 'demo', $r);
+$check('readyz_has_version', is_string($r['body']['version'] ?? null) && ($r['body']['version'] ?? '') !== '', $r);
 
 $r = $k->handle('GET', '/readyz', ['host' => 'evil.example'], null);
 $check('tenant_fail_closed', ($r['status'] ?? 0) === 400, $r);
@@ -143,6 +145,16 @@ $check('order_idempotent', ($r2['status'] ?? 0) === 200 && ($r2['body']['from_id
 
 $r = $k->handle('GET', '/v1/customer/orders', $h + ['x-customer-id' => $customerId], null);
 $check('order_list', ($r['status'] ?? 0) === 200 && count($r['body']['items'] ?? []) >= 1, $r);
+
+// Order accept requires idempotency key (contract)
+$r = $k->handle('POST', '/v1/customer/orders/accept', $h + ['x-customer-id' => $customerId], [
+    'quote_id' => $quoteId !== '' ? $quoteId : 'any-quote',
+]);
+$check(
+    'order_accept_missing_idempotency',
+    ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'quote_id_and_idempotency_key_required'),
+    $r
+);
 
 // Session issue (skeleton)
 $r = $k->handle('POST', '/v1/dev/session', $h + ['x-talamala-dev' => '1'], [

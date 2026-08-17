@@ -1,14 +1,16 @@
 openapi: 3.0.3
 info:
   title: Talamala Auth API
-  version: 1.3.0
+  version: 1.4.0
   description: |
     Authentication contracts.
     - Tenant resolved from verified Host only (fail-closed).
     - Customer auth is mobile + OTP only.
     - Staff requires password rotation on first login.
     - OTP rate-limited: 5 attempts / 5 minutes per tenant+mobile.
-    - Security headers: nosniff, X-Frame-Options=DENY, no-store.
+    - Security headers: nosniff, X-Frame-Options=DENY, no-store, Permissions-Policy.
+    - Responses include X-Correlation-Id (client may send; server always emits).
+    - healthz/readyz include non-secret `version` from VERSION file.
 servers:
   - url: /
 paths:

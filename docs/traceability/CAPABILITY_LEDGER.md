@@ -30,6 +30,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-024 | Ops | robots.txt demo isolation | IMPLEMENTED | blocks demos /app /v1/dev |
 | CAP-025 | Ops | X-Correlation-Id on API | IMPLEMENTED | index.php always emits |
 | CAP-026 | Security | Cross-Domain-Policies none | IMPLEMENTED | API + HTML |
+| CAP-027 | Ops | healthz/readyz version | IMPLEMENTED | from VERSION file |
+| CAP-028 | API | Order accept idempotency required | IMPLEMENTED | 422 without key |
 
 Do not copy GoldPlatform completion percentages.
 
@@ -42,4 +44,4 @@ Do not copy GoldPlatform completion percentages.
 - Frontend typecheck optional in CI (`continue-on-error`)
 - http_smoke PASS=49 (staff cross-tenant negative gated)
 - spa_router_smoke exact PASS=6 in CI
-- VERSION 0.3.3-phase1 · cors 11 · landing 16 · Permissions-Policy
+- VERSION 0.3.4-phase1 · cors 11 · landing 16 · Permissions-Policy

@@ -13,7 +13,7 @@ make check          # ALL CHECKS PASSED
 make serve          # API + static on :8080
 ```
 
-Expect: http 51 · persist 9 · cors 13 · logger 8 · maintenance 7 · landing 17 · openapi parity
+Expect: http 54 · persist 9 · cors 13 · logger 8 · maintenance 7 · landing 17 · openapi parity
 
 ## Environment
 
@@ -116,7 +116,7 @@ make serve
 ## Individual smokes
 
 ```bash
-make http          # PASS=51
+make http          # PASS=54
 make persist       # PASS=9
 make cors          # PASS=13
 make logger        # PASS=8
