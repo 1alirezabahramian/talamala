@@ -22,6 +22,7 @@ $htmlSecurityHeaders = static function (): void {
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: no-referrer');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header('X-Permitted-Cross-Domain-Policies: none');
     header('Cache-Control: no-store');
     // Minimal CSP for static HTML demos (inline style/script required by zero-build demos)
     header(
@@ -95,6 +96,7 @@ $spaHtml = static function (int $status, string $title, string $message, string 
     header('X-Frame-Options: DENY');
     header('Referrer-Policy: no-referrer');
     header('Permissions-Policy: camera=(), microphone=(), geolocation=()');
+    header('X-Permitted-Cross-Domain-Policies: none');
     header(
         "Content-Security-Policy: default-src 'self'; "
         . "style-src 'self' 'unsafe-inline'; "

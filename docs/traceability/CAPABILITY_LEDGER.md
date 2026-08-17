@@ -28,6 +28,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-022 | Security | Minimal CSP on static HTML | IMPLEMENTED | unsafe-inline for zero-build demos |
 | CAP-023 | Security | Permissions-Policy baseline | IMPLEMENTED | API + HTML · camera/mic/geo off |
 | CAP-024 | Ops | robots.txt demo isolation | IMPLEMENTED | blocks demos /app /v1/dev |
+| CAP-025 | Ops | X-Correlation-Id on API | IMPLEMENTED | index.php always emits |
+| CAP-026 | Security | Cross-Domain-Policies none | IMPLEMENTED | API + HTML |
 
 Do not copy GoldPlatform completion percentages.
 
@@ -40,4 +42,4 @@ Do not copy GoldPlatform completion percentages.
 - Frontend typecheck optional in CI (`continue-on-error`)
 - http_smoke PASS=49 (staff cross-tenant negative gated)
 - spa_router_smoke exact PASS=6 in CI
-- VERSION 0.3.2-phase1 · cors 11 · landing 16 · Permissions-Policy
+- VERSION 0.3.3-phase1 · cors 11 · landing 16 · Permissions-Policy

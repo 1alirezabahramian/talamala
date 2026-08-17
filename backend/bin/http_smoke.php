@@ -298,5 +298,14 @@ $check('logout_ok_again', ($r['status'] ?? 0) === 200 && ($r['body']['revoked'] 
 $r = $k->handle('POST', '/v1/auth/logout', $h + ['authorization' => 'Bearer ' . $token], null);
 $check('logout_second_still_ok_or_dead', in_array(($r['status'] ?? 0), [200, 401], true), $r);
 
+
+// Unknown API path under resolved tenant
+$r = $k->handle('GET', '/v1/does-not-exist', $h, null);
+$check('unknown_path_404', ($r['status'] ?? 0) === 404 && (($r['body']['error'] ?? '') === 'not_found'), $r);
+
+// healthz is live without tenant host
+$r = $k->handle('GET', '/healthz', [], null);
+$check('healthz_no_tenant', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ok', $r);
+
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

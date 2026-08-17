@@ -7,7 +7,7 @@ make check
 # or: cd backend && php bin/check.php
 ```
 
-Expect: http 49 · persist 9 · cors 11 · logger 8 · maintenance 7 · landing 16 · openapi parity · ALL CHECKS PASSED
+Expect: http 51 · persist 9 · cors 13 · logger 8 · maintenance 7 · landing 17 · domain 8 · openapi parity · ALL CHECKS PASSED
 
 ## Run API + static
 

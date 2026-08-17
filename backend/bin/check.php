@@ -9,6 +9,7 @@ declare(strict_types=1);
 
 $root = dirname(__DIR__);
 $bins = [
+    'domain_smoke' => $root . '/bin/smoke.php',
     'http_smoke' => $root . '/bin/http_smoke.php',
     'persist_smoke' => $root . '/bin/persist_smoke.php',
     'cors_smoke' => $root . '/bin/cors_smoke.php',

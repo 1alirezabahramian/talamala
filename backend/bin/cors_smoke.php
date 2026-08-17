@@ -30,6 +30,8 @@ $check('security_nosniff', ($h['X-Content-Type-Options'] ?? '') === 'nosniff', $
 $check('security_frame_deny', ($h['X-Frame-Options'] ?? '') === 'DENY', $h);
 $check('security_no_store', ($h['Cache-Control'] ?? '') === 'no-store', $h);
 $check('security_permissions_policy', str_contains($h['Permissions-Policy'] ?? '', 'camera=()'), $h);
+$check('security_referrer', ($h['Referrer-Policy'] ?? '') === 'no-referrer', $h);
+$check('security_cross_domain_policies', ($h['X-Permitted-Cross-Domain-Policies'] ?? '') === 'none', $h);
 
 putenv('TALAMALA_CORS_ORIGINS=https://app.example,http://127.0.0.1:5173');
 $h = SecurityHeaders::defaults('https://app.example');

@@ -1,7 +1,7 @@
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: check smokes http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve
+	frontend-typecheck frontend-build serve version
 
 check:
 	php backend/bin/check.php
@@ -46,3 +46,6 @@ frontend-build:
 
 serve:
 	cd backend && php -S 127.0.0.1:8080 -t public public/router.php
+
+version:
+	@cat VERSION

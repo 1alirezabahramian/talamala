@@ -43,6 +43,7 @@ $check('router_html_security_headers', str_contains($rt, 'X-Frame-Options') && s
 $check('router_html_csp', str_contains($rt, 'Content-Security-Policy') && str_contains($rt, "frame-ancestors 'none'"), null);
 $check('makefile_exists', is_file(dirname($root) . '/Makefile'), null);
 $check('router_permissions_policy', str_contains($rt, 'Permissions-Policy'), null);
+$check('router_cross_domain_policies', str_contains($rt, 'X-Permitted-Cross-Domain-Policies'), null);
 $robots = $root . '/public/robots.txt';
 $rb = is_file($robots) ? (string) file_get_contents($robots) : '';
 $check('robots_exists', is_file($robots), $robots);

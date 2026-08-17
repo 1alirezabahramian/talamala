@@ -19,6 +19,7 @@ final class SecurityHeaders
             'X-Frame-Options' => 'DENY',
             'Referrer-Policy' => 'no-referrer',
             'Permissions-Policy' => 'camera=(), microphone=(), geolocation=()',
+            'X-Permitted-Cross-Domain-Policies' => 'none',
             'Cache-Control' => 'no-store',
             'Content-Type' => 'application/json; charset=utf-8',
         ];

@@ -30,6 +30,9 @@ $origin = $headers['origin'] ?? null;
 foreach (SecurityHeaders::defaults($origin) as $name => $value) {
     header($name . ': ' . $value);
 }
+$correlationId = $headers['x-correlation-id'] ?? bin2hex(random_bytes(8));
+$headers['x-correlation-id'] = $correlationId;
+header('X-Correlation-Id: ' . $correlationId);
 header('X-Talamala-Bootstrap: kernel-v1');
 
 if ($method === 'OPTIONS') {
