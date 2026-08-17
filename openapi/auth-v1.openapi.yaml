@@ -47,6 +47,8 @@ paths:
       responses:
         '200':
           description: Challenge created
+        '422':
+          description: mobile_required or invalid_purpose
         '429':
           description: Rate limited
           headers:

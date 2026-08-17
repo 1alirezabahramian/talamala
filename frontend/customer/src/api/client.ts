@@ -43,6 +43,10 @@ function buildHeaders(token?: string, extra?: Record<string, string>): Record<st
     'Content-Type': 'application/json',
     Accept: 'application/json',
     'X-Talamala-Host': config.tenantHost,
+    'X-Correlation-Id':
+      (typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`),
   };
   if (token) {
     headers.Authorization = `Bearer ${token}`;

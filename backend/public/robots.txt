@@ -11,3 +11,4 @@ Disallow: /v1/dev/
 Disallow: /app/
 Disallow: /readyz
 # Allow landing + health for operators; demos and SPA builds blocked
+Allow: /healthz

@@ -1,6 +1,11 @@
+help:
+	@echo 'Talamala targets:'
+	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
+	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax'
+
 # Talamala — operator shortcuts (no invent financial targets)
 
-.PHONY: check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
+.PHONY: help check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
 	frontend-typecheck frontend-build serve version
 
 check:

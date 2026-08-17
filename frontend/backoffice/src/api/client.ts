@@ -38,6 +38,10 @@ function baseHeaders(token?: string, extra?: Record<string, string>): Record<str
     Accept: 'application/json',
     'Content-Type': 'application/json',
     'X-Talamala-Host': config.tenantHost,
+    'X-Correlation-Id':
+      typeof crypto !== 'undefined' && 'randomUUID' in crypto
+        ? crypto.randomUUID()
+        : `web-${Date.now()}-${Math.random().toString(16).slice(2)}`,
     ...extra,
   };
   if (token) {

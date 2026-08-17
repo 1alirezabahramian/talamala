@@ -58,6 +58,18 @@ $check('otp_request_mobile_required', ($r['status'] ?? 0) === 422 && (($r['body'
 
 $r = $k->handle('POST', '/v1/auth/customer/otp/request', $h, [
     'mobile' => '09121234567',
+    'purpose' => 'not-a-valid-purpose',
+]);
+$check('otp_invalid_purpose', ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'invalid_purpose'), $r);
+
+$r = $k->handle('POST', '/v1/auth/customer/otp/verify', $h, [
+    'challenge_id' => '',
+    'code' => '',
+]);
+$check('otp_verify_fields_required', ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'challenge_and_code_required'), $r);
+
+$r = $k->handle('POST', '/v1/auth/customer/otp/request', $h, [
+    'mobile' => '09121234567',
     'purpose' => 'registration',
 ]);
 $check('otp_request', ($r['status'] ?? 0) === 200 && isset($r['body']['challenge_id']), $r);
@@ -81,11 +93,25 @@ $check('otp_verify_registration_required', ($r['status'] ?? 0) === 200 && ($r['b
 
 $r = $k->handle('POST', '/v1/auth/customer/register', $h, [
     'mobile' => '09121234567',
+    'national_code' => '',
+    'full_name' => '',
+]);
+$check('register_validation_required', ($r['status'] ?? 0) === 400 && (($r['body']['error'] ?? '') === 'validation'), $r);
+
+$r = $k->handle('POST', '/v1/auth/customer/register', $h, [
+    'mobile' => '09121234567',
     'national_code' => '0012345678',
     'full_name' => 'کاربر تست',
 ]);
 $check('register', ($r['status'] ?? 0) === 201, $r);
 $customerId = $r['body']['customer_id'] ?? '';
+
+$r = $k->handle('POST', '/v1/auth/customer/register', $h, [
+    'mobile' => '09121234567',
+    'national_code' => '0012345678',
+    'full_name' => 'کاربر تست',
+]);
+$check('register_already_registered', ($r['status'] ?? 0) === 400 && (($r['body']['error'] ?? '') === 'already_registered'), $r);
 
 // Staff login + password rotation (before admin routes)
 $r = $k->handle('POST', '/v1/auth/staff/login', $h, [
@@ -353,6 +379,13 @@ $check('unknown_path_404', ($r['status'] ?? 0) === 404 && (($r['body']['error'] 
 // healthz is live without tenant host
 $r = $k->handle('GET', '/healthz', [], null);
 $check('healthz_no_tenant', ($r['status'] ?? 0) === 200 && ($r['body']['status'] ?? '') === 'ok', $r);
+
+// Wrong HTTP method on POST-only auth route → not_found (no invent 405 contract)
+$r = $k->handle('GET', '/v1/auth/customer/otp/request', $h, null);
+$check('otp_request_wrong_method', ($r['status'] ?? 0) === 404 && (($r['body']['error'] ?? '') === 'not_found'), $r);
+
+$r = $k->handle('GET', '/healthz', $h, null);
+$check('healthz_service_name', ($r['body']['service'] ?? '') === 'talamala-backend', $r);
 
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);
