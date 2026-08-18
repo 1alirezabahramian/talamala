@@ -1,46 +1,85 @@
 /**
- * Staff entry: login → (optional rotate) → registration queue.
- * No financial policy UI. No Kimia write. Tenant via X-Talamala-Host.
+ * Staff: login → optional rotate → shell (registration queue | custody).
+ * Existing APIs only. No Kimia write. No reject endpoint (blocked).
  */
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { staffLogin, staffRotatePassword, logout } from './api/auth';
 import { RegistrationQueueScreen } from './screens/RegistrationQueueScreen';
+import { CustodyOpsScreen } from './screens/CustodyOpsScreen';
+
+const SESSION_KEY = 'talamala_staff_session_v1';
+
+type Session = { staffId: string; token: string; username: string };
 
 type Phase =
   | { name: 'login' }
-  | { name: 'rotate'; staffId: string; token?: string }
-  | { name: 'queue'; staffId: string; token: string };
+  | { name: 'rotate'; staffId: string; token?: string; username: string }
+  | { name: 'app'; session: Session; tab: 'queue' | 'custody' };
+
+function loadSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const s = JSON.parse(raw) as Session;
+    if (s?.token && s?.staffId) return s;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function saveSession(s: Session | null): void {
+  try {
+    if (!s) localStorage.removeItem(SESSION_KEY);
+    else localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
 
 export function AppBackoffice() {
   const [phase, setPhase] = useState<Phase>({ name: 'login' });
+  const [booting, setBooting] = useState(true);
   const [username, setUsername] = useState('operator');
   const [password, setPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
+  useEffect(() => {
+    const s = loadSession();
+    if (s) setPhase({ name: 'app', session: s, tab: 'queue' });
+    setBooting(false);
+  }, []);
+
   async function onLogin(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError(null);
-    const res = await staffLogin(username, password);
+    const res = await staffLogin(username.trim(), password);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error || 'login_failed');
+      setError(
+        res.error === 'invalid_credentials'
+          ? 'نام کاربری یا رمز نادرست است'
+          : res.message || res.error || 'ورود ناموفق',
+      );
       return;
     }
     const staffId = res.data.staff_id;
     const token = res.data.access_token ?? '';
     if (res.data.must_change_password) {
-      setPhase({ name: 'rotate', staffId, token: token || undefined });
+      setPhase({ name: 'rotate', staffId, token: token || undefined, username: username.trim() });
       return;
     }
     if (!token) {
-      setError('token_missing');
+      setError('توکن نشست دریافت نشد');
       return;
     }
-    setPhase({ name: 'queue', staffId, token });
+    const session = { staffId, token, username: username.trim() };
+    saveSession(session);
+    setPhase({ name: 'app', session, tab: 'queue' });
   }
 
   async function onRotate(e: React.FormEvent) {
@@ -51,104 +90,148 @@ export function AppBackoffice() {
     const res = await staffRotatePassword(phase.staffId, password, newPassword, phase.token);
     setBusy(false);
     if (!res.ok) {
-      setError(res.error || 'rotate_failed');
+      const map: Record<string, string> = {
+        password_too_weak: 'رمز جدید خیلی کوتاه است (حداقل ۱۰ کاراکتر)',
+        invalid_current_password: 'رمز فعلی نادرست است',
+        password_reuse: 'رمز جدید نباید با قبلی یکی باشد',
+      };
+      setError(map[res.error] || res.message || res.error || 'تعویض رمز ناموفق');
       return;
     }
-    // Re-login after rotate for a clean token
-    const login = await staffLogin(username, newPassword);
+    const login = await staffLogin(phase.username, newPassword);
     if (!login.ok || !login.data.access_token) {
-      setError('relogin_failed');
+      setError('ورود مجدد پس از تعویض رمز ناموفق بود');
       setPhase({ name: 'login' });
       return;
     }
     setPassword(newPassword);
-    setPhase({ name: 'queue', staffId: login.data.staff_id, token: login.data.access_token });
+    const session = {
+      staffId: login.data.staff_id,
+      token: login.data.access_token,
+      username: phase.username,
+    };
+    saveSession(session);
+    setPhase({ name: 'app', session, tab: 'queue' });
   }
 
-  if (phase.name === 'queue') {
+  async function onLogout() {
+    if (phase.name === 'app') {
+      await logout(phase.session.token);
+    }
+    saveSession(null);
+    setPassword('');
+    setNewPassword('');
+    setPhase({ name: 'login' });
+  }
+
+  if (booting) {
     return (
-      <div style={{ maxWidth: 640, margin: '1.5rem auto', padding: '0 1rem' }}>
-        <header style={{ marginBottom: '1rem', display: 'flex', justifyContent: 'space-between', gap: 12, flexWrap: 'wrap' }}>
-          <div>
-            <h1 style={{ fontSize: '1.25rem', margin: 0 }}>صف ثبت‌نام</h1>
-            <p style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>
-              staff: {phase.staffId} · approve فقط وضعیت دسترسی را فعال می‌کند
-            </p>
-          </div>
-          <button
-            type="button"
-            onClick={async () => {
-              setBusy(true);
-              await logout(phase.token);
-              setBusy(false);
-              setPhase({ name: 'login' });
-              setPassword('');
-            }}
-            disabled={busy}
-            style={{ padding: '8px 12px', height: 'fit-content' }}
-          >
-            خروج
-          </button>
-        </header>
-        <RegistrationQueueScreen token={phase.token} />
+      <div className="bo-screen" dir="rtl" lang="fa">
+        <p className="tal-muted">در حال آماده‌سازی…</p>
+      </div>
+    );
+  }
+
+  if (phase.name === 'login') {
+    return (
+      <div className="bo-screen" dir="rtl" lang="fa">
+        <div className="bo-card">
+          <h1>ورود کارکنان</h1>
+          <p className="tal-muted">Tenant از Host / X-Talamala-Host — بدون tenant در بدنه</p>
+          <form onSubmit={onLogin} className="bo-form">
+            <label htmlFor="user">نام کاربری</label>
+            <input
+              id="user"
+              autoComplete="username"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              disabled={busy}
+            />
+            <label htmlFor="pass">رمز عبور</label>
+            <input
+              id="pass"
+              type="password"
+              autoComplete="current-password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              disabled={busy}
+            />
+            {error ? (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button type="submit" disabled={busy || !username || !password}>
+              {busy ? '…' : 'ورود'}
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
 
   if (phase.name === 'rotate') {
     return (
-      <div style={{ maxWidth: 420, margin: '2rem auto', padding: '0 1rem' }}>
-        <h1 style={{ fontSize: '1.25rem' }}>تغییر رمز اجباری</h1>
-        <form onSubmit={onRotate}>
-          <label style={{ display: 'block', marginBottom: 8 }}>
-            رمز جدید
+      <div className="bo-screen" dir="rtl" lang="fa">
+        <div className="bo-card">
+          <h1>تعویض رمز الزامی</h1>
+          <p className="tal-muted">اولین ورود — رمز جدید حداقل ۱۰ کاراکتر</p>
+          <form onSubmit={onRotate} className="bo-form">
+            <label htmlFor="np">رمز جدید</label>
             <input
+              id="np"
               type="password"
+              autoComplete="new-password"
               value={newPassword}
               onChange={(e) => setNewPassword(e.target.value)}
-              required
-              minLength={8}
-              style={{ display: 'block', width: '100%', marginTop: 4, padding: 10 }}
+              disabled={busy}
             />
-          </label>
-          {error && <p style={{ color: '#e85d5d' }}>{error}</p>}
-          <button type="submit" disabled={busy} style={{ width: '100%', padding: 12 }}>
-            {busy ? '...' : 'ذخیره و ادامه'}
-          </button>
-        </form>
+            {error ? (
+              <p className="error" role="alert">
+                {error}
+              </p>
+            ) : null}
+            <button type="submit" disabled={busy || newPassword.length < 10}>
+              {busy ? '…' : 'ثبت رمز و ادامه'}
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
 
+  const { session, tab } = phase;
   return (
-    <div style={{ maxWidth: 420, margin: '2rem auto', padding: '0 1rem' }}>
-      <h1 style={{ fontSize: '1.25rem' }}>ورود کارکنان</h1>
-      <p style={{ color: '#9aa4b2', fontSize: '0.9rem' }}>tenant از Host · بدون selector دستی</p>
-      <form onSubmit={onLogin}>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          نام کاربری
-          <input
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            style={{ display: 'block', width: '100%', marginTop: 4, padding: 10 }}
-          />
-        </label>
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          رمز
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            style={{ display: 'block', width: '100%', marginTop: 4, padding: 10 }}
-          />
-        </label>
-        {error && <p style={{ color: '#e85d5d' }}>{error}</p>}
-        <button type="submit" disabled={busy} style={{ width: '100%', padding: 12 }}>
-          {busy ? '...' : 'ورود'}
+    <div className="bo-app" dir="rtl" lang="fa">
+      <header className="bo-topbar">
+        <div>
+          <strong>پشتیبانی / عملیات</strong>
+          <span className="tal-muted"> {session.username}</span>
+        </div>
+        <button type="button" className="bo-btn-ghost" onClick={() => void onLogout()}>
+          خروج
         </button>
-      </form>
+      </header>
+      <nav className="bo-nav" aria-label="منوی کارکنان">
+        <button
+          type="button"
+          className={tab === 'queue' ? 'active' : ''}
+          onClick={() => setPhase({ name: 'app', session, tab: 'queue' })}
+        >
+          صف ثبت‌نام
+        </button>
+        <button
+          type="button"
+          className={tab === 'custody' ? 'active' : ''}
+          onClick={() => setPhase({ name: 'app', session, tab: 'custody' })}
+        >
+          عملیات امانت
+        </button>
+      </nav>
+      <main>
+        {tab === 'queue' ? <RegistrationQueueScreen token={session.token} /> : null}
+        {tab === 'custody' ? <CustodyOpsScreen token={session.token} /> : null}
+      </main>
     </div>
   );
 }

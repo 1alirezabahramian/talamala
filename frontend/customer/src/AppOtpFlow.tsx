@@ -1,41 +1,122 @@
 /**
- * OTP → registration_required → Registration form → done / shell.
- * Authenticated with token → CustomerShell (existing screens only).
+ * OTP (login|registration) → registration_required → Registration → pending
+ * or authenticated → CustomerShell.
+ * Session restored from localStorage when present. No client money math.
  */
 
-import { useState } from 'react';
-import { logout } from './api/auth';
+import { useEffect, useState } from 'react';
+import { logout, type OtpPurpose } from './api/auth';
 import { CustomerShell } from './CustomerShell';
 import { OtpRequestScreen } from './screens/auth/OtpRequestScreen';
 import { OtpVerifyScreen } from './screens/auth/OtpVerifyScreen';
 import { RegistrationScreen } from './screens/auth/RegistrationScreen';
 
+const SESSION_KEY = 'talamala_customer_session_v1';
+
+type Session = {
+  accessToken: string;
+  customerId: string;
+  accessStatus?: string;
+};
+
 type Step =
-  | { name: 'request' }
-  | { name: 'verify'; challengeId: string; mobile: string; expiresAt: string }
+  | { name: 'request'; purpose: OtpPurpose }
+  | { name: 'verify'; challengeId: string; mobile: string; expiresAt: string; purpose: OtpPurpose }
   | { name: 'register'; mobile: string }
   | {
-      name: 'done';
-      kind: 'authenticated' | 'registered';
-      accessToken?: string;
-      customerId?: string;
-      accessStatus?: string;
-      kimiaBound?: boolean;
-    };
+      name: 'pending';
+      customerId: string;
+      accessStatus: string;
+      kimiaBound: boolean;
+    }
+  | { name: 'shell'; session: Session };
+
+function loadSession(): Session | null {
+  try {
+    const raw = localStorage.getItem(SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Session;
+    if (parsed?.accessToken && parsed?.customerId) return parsed;
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
+function saveSession(s: Session | null): void {
+  try {
+    if (!s) localStorage.removeItem(SESSION_KEY);
+    else localStorage.setItem(SESSION_KEY, JSON.stringify(s));
+  } catch {
+    /* ignore */
+  }
+}
 
 export function AppOtpFlow() {
-  const [step, setStep] = useState<Step>({ name: 'request' });
+  const [step, setStep] = useState<Step>({ name: 'request', purpose: 'login' });
+  const [booting, setBooting] = useState(true);
   const [logoutBusy, setLogoutBusy] = useState(false);
   const [logoutMsg, setLogoutMsg] = useState<string | null>(null);
 
+  useEffect(() => {
+    const s = loadSession();
+    if (s) setStep({ name: 'shell', session: s });
+    setBooting(false);
+  }, []);
+
+  async function onLogout(token?: string) {
+    setLogoutMsg(null);
+    setLogoutBusy(true);
+    if (token) {
+      // Best-effort server revoke: local logout must still work for expired/revoked tokens
+      // or temporary network failures, otherwise a stale localStorage session can trap the UI.
+      await logout(token);
+    }
+    saveSession(null);
+    setLogoutBusy(false);
+    setStep({ name: 'request', purpose: 'login' });
+  }
+
+  if (booting) {
+    return (
+      <div className="tal-screen" dir="rtl" lang="fa">
+        <p className="tal-muted">در حال آماده‌سازی…</p>
+      </div>
+    );
+  }
+
   if (step.name === 'request') {
     return (
-      <OtpRequestScreen
-        purpose="registration"
-        onChallenge={(challengeId, mobile, expiresAt) =>
-          setStep({ name: 'verify', challengeId, mobile, expiresAt })
-        }
-      />
+      <div className="tal-app" dir="rtl" lang="fa">
+        <div className="tal-purpose-bar">
+          <button
+            type="button"
+            className={step.purpose === 'login' ? 'active' : ''}
+            onClick={() => setStep({ name: 'request', purpose: 'login' })}
+          >
+            ورود
+          </button>
+          <button
+            type="button"
+            className={step.purpose === 'registration' ? 'active' : ''}
+            onClick={() => setStep({ name: 'request', purpose: 'registration' })}
+          >
+            ثبت‌نام جدید
+          </button>
+        </div>
+        <OtpRequestScreen
+          purpose={step.purpose}
+          onChallenge={(challengeId, mobile, expiresAt) =>
+            setStep({
+              name: 'verify',
+              challengeId,
+              mobile,
+              expiresAt,
+              purpose: step.purpose,
+            })
+          }
+        />
+      </div>
     );
   }
 
@@ -45,17 +126,18 @@ export function AppOtpFlow() {
         challengeId={step.challengeId}
         mobile={step.mobile}
         expiresAt={step.expiresAt}
-        onBack={() => setStep({ name: 'request' })}
+        onBack={() => setStep({ name: 'request', purpose: step.purpose })}
         onRegistrationRequired={() => setStep({ name: 'register', mobile: step.mobile })}
-        onAuthenticated={({ accessToken, customerId, accessStatus }) =>
-          setStep({
-            name: 'done',
-            kind: 'authenticated',
-            accessToken,
-            customerId,
+        onAuthenticated={({ accessToken, customerId, accessStatus }) => {
+          const session: Session = {
+            accessToken: accessToken ?? '',
+            customerId: customerId ?? '',
             accessStatus,
-          })
-        }
+          };
+          if (!session.accessToken || !session.customerId) return;
+          saveSession(session);
+          setStep({ name: 'shell', session });
+        }}
       />
     );
   }
@@ -64,11 +146,10 @@ export function AppOtpFlow() {
     return (
       <RegistrationScreen
         mobile={step.mobile}
-        onBack={() => setStep({ name: 'request' })}
+        onBack={() => setStep({ name: 'request', purpose: 'registration' })}
         onSuccess={({ customerId, accessStatus, kimiaBound }) =>
           setStep({
-            name: 'done',
-            kind: 'registered',
+            name: 'pending',
             customerId,
             accessStatus,
             kimiaBound,
@@ -78,78 +159,66 @@ export function AppOtpFlow() {
     );
   }
 
-  const done = step;
-  const token = done.accessToken;
-
-  async function onLogout() {
-    setLogoutMsg(null);
-    if (!token) {
-      setStep({ name: 'request' });
-      return;
-    }
-    setLogoutBusy(true);
-    const res = await logout(token);
-    setLogoutBusy(false);
-    if (!res.ok) {
-      setLogoutMsg(res.error || 'logout_failed');
-      return;
-    }
-    setStep({ name: 'request' });
-  }
-
-  // Authenticated session → existing CustomerShell (no new business rules)
-  if (done.kind === 'authenticated' && token && done.customerId) {
+  if (step.name === 'pending') {
     return (
-      <div dir="rtl" lang="fa" style={{ maxWidth: 720, margin: '0 auto', padding: '1rem' }}>
-        <header
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            gap: 12,
-            marginBottom: 12,
-            flexWrap: 'wrap',
-          }}
-        >
-          <div>
-            <strong>پوسته مشتری</strong>
-            <span style={{ color: '#9aa4b2', fontSize: '0.85rem', marginRight: 8 }}>
-              {done.customerId}
-            </span>
-          </div>
-          <button type="button" onClick={onLogout} disabled={logoutBusy}>
-            {logoutBusy ? '...' : 'خروج'}
+      <div className="tal-screen tal-card-wrap" dir="rtl" lang="fa">
+        <div className="tal-card">
+          <h1>درخواست ثبت شد</h1>
+          <p className="tal-muted">
+            ثبت‌نام شما دریافت شد و در انتظار تأیید کارکنان است. پس از تأیید، با همان شماره
+            موبایل از مسیر «ورود» وارد شوید.
+          </p>
+          <dl className="tal-dl">
+            <div>
+              <dt>شناسه مشتری</dt>
+              <dd dir="ltr">{step.customerId}</dd>
+            </div>
+            <div>
+              <dt>وضعیت دسترسی</dt>
+              <dd>{step.accessStatus}</dd>
+            </div>
+            <div>
+              <dt>اتصال Kimia</dt>
+              <dd>{step.kimiaBound ? 'بسته شده' : 'هنوز بسته نشده'}</dd>
+            </div>
+          </dl>
+          <button type="button" className="tal-btn" onClick={() => setStep({ name: 'request', purpose: 'login' })}>
+            بازگشت به ورود
           </button>
-        </header>
-        {logoutMsg ? <p style={{ color: '#e85d5d' }}>{logoutMsg}</p> : null}
-        <CustomerShell token={token} customerId={done.customerId} />
+        </div>
       </div>
     );
   }
 
+  // shell
+  const { session } = step;
   return (
-    <div className="tal-screen" dir="rtl" lang="fa">
-      <h1>{done.kind === 'authenticated' ? 'ورود موفق' : 'ثبت‌نام ثبت شد'}</h1>
-      {done.customerId ? (
-        <p className="tal-muted">customer_id: {done.customerId}</p>
-      ) : null}
-      {done.accessStatus ? (
-        <p className="tal-muted">access_status: {done.accessStatus}</p>
-      ) : null}
-      {done.kind === 'registered' ? (
-        <p className="tal-muted">
-          در انتظار تأیید کارکنان · kimia_bound: {done.kimiaBound ? 'yes' : 'no'}
+    <div className="tal-app tal-app-shell" dir="rtl" lang="fa">
+      <header className="tal-topbar">
+        <div className="tal-topbar-title">
+          <strong>حساب مشتری</strong>
+          <span className="tal-muted" dir="ltr">
+            {session.customerId}
+          </span>
+          {session.accessStatus ? (
+            <span className="tal-badge">{session.accessStatus}</span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          className="tal-btn tal-btn-ghost"
+          onClick={() => void onLogout(session.accessToken)}
+          disabled={logoutBusy}
+        >
+          {logoutBusy ? '…' : 'خروج'}
+        </button>
+      </header>
+      {logoutMsg ? (
+        <p className="tal-error" role="alert">
+          {logoutMsg}
         </p>
       ) : null}
-      {logoutMsg ? <p style={{ color: '#e85d5d' }}>{logoutMsg}</p> : null}
-      {token ? (
-        <button type="button" onClick={onLogout} disabled={logoutBusy}>
-          {logoutBusy ? '...' : 'خروج (لغو نشست)'}
-        </button>
-      ) : null}
-      <button type="button" onClick={() => setStep({ name: 'request' })}>
-        شروع دوباره
-      </button>
+      <CustomerShell token={session.accessToken} customerId={session.customerId} />
     </div>
   );
 }

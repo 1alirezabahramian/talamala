@@ -1,6 +1,5 @@
 /**
- * Minimal customer shell — navigation only.
- * Wires existing screens; no new business rules.
+ * Customer shell — tab navigation for existing screens only.
  */
 
 import { useState } from 'react';
@@ -21,13 +20,13 @@ export function CustomerShell(props: CustomerShellProps) {
 
   return (
     <div className="tal-shell" dir="rtl" lang="fa">
-      <nav className="tal-nav">
+      <nav className="tal-nav" aria-label="منوی مشتری">
         {(
           [
             ['assets', 'دارایی'],
             ['custody', 'امانات'],
             ['orders', 'سفارش‌ها'],
-            ['accept', 'پذیرش'],
+            ['accept', 'پذیرش سفارش'],
           ] as const
         ).map(([id, label]) => (
           <button
@@ -35,27 +34,30 @@ export function CustomerShell(props: CustomerShellProps) {
             type="button"
             className={tab === id ? 'active' : ''}
             onClick={() => setTab(id)}
+            aria-current={tab === id ? 'page' : undefined}
           >
             {label}
           </button>
         ))}
       </nav>
-      {tab === 'assets' ? (
-        <AssetsScreen token={props.token} customerId={props.customerId} />
-      ) : null}
-      {tab === 'custody' ? (
-        <CustodyListScreen token={props.token} customerId={props.customerId} />
-      ) : null}
-      {tab === 'orders' ? (
-        <OrdersListScreen token={props.token} customerId={props.customerId} />
-      ) : null}
-      {tab === 'accept' ? (
-        <OrderAcceptScreen
-          token={props.token}
-          customerId={props.customerId}
-          allowDevSeed
-        />
-      ) : null}
+      <main className="tal-shell-main">
+        {tab === 'assets' ? (
+          <AssetsScreen token={props.token} customerId={props.customerId} />
+        ) : null}
+        {tab === 'custody' ? (
+          <CustodyListScreen token={props.token} customerId={props.customerId} />
+        ) : null}
+        {tab === 'orders' ? (
+          <OrdersListScreen token={props.token} customerId={props.customerId} />
+        ) : null}
+        {tab === 'accept' ? (
+          <OrderAcceptScreen
+            token={props.token}
+            customerId={props.customerId}
+            allowDevSeed
+          />
+        ) : null}
+      </main>
     </div>
   );
 }

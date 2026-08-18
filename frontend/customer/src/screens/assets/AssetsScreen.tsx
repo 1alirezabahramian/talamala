@@ -45,6 +45,7 @@ export function AssetsScreen(props: AssetsScreenProps) {
   const [loading, setLoading] = useState(!controlled && (props.loading ?? true));
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<AssetsViewModel | null>(props.data ?? null);
+  const [reload, setReload] = useState(0);
 
   useEffect(() => {
     if (controlled) {
@@ -73,7 +74,7 @@ export function AssetsScreen(props: AssetsScreenProps) {
     return () => {
       cancelled = true;
     };
-  }, [controlled, props.data, props.loading, props.token, props.customerId]);
+  }, [controlled, props.data, props.loading, props.token, props.customerId, reload]);
 
   if (loading) {
     return (
@@ -90,6 +91,11 @@ export function AssetsScreen(props: AssetsScreenProps) {
         <p className="tal-error" role="alert">
           {error}
         </p>
+        {!controlled ? (
+          <button type="button" className="tal-btn" onClick={() => setReload((n) => n + 1)}>
+            تلاش مجدد
+          </button>
+        ) : null}
       </div>
     );
   }

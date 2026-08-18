@@ -1,7 +1,7 @@
 /**
  * Backoffice registration queue.
  * Lists Limited customers; approve → Active.
- * No Kimia internal codes. No financial values.
+ * Reject: no API endpoint — blocked (shown as note only).
  */
 
 import { useCallback, useEffect, useState } from 'react';
@@ -15,15 +15,14 @@ export type RegistrationQueueItem = {
   customerId: string;
   mobile: string;
   fullName: string | null;
+  nationalCode: string;
   accessStatus: string;
   kimiaBound: boolean;
   createdAt: string;
 };
 
 export type RegistrationQueueScreenProps = {
-  /** Staff Bearer token (required for live fetch) */
   token: string;
-  /** Controlled mode optional */
   items?: RegistrationQueueItem[];
   loading?: boolean;
   onApprove?: (customerId: string) => Promise<void>;
@@ -34,6 +33,7 @@ function mapItem(d: RegistrationQueueItemDto): RegistrationQueueItem {
     customerId: d.customer_id,
     mobile: d.mobile,
     fullName: d.full_name,
+    nationalCode: d.national_code,
     accessStatus: d.access_status,
     kimiaBound: d.kimia_bound,
     createdAt: d.created_at,
@@ -46,6 +46,7 @@ export function RegistrationQueueScreen(props: RegistrationQueueScreenProps) {
   const [error, setError] = useState<string | null>(null);
   const [items, setItems] = useState<RegistrationQueueItem[]>(props.items ?? []);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     if (controlled) return;
@@ -83,13 +84,14 @@ export function RegistrationQueueScreen(props: RegistrationQueueScreenProps) {
           return;
         }
       }
-      if (!controlled) {
-        await reload();
-      }
+      if (!controlled) await reload();
+      setSelectedId(null);
     } finally {
       setBusyId(null);
     }
   }
+
+  const selected = items.find((i) => i.customerId === selectedId) ?? null;
 
   if (loading) {
     return (
@@ -107,15 +109,17 @@ export function RegistrationQueueScreen(props: RegistrationQueueScreenProps) {
       </header>
 
       {error ? (
-        <p className="tal-error" role="alert">
+        <p className="error" role="alert">
           {error}
         </p>
       ) : null}
 
       {!controlled ? (
-        <button type="button" className="tal-secondary" onClick={() => void reload()}>
-          تازه‌سازی
-        </button>
+        <p style={{ marginBottom: '0.75rem' }}>
+          <button type="button" className="bo-btn-ghost" onClick={() => void reload()}>
+            تازه‌سازی
+          </button>
+        </p>
       ) : null}
 
       {items.length === 0 ? (
@@ -124,22 +128,58 @@ export function RegistrationQueueScreen(props: RegistrationQueueScreenProps) {
         <ul className="tal-list">
           {items.map((it) => (
             <li key={it.customerId} className="tal-list-item">
-              <div className="tal-list-title">{it.fullName || '—'}</div>
-              <div className="tal-list-meta" dir="ltr">
-                {it.mobile} · {it.accessStatus}
-                {it.kimiaBound ? ' · kimia_bound' : ''}
-              </div>
+              <button
+                type="button"
+                className="bo-btn-ghost"
+                style={{ width: '100%', textAlign: 'right', marginBottom: 8 }}
+                onClick={() =>
+                  setSelectedId((id) => (id === it.customerId ? null : it.customerId))
+                }
+              >
+                <div className="tal-list-title">{it.fullName || '—'}</div>
+                <div className="tal-list-meta" dir="ltr">
+                  {it.mobile} · {it.accessStatus}
+                </div>
+              </button>
+              {selectedId === it.customerId ? (
+                <div className="tal-list-meta" style={{ marginBottom: 8 }}>
+                  <div>
+                    شناسه: <span dir="ltr">{it.customerId}</span>
+                  </div>
+                  <div>
+                    کد ملی: <span dir="ltr">{it.nationalCode || '—'}</span>
+                  </div>
+                  <div>
+                    ایجاد: <span dir="ltr">{it.createdAt}</span>
+                  </div>
+                  <div>Kimia bound: {it.kimiaBound ? 'بله' : 'خیر'}</div>
+                  <p className="tal-muted" style={{ marginTop: 8 }}>
+                    رد درخواست: endpoint در API فعلی تعریف نشده — Blocked
+                  </p>
+                </div>
+              ) : null}
               <button
                 type="button"
                 disabled={busyId === it.customerId}
                 onClick={() => void handleApprove(it.customerId)}
+                style={{
+                  width: '100%',
+                  padding: '0.55rem',
+                  borderRadius: 8,
+                  border: 'none',
+                  background: '#2d6cdf',
+                  color: '#fff',
+                  cursor: 'pointer',
+                }}
               >
-                {busyId === it.customerId ? '…' : 'تأیید'}
+                {busyId === it.customerId ? '…' : 'تأیید ثبت‌نام'}
               </button>
             </li>
           ))}
         </ul>
       )}
+
+      {selected && selectedId ? null : null}
     </div>
   );
 }
