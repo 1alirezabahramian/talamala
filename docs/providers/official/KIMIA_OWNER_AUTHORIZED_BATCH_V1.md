@@ -101,11 +101,15 @@ No automatic retry. A failed/unknown mutation attempt still consumes its slot.
 
 ---
 
-## 3) Allowlist
+## 3) Allowlist and test-account Ground Truth
 
-| account_id | Role |
-|------------|------|
-| **350** | sole financial mutation target for B1–B4 |
+| account_id | Role | Owner-confirmed account restriction |
+|------------|------|-------------------------------------|
+| **350** | sole financial mutation target for B1–B4; dedicated test account | **No business/account-side transaction limit** |
+
+Owner confirmation recorded on **2026-08-19**: account `350` is a test account and has no Owner-imposed amount or trading restriction for this verification work.
+
+This confirmation removes any need to protect account `350` from a business/account-limit perspective. It **does not** expand the Verification Runner safety budget: Batch V1 remains deliberately bounded to exactly one attempt per operation (`buy=1,sell=1,receive=1,pay=1`) and still stops on the first halt condition.
 
 No other account may receive a mutation in this batch.
 
@@ -138,7 +142,7 @@ Live-optional fields observed:
 
 **Batch V1 policy:** send the live-required fields plus a fresh unique UUID v4 `RequestId`. Do not send the other optional fields unless separately justified and approved. In particular, do not invent `GoldUnit`, `CurrencyId`, `Date`, or `AddToExistingDateVoucher` semantics.
 
-Owner must approve the exact decimal inputs because the live schema does not fully specify the business unit for `GoldPrice` or `Value`:
+Account `350` itself imposes no Owner-side amount limit. Exact decimals are still left unset until the unit/interpretation is grounded, because "unlimited test account" is not evidence for the semantic unit of `GoldPrice` or `Value`.
 
 | Operation | AccountId | Action | GoldPrice | Value | RequestId |
 |-----------|-----------|--------|-----------|-------|-----------|
@@ -292,7 +296,8 @@ Without all required YES fields below, **no mutation**.
 | Field | Owner fill |
 |-------|------------|
 | I authorize exactly Batch V1 B1–B4 | YES / NO |
-| Account `350` confirmed as test target | YES / NO |
+| Account `350` confirmed as test target | **YES — confirmed 2026-08-19** |
+| Account `350` has no Owner-imposed transaction/amount limit | **YES — confirmed 2026-08-19** |
 | Create account included | **NO** |
 | B1 buy `GoldPrice` + `Value` and units in §4 approved | YES / NO |
 | B2 sell `GoldPrice` + `Value` and units in §4 approved | YES / NO |
