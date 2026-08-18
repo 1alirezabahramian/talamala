@@ -1,47 +1,48 @@
 # Kimia Owner-Authorized Batch V1 — bounded Write Verification
 
 **Status:** DRAFT for Owner signature — **NO Kimia Write authorized yet**  
-**Main HEAD:** `0088d74fd852d120087aec3612311d1cd1613ab6`  
+**Reviewed product runner:** `0088d74fd852d120087aec3612311d1cd1613ab6`  
+**Deployed read-only verification source:** `247f4fc2b29c43e703a32ca881960723815b3ebe`  
 **Target service:** `talamala-kimia-runner` (Chabokan / Iran)  
 **Product Write capability:** remains **BLOCKED / default-deny**
 
-> This document defines a bounded verification batch. Committing this document, a successful preflight, an allowlist, or the presence of credentials does **not** authorize a mutation by itself.
+> This document defines a bounded verification batch. Committing this document, a successful preflight, live Swagger evidence, an allowlist, or the presence of credentials does **not** authorize a mutation by itself.
 
 ---
 
 ## 0) Current verified Read-only checkpoint
 
-Controlled Chabokan preflight executed through GitHub Issue #1:
+The reviewed Verification Runner was synchronized to the dedicated Chabokan source and deployed in forced READ-ONLY mode. The final live contract extraction was observed from the Iran-side service after rollout.
 
 | Item | Result |
 |------|--------|
-| GitHub Actions run | `32185718527` |
-| Control workflow HEAD | `0088d74fd852d120087aec3612311d1cd1613ab6` |
 | Service | `talamala-kimia-runner` |
+| Dedicated source ref | `ops/chabokan-kimia-runner` |
+| Deployed verification source | `247f4fc2b29c43e703a32ca881960723815b3ebe` |
+| Successful base Verification Runner deploy run | `32191365007` |
+| Final post-rollout log/evidence run | `32192026653` |
+| New boot observed | `2026-08-19 01:46:03` service-local log time |
 | `PREFLIGHT_OK` | **PASS** |
 | `write_gate` | `0` |
 | Write attempted | **false** |
 | Live Swagger version | `v1` |
 | Live Swagger SHA-256 | `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` |
-| Base host | `94.101.184.26` |
+| Live POST catalog | **13 paths** |
+| Request-contract extractor | `PREFLIGHT_CONTRACT_EXTRACT_OK=true` |
 
-This checkpoint proves current Iran-side reachability/read baseline only.
+The first contract-deploy workflow run (`32191758346`) reported failure only because its verification polling window ended before the new container had rolled. Its exact-source checkout, read-only source checks, service lock, and Chabokan deploy steps all passed. Run `32192026653` later proved the new boot and completed contract extraction. No mutation was attempted in either run.
 
-### Critical runtime distinction
+### Runtime safety lock
 
-The Chabokan service is built from the dedicated source ref:
+The deployed boot forces:
 
-`ops/chabokan-kimia-runner`
+```text
+KIMIA_WRITE_VERIFY_ENABLE=0
+```
 
-At this checkpoint that ref still contains `backend/bin/kimia_preflight_readonly.php` but **does not contain** the new:
+and removes Owner token, attempt-budget, allowlist, and mutate-path/body environment variables before running preflight/catalog extraction.
 
-`backend/bin/kimia_verify_runner.php`
-
-Therefore:
-
-> **B1–B4 MUST NOT RUN yet.**
-
-A separate, reviewed ops synchronization/deploy of the Verification Runner to the dedicated Chabokan source is required before the mutation readiness gate can become true. Signing this batch does **not** authorize that deploy automatically.
+Therefore the current deployed service is suitable for Read-only evidence gathering only.
 
 ---
 
@@ -50,37 +51,38 @@ A separate, reviewed ops synchronization/deploy of the Verification Runner to th
 | # | Gate | Required state |
 |---|------|----------------|
 | G1 | Owner batch signature | completed in §8 |
-| G2 | Dedicated Chabokan runner source | contains the reviewed Verification Runner code |
-| G3 | Deployed runtime identity | exact deployed source SHA recorded and matches the reviewed runner |
-| G4 | Fresh preflight | `PREFLIGHT_OK` on the same deployed runtime immediately before mutation |
-| G5 | Live catalog | mutation path + schema extracted from the same fresh live Swagger |
-| G6 | Live Swagger identity | version + SHA-256 recorded; material delta requires Owner review |
-| G7 | `KIMIA_WRITE_VERIFY_ENABLE` | `1` on runner only for the authorized window |
+| G2 | Dedicated Chabokan runner source | reviewed Verification Runner present |
+| G3 | Deployed runtime identity | exact approved source SHA recorded |
+| G4 | Fresh preflight | `PREFLIGHT_OK` on the same runtime immediately before mutation |
+| G5 | Live contract | path + request schema from the same fresh live Swagger |
+| G6 | Live Swagger identity | approved SHA-256; material delta requires Owner review |
+| G7 | `KIMIA_WRITE_VERIFY_ENABLE` | `1` only for the separately authorized mutation window |
 | G8 | Owner token pair | both env vars present, equal, **random per-batch**, no predictable/default value |
 | G9 | Account allowlist | only `350` for B1–B4 |
-| G10 | Attempt budget | exactly `buy=1,sell=1,receive=1,pay=1,create=0` for this batch |
-| G11 | Exact test inputs | Owner-approved values recorded after live schema extraction |
-| G12 | Path/body | exact relative POST path + keys from live Swagger only |
-| G13 | No unresolved prior reservation | batch state has no pending/unknown attempt |
-| G14 | No scope expansion | coin/currency/physical/settlement/adjustment/transfer/void remain excluded |
+| G10 | Attempt budget | exactly `buy=1,sell=1,receive=1,pay=1,create=0` |
+| G11 | Exact financial test inputs | Owner-approved values recorded in §4 |
+| G12 | Path/body | exact relative POST path + live-schema fields only |
+| G13 | Request identity | fresh unique UUID v4 `RequestId` per attempt |
+| G14 | No unresolved prior reservation | no pending/unknown mutation attempt |
+| G15 | No scope expansion | coin/currency/physical/settlement/adjustment/transfer/void excluded |
 
-Historical action values such as `32/64/2/4` are **reference-only**. They are not an authorization input.
+Historical action values are not used as authority. The values below are now confirmed by **live Swagger for these specific request contexts only**; they must not be turned into a global Action-only mapper.
 
 ---
 
 ## 2) Batch scope — exact
 
-| Step | Operation | Account | Mutation attempts | Rule |
-|------|-----------|---------|-------------------|------|
-| B0 | preflight + live catalog | — | 0 | read-only |
-| B1 | **buy** | `350` | **1 max** | then readback |
-| B2 | **sell** | `350` | **1 max** | only if B1 completed cleanly |
-| B3 | **receive** | `350` | **1 max** | only if previous step clean |
-| B4 | **pay** | `350` | **1 max** | only if previous step clean |
-| B5 | STOP | — | — | mandatory |
+| Step | Operation | Account | Mutation attempts | Live endpoint | Live Action |
+|------|-----------|---------|-------------------|---------------|-------------|
+| B0 | preflight + live catalog | — | 0 | — | — |
+| B1 | **buy** | `350` | **1 max** | `/api/voucher/exchangegold` | `32` |
+| B2 | **sell** | `350` | **1 max** | `/api/voucher/exchangegold` | `64` |
+| B3 | **receive** | `350` | **1 max** | `/api/voucher/tradecash` | `2` |
+| B4 | **pay** | `350` | **1 max** | `/api/voucher/tradecash` | `4` |
+| B5 | STOP | — | — | — | — |
 
 **Create account is NOT included in Batch V1.**  
-If Create verification is needed later, it requires a separate Owner authorization and separate attempt budget.
+Coin, currency, physical/barcode, settlement, adjustment, transfer, void/reverse and other Write families are also outside this batch.
 
 ### Batch halt rules
 
@@ -109,24 +111,82 @@ No other account may receive a mutation in this batch.
 
 ---
 
-## 4) Owner-approved exact inputs — fill only after live catalog
+## 4) Live request contracts + Owner-approved exact inputs
 
-The operator/agent must not invent values or infer optional fields from historical material.
+### 4.1 Paper-gold exchange — B1/B2
 
-| Operation | Live path | Required live-schema fields | Exact Owner-approved test values | Unit |
-|-----------|-----------|-----------------------------|----------------------------------|------|
-| buy | `________` | `________` | `________` | `________` |
-| sell | `________` | `________` | `________` | `________` |
-| receive | `________` | `________` | `________` | `________` |
-| pay | `________` | `________` | `________` | `________` |
+**POST:** `/api/voucher/exchangegold`  
+**Live request schema:** `#/components/schemas/ExchangeRequest`
 
-Rules:
+Live-required fields:
 
-1. Values are filled **after** live catalog extraction from the deployed Verification Runner.
-2. Use small controlled values only if allowed by the live contract and explicitly approved by Owner.
-3. `AccountId` in every account-targeted payload must equal `350`.
-4. `RequestId` or any other required field must follow the live schema.
-5. Body files stay under `var/kimia-verify/payloads/` and are never committed.
+| Field | Type | Live description / rule |
+|-------|------|-------------------------|
+| `AccountId` | integer/int32 | شناسه حساب — must be `350` |
+| `Action` | integer/int32 | `32=خرید`, `64=فروش` |
+| `GoldPrice` | number/decimal | قیمت طلا |
+| `Value` | number/decimal | `چه مقدار پولی شود؟` |
+
+Live-optional fields observed:
+
+- `RequestId` string — Swagger states it is used to prevent duplicate document registration and recommends UUID v4.
+- `AddToExistingDateVoucher` boolean
+- `Comment` nullable string
+- `CurrencyId` nullable int32
+- `Date` nullable date-time
+- `GoldUnit` nullable int32
+
+**Batch V1 policy:** send the live-required fields plus a fresh unique UUID v4 `RequestId`. Do not send the other optional fields unless separately justified and approved. In particular, do not invent `GoldUnit`, `CurrencyId`, `Date`, or `AddToExistingDateVoucher` semantics.
+
+Owner must approve the exact decimal inputs because the live schema does not fully specify the business unit for `GoldPrice` or `Value`:
+
+| Operation | AccountId | Action | GoldPrice | Value | RequestId |
+|-----------|-----------|--------|-----------|-------|-----------|
+| B1 buy | `350` | `32` | `________________` | `________________` | fresh UUID v4 at execution |
+| B2 sell | `350` | `64` | `________________` | `________________` | fresh UUID v4 at execution |
+
+Owner-confirmed interpretation/unit for `GoldPrice`: `________________________________`  
+Owner-confirmed interpretation/unit for exchange `Value`: `________________________________`
+
+### 4.2 Cash receive/pay — B3/B4
+
+**POST:** `/api/voucher/tradecash`  
+**Live request schema:** `#/components/schemas/TradeCashRequest`
+
+Live-required fields:
+
+| Field | Type | Live description / rule |
+|-------|------|-------------------------|
+| `AccountId` | integer/int32 | شناسه حساب — must be `350` |
+| `Action` | integer/int32 | `2=دریافت`, `4=پرداخت` |
+| `Value` | number/decimal | مقدار |
+
+Live-optional fields observed:
+
+- `RequestId` string — duplicate-prevention identifier; UUID v4 recommended by Swagger.
+- `AddToExistingDateVoucher` boolean
+- `Comment` nullable string
+- `Date` nullable date-time
+
+**Batch V1 policy:** send the live-required fields plus a fresh unique UUID v4 `RequestId`. Do not send other optional fields in this verification batch without separate approval.
+
+| Operation | AccountId | Action | Value | RequestId |
+|-----------|-----------|--------|-------|-----------|
+| B3 receive | `350` | `2` | `________________` | fresh UUID v4 at execution |
+| B4 pay | `350` | `4` | `________________` | fresh UUID v4 at execution |
+
+Owner-confirmed interpretation/unit for cash `Value`: `________________________________`
+
+### 4.3 Evidence identity
+
+All four contracts above were extracted from live Swagger:
+
+```text
+version=v1
+sha256=be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea
+```
+
+If the fresh preflight immediately before B1 produces a different Swagger SHA or materially different schema, **STOP** and re-review before any mutation.
 
 ---
 
@@ -158,7 +218,7 @@ KIMIA_WRITE_OWNER_AUTH=<same random secret stored only in runner secret env>
 Hard rules:
 
 - No default token.
-- Never use `OWNER_WRITE_BATCH_V1` or another predictable literal as the secret.
+- Never use a predictable literal as the secret.
 - Never paste the secret into this document, GitHub Issue, Git commit, logs, or chat evidence.
 - Record only a non-secret fingerprint if needed.
 
@@ -166,15 +226,23 @@ Hard rules:
 
 ## 6) Per-operation execution card
 
-For each of B1–B4:
+B1/B2:
 
 ```text
-KIMIA_MUTATE_PATH=          # exact relative POST path in the fresh live catalog
+KIMIA_MUTATE_PATH=/api/voucher/exchangegold
 KIMIA_MUTATE_ACCOUNT_ID=350
-KIMIA_MUTATE_BODY_FILE=     # runner-local JSON matching the live schema
+KIMIA_MUTATE_BODY_FILE=<runner-local JSON built from §4.1 approved values>
 ```
 
-The reviewed CLI performs a fresh preflight in the same process before `mutate`.
+B3/B4:
+
+```text
+KIMIA_MUTATE_PATH=/api/voucher/tradecash
+KIMIA_MUTATE_ACCOUNT_ID=350
+KIMIA_MUTATE_BODY_FILE=<runner-local JSON built from §4.2 approved values>
+```
+
+The reviewed CLI performs a fresh preflight in the same process before each `mutate` invocation.
 
 Required evidence per attempt:
 
@@ -198,7 +266,7 @@ Preferred routine control path:
 
 GitHub Issue #1 — `Chabokan Control Console`
 
-Read-only:
+Read-only commands:
 
 ```text
 /chabokan status
@@ -209,9 +277,11 @@ Read-only:
 Current verification:
 
 - Issue-comment permission is working.
-- `/chabokan preflight TALAMALA` completed successfully in run `32185718527`.
+- Verification Runner is deployed in forced Read-only mode.
+- Live catalog and request contracts were extracted successfully from the Iran-side service.
+- Routine Issue control still does **not** expose deploy or mutate.
 
-Deployment is intentionally **not** exposed through issue comments. Any runner synchronization/deploy is a separate ops action and does not itself authorize Kimia Write.
+A future Write-enabled deployment/configuration is a separate action and requires the complete Owner signature below. The current service boot itself forces Write disabled.
 
 ---
 
@@ -224,14 +294,16 @@ Without all required YES fields below, **no mutation**.
 | I authorize exactly Batch V1 B1–B4 | YES / NO |
 | Account `350` confirmed as test target | YES / NO |
 | Create account included | **NO** |
-| Live catalog reviewed and §4 fully filled | YES / NO |
-| Live Swagger SHA-256 approved | `________________________________` |
-| Deployed Verification Runner SHA approved | `________________________________` |
+| B1 buy `GoldPrice` + `Value` and units in §4 approved | YES / NO |
+| B2 sell `GoldPrice` + `Value` and units in §4 approved | YES / NO |
+| B3 receive `Value` + unit in §4 approved | YES / NO |
+| B4 pay `Value` + unit in §4 approved | YES / NO |
+| Live Swagger SHA-256 approved | `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` / NO |
+| Deployed Verification Runner source approved | `247f4fc2b29c43e703a32ca881960723815b3ebe` / NO |
 | Attempt budget approved: `buy=1,sell=1,receive=1,pay=1,create=0` | YES / NO |
+| Random Owner-token provisioned in runner secrets | YES / NO |
 | Date (UTC) | `________________________________` |
 | Name / role | `________________________________` |
-| Random Owner-token provisioned in runner secrets | YES / NO |
-| Non-secret Owner-token fingerprint (optional) | `________________________________` |
 
 **Owner instruction after signature:** execute only the signed steps, one at a time, never broaden scope, and stop on the first halt condition.
 
