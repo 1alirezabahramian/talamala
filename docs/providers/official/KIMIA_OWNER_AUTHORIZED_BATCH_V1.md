@@ -2,47 +2,34 @@
 
 **Status:** DRAFT for Owner signature — **NO Kimia Write authorized yet**  
 **Reviewed product runner:** `0088d74fd852d120087aec3612311d1cd1613ab6`  
-**Deployed read-only verification source:** `247f4fc2b29c43e703a32ca881960723815b3ebe`  
+**Latest read-only verification source:** `24a5b0e737178d859d8985dcff7a5570e475123e`  
 **Target service:** `talamala-kimia-runner` (Chabokan / Iran)  
-**Product Write capability:** remains **BLOCKED / default-deny**
+**Product Write capability:** **BLOCKED / default-deny**
 
-> This document defines a bounded verification batch. Committing this document, a successful preflight, live Swagger evidence, an allowlist, or the presence of credentials does **not** authorize a mutation by itself.
+> This document defines one bounded verification batch. Committing it, successful Read-only evidence, an allowlist, credentials, or a green preflight does **not** authorize a mutation. B1–B4 require the explicit Owner signature in §8.
 
 ---
 
-## 0) Current verified Read-only checkpoint
+## 0) Verified Read-only checkpoint
 
-The reviewed Verification Runner was synchronized to the dedicated Chabokan source and deployed in forced READ-ONLY mode. The final live contract extraction was observed from the Iran-side service after rollout.
+The Verification Runner is deployed to the dedicated Chabokan service in forced READ-ONLY mode.
 
 | Item | Result |
 |------|--------|
 | Service | `talamala-kimia-runner` |
 | Dedicated source ref | `ops/chabokan-kimia-runner` |
-| Deployed verification source | `247f4fc2b29c43e703a32ca881960723815b3ebe` |
-| Successful base Verification Runner deploy run | `32191365007` |
-| Final post-rollout log/evidence run | `32192026653` |
-| New boot observed | `2026-08-19 01:46:03` service-local log time |
+| Latest read-only verification source | `24a5b0e737178d859d8985dcff7a5570e475123e` |
+| Swagger semantic deploy evidence | `32194446109` |
+| Chabokan logs evidence | `32194486355` |
 | `PREFLIGHT_OK` | **PASS** |
 | `write_gate` | `0` |
 | Write attempted | **false** |
 | Live Swagger version | `v1` |
 | Live Swagger SHA-256 | `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` |
 | Live POST catalog | **13 paths** |
-| Request-contract extractor | `PREFLIGHT_CONTRACT_EXTRACT_OK=true` |
+| Account `350` transaction evidence | **14 rows**, Read-only |
 
-The first contract-deploy workflow run (`32191758346`) reported failure only because its verification polling window ended before the new container had rolled. Its exact-source checkout, read-only source checks, service lock, and Chabokan deploy steps all passed. Run `32192026653` later proved the new boot and completed contract extraction. No mutation was attempted in either run.
-
-### Runtime safety lock
-
-The deployed boot forces:
-
-```text
-KIMIA_WRITE_VERIFY_ENABLE=0
-```
-
-and removes Owner token, attempt-budget, allowlist, and mutate-path/body environment variables before running preflight/catalog extraction.
-
-Therefore the current deployed service is suitable for Read-only evidence gathering only.
+The service boot forces `KIMIA_WRITE_VERIFY_ENABLE=0` and removes Owner-token, attempt-budget, allowlist, and mutation env values. Any future Write-enabled verification window is a separate Owner-authorized operation.
 
 ---
 
@@ -50,227 +37,202 @@ Therefore the current deployed service is suitable for Read-only evidence gather
 
 | # | Gate | Required state |
 |---|------|----------------|
-| G1 | Owner batch signature | completed in §8 |
-| G2 | Dedicated Chabokan runner source | reviewed Verification Runner present |
-| G3 | Deployed runtime identity | exact approved source SHA recorded |
-| G4 | Fresh preflight | `PREFLIGHT_OK` on the same runtime immediately before mutation |
-| G5 | Live contract | path + request schema from the same fresh live Swagger |
-| G6 | Live Swagger identity | approved SHA-256; material delta requires Owner review |
-| G7 | `KIMIA_WRITE_VERIFY_ENABLE` | `1` only for the separately authorized mutation window |
-| G8 | Owner token pair | both env vars present, equal, **random per-batch**, no predictable/default value |
-| G9 | Account allowlist | only `350` for B1–B4 |
-| G10 | Attempt budget | exactly `buy=1,sell=1,receive=1,pay=1,create=0` |
-| G11 | Exact financial test inputs | Owner-approved values recorded in §4 |
-| G12 | Path/body | exact relative POST path + live-schema fields only |
-| G13 | Request identity | fresh unique UUID v4 `RequestId` per attempt |
-| G14 | No unresolved prior reservation | no pending/unknown mutation attempt |
-| G15 | No scope expansion | coin/currency/physical/settlement/adjustment/transfer/void excluded |
+| G1 | Owner signature | §8 explicitly authorizes B1–B4 |
+| G2 | Runtime identity | exact approved runner source recorded |
+| G3 | Fresh preflight | `PREFLIGHT_OK` immediately before the mutation batch |
+| G4 | Swagger identity | SHA-256 unchanged or any material delta re-reviewed |
+| G5 | Write enable | `KIMIA_WRITE_VERIFY_ENABLE=1` only for authorized window |
+| G6 | Owner token | random per-batch token pair; no default/predictable token |
+| G7 | Allowlist | only account `350` |
+| G8 | Attempt budget | `buy=1,sell=1,receive=1,pay=1,create=0` |
+| G9 | Exact test inputs | all numeric values Owner-approved in §4/§8 |
+| G10 | Request identity | fresh UUID v4 `RequestId` for every attempt |
+| G11 | No unresolved attempt | no pending/unknown prior mutation |
+| G12 | Scope | no create/coin/currency/physical/settlement/adjustment/transfer/void |
 
-Historical action values are not used as authority. The values below are now confirmed by **live Swagger for these specific request contexts only**; they must not be turned into a global Action-only mapper.
+A timeout, transport ambiguity, HTTP mutation error, failed readback, unexpected side effect, schema delta, or runtime mismatch consumes that operation slot and **halts the remaining batch**. No automatic retry.
 
 ---
 
-## 2) Batch scope — exact
+## 2) Exact Batch V1
 
-| Step | Operation | Account | Mutation attempts | Live endpoint | Live Action |
-|------|-----------|---------|-------------------|---------------|-------------|
-| B0 | preflight + live catalog | — | 0 | — | — |
-| B1 | **buy** | `350` | **1 max** | `/api/voucher/exchangegold` | `32` |
-| B2 | **sell** | `350` | **1 max** | `/api/voucher/exchangegold` | `64` |
-| B3 | **receive** | `350` | **1 max** | `/api/voucher/tradecash` | `2` |
-| B4 | **pay** | `350` | **1 max** | `/api/voucher/tradecash` | `4` |
-| B5 | STOP | — | — | — | — |
+| Step | Operation | Account | Attempts | Endpoint | Action |
+|------|-----------|---------|----------|----------|--------|
+| B0 | fresh preflight + contract check | — | 0 | Read-only | — |
+| B1 | **buy gold** | `350` | **1 max** | `/api/voucher/exchangegold` | `32` |
+| B2 | **sell gold** | `350` | **1 max** | `/api/voucher/exchangegold` | `64` |
+| B3 | **receive cash** | `350` | **1 max** | `/api/voucher/tradecash` | `2` |
+| B4 | **pay cash** | `350` | **1 max** | `/api/voucher/tradecash` | `4` |
+| B5 | **STOP** | — | — | — | — |
 
-**Create account is NOT included in Batch V1.**  
-Coin, currency, physical/barcode, settlement, adjustment, transfer, void/reverse and other Write families are also outside this batch.
-
-### Batch halt rules
-
-Any of the following halts the remaining batch:
-
-- timeout / transport ambiguity;
-- HTTP error from a mutation;
-- mutation success with failed readback;
-- unexpected response shape where side effect cannot be proven;
-- unresolved reserved attempt;
-- live Swagger/path/schema material delta;
-- deployed runner SHA mismatch;
-- Owner revocation.
-
-No automatic retry. A failed/unknown mutation attempt still consumes its slot.
+These Action values are **endpoint/context-scoped**. They are not a global Kimia Action mapping.
 
 ---
 
-## 3) Allowlist and test-account Ground Truth
+## 3) Account 350 Ground Truth
 
-| account_id | Role | Owner-confirmed account restriction |
-|------------|------|-------------------------------------|
-| **350** | sole financial mutation target for B1–B4; dedicated test account | **No business/account-side transaction limit** |
+Owner confirmation on **2026-08-19**:
 
-Owner confirmation recorded on **2026-08-19**: account `350` is a test account and has no Owner-imposed amount or trading restriction for this verification work.
+- account `350` is the dedicated test account;
+- it has no Owner-imposed amount/trading restriction for this verification work.
 
-This confirmation removes any need to protect account `350` from a business/account-limit perspective. It **does not** expand the Verification Runner safety budget: Batch V1 remains deliberately bounded to exactly one attempt per operation (`buy=1,sell=1,receive=1,pay=1`) and still stops on the first halt condition.
-
-No other account may receive a mutation in this batch.
+That does **not** remove the Verification Runner safety budget. Batch V1 remains one mutation attempt for each of B1–B4.
 
 ---
 
-## 4) Live request contracts + Owner-approved exact inputs
+## 4) Swagger-grounded request semantics and exact inputs
 
-### 4.1 Paper-gold exchange — B1/B2
+### 4.1 Money-unit boundary
+
+Owner-confirmed platform rule:
+
+- **Talamala/platform money unit:** تومان
+- **Kimia money unit:** ریال
+
+Therefore all monetary values sent to Kimia in this verification are **ریال**. Production conversion belongs at the backend integration boundary; the browser must not perform authoritative financial conversion.
+
+### 4.2 Kimia GoldUnit
+
+Official Swagger documents Kimia gold units as:
+
+| `GoldUnit` | Meaning |
+|------------|---------|
+| `0` | مثقال |
+| `1` | گرم |
+| `2` | اونس |
+| `3` | کیلوگرم |
+
+**Batch V1 locks `GoldUnit=1` (گرم)** for B1/B2. This removes ambiguity between gram-price and mithqal-price transactions.
+
+For Batch V1:
+
+- `GoldPrice` = Kimia gold price in **ریال per gram**, because `GoldUnit=1`;
+- `Value` on `/exchangegold` = the **gold quantity being exchanged/monetized in the selected GoldUnit**; with `GoldUnit=1`, Batch V1 treats `Value` as **grams**.
+
+This interpretation is supported by the Swagger request model (`GoldPrice`, `GoldUnit`, `Value`) and by real account `350` transaction evidence, including:
+
+- `GoldPrice=181000000`, `Weight=0.2`, `SumMoney=36200000` → `181000000 × 0.2 = 36200000`;
+- `GoldPrice=180700000`, `Weight=10`, `SumMoney=1807000000` in absolute value.
+
+A historical account-350 row with `GoldPrice=798004190` and one gram producing about `184219914` Rial also demonstrates why `GoldUnit` cannot be left implicit: its ratio is consistent with a mithqal-based price converted to gram basis.
+
+### 4.3 B1/B2 — ExchangeRequest
 
 **POST:** `/api/voucher/exchangegold`  
-**Live request schema:** `#/components/schemas/ExchangeRequest`
+**Schema:** `#/components/schemas/ExchangeRequest`
 
-Live-required fields:
+Swagger-required:
 
-| Field | Type | Live description / rule |
-|-------|------|-------------------------|
-| `AccountId` | integer/int32 | شناسه حساب — must be `350` |
-| `Action` | integer/int32 | `32=خرید`, `64=فروش` |
-| `GoldPrice` | number/decimal | قیمت طلا |
-| `Value` | number/decimal | `چه مقدار پولی شود؟` |
+- `AccountId`
+- `Action`
+- `GoldPrice`
+- `Value`
 
-Live-optional fields observed:
+Batch-required for deterministic/safe verification:
 
-- `RequestId` string — Swagger states it is used to prevent duplicate document registration and recommends UUID v4.
-- `AddToExistingDateVoucher` boolean
-- `Comment` nullable string
-- `CurrencyId` nullable int32
-- `Date` nullable date-time
-- `GoldUnit` nullable int32
+- `RequestId` = fresh UUID v4
+- `GoldUnit=1`
+- `AddToExistingDateVoucher=false`
+- `AccountId=350`
 
-**Batch V1 policy:** send the live-required fields plus a fresh unique UUID v4 `RequestId`. Do not send the other optional fields unless separately justified and approved. In particular, do not invent `GoldUnit`, `CurrencyId`, `Date`, or `AddToExistingDateVoucher` semantics.
+Batch omits `CurrencyId`, `Date`, and optional free-text fields unless separately needed.
 
-Account `350` itself imposes no Owner-side amount limit. Exact decimals are still left unset until the unit/interpretation is grounded, because "unlimited test account" is not evidence for the semantic unit of `GoldPrice` or `Value`.
+| Operation | AccountId | Action | GoldUnit | GoldPrice (Rial/gram) | Value (gram) | RequestId |
+|-----------|-----------|--------|----------|------------------------|--------------|-----------|
+| B1 buy | `350` | `32` | `1` | `________________` | `________________` | fresh UUID v4 |
+| B2 sell | `350` | `64` | `1` | `________________` | `________________` | fresh UUID v4 |
 
-| Operation | AccountId | Action | GoldPrice | Value | RequestId |
-|-----------|-----------|--------|-----------|-------|-----------|
-| B1 buy | `350` | `32` | `________________` | `________________` | fresh UUID v4 at execution |
-| B2 sell | `350` | `64` | `________________` | `________________` | fresh UUID v4 at execution |
-
-Owner-confirmed interpretation/unit for `GoldPrice`: `________________________________`  
-Owner-confirmed interpretation/unit for exchange `Value`: `________________________________`
-
-### 4.2 Cash receive/pay — B3/B4
+### 4.4 B3/B4 — TradeCashRequest
 
 **POST:** `/api/voucher/tradecash`  
-**Live request schema:** `#/components/schemas/TradeCashRequest`
+**Schema:** `#/components/schemas/TradeCashRequest`
 
-Live-required fields:
+Swagger-required:
 
-| Field | Type | Live description / rule |
-|-------|------|-------------------------|
-| `AccountId` | integer/int32 | شناسه حساب — must be `350` |
-| `Action` | integer/int32 | `2=دریافت`, `4=پرداخت` |
-| `Value` | number/decimal | مقدار |
+- `AccountId`
+- `Action`
+- `Value`
 
-Live-optional fields observed:
+Batch-required:
 
-- `RequestId` string — duplicate-prevention identifier; UUID v4 recommended by Swagger.
-- `AddToExistingDateVoucher` boolean
-- `Comment` nullable string
-- `Date` nullable date-time
+- `RequestId` = fresh UUID v4
+- `AddToExistingDateVoucher=false`
+- `AccountId=350`
 
-**Batch V1 policy:** send the live-required fields plus a fresh unique UUID v4 `RequestId`. Do not send other optional fields in this verification batch without separate approval.
+For Batch V1, `tradecash.Value` is a **Kimia monetary amount in Rial**.
 
-| Operation | AccountId | Action | Value | RequestId |
-|-----------|-----------|--------|-------|-----------|
-| B3 receive | `350` | `2` | `________________` | fresh UUID v4 at execution |
-| B4 pay | `350` | `4` | `________________` | fresh UUID v4 at execution |
+| Operation | AccountId | Action | Value (Rial) | RequestId |
+|-----------|-----------|--------|--------------|-----------|
+| B3 receive | `350` | `2` | `________________` | fresh UUID v4 |
+| B4 pay | `350` | `4` | `________________` | fresh UUID v4 |
 
-Owner-confirmed interpretation/unit for cash `Value`: `________________________________`
+### 4.5 Swagger identity
 
-### 4.3 Evidence identity
-
-All four contracts above were extracted from live Swagger:
+Current live identity:
 
 ```text
 version=v1
 sha256=be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea
 ```
 
-If the fresh preflight immediately before B1 produces a different Swagger SHA or materially different schema, **STOP** and re-review before any mutation.
+If the fresh preflight before B1 yields a different hash or a material contract change, **STOP before any mutation**.
 
 ---
 
-## 5) Runner env contract — secrets never committed
+## 5) Verification env contract — secrets never committed
 
-Read:
+Read credentials remain existing runner secrets.
 
-```bash
-KIMIA_BASE_URL=...
-KIMIA_USERNAME=...
-KIMIA_PASSWORD=...
-```
-
-Write verification window, only after §8 is signed and all gates pass:
+The separately authorized Write-verification window requires:
 
 ```bash
 KIMIA_WRITE_VERIFY_ENABLE=1
 KIMIA_WRITE_ACCOUNT_ALLOWLIST=350
 KIMIA_WRITE_ATTEMPT_BUDGET='buy=1,sell=1,receive=1,pay=1,create=0'
+KIMIA_WRITE_OWNER_TOKEN=<random per-batch secret>
+KIMIA_WRITE_OWNER_AUTH=<same random per-batch secret>
 ```
 
-Owner authorization uses a **random per-batch secret**:
+Rules:
 
-```bash
-KIMIA_WRITE_OWNER_TOKEN=<random secret stored only in runner secret env>
-KIMIA_WRITE_OWNER_AUTH=<same random secret stored only in runner secret env>
-```
-
-Hard rules:
-
-- No default token.
-- Never use a predictable literal as the secret.
-- Never paste the secret into this document, GitHub Issue, Git commit, logs, or chat evidence.
-- Record only a non-secret fingerprint if needed.
+- no default token;
+- no predictable token literal;
+- never commit/paste/log the token;
+- body files remain runner-local under `var/kimia-verify/` and are never committed.
 
 ---
 
-## 6) Per-operation execution card
+## 6) Per-operation execution and evidence
 
-B1/B2:
+B1/B2 path:
 
 ```text
 KIMIA_MUTATE_PATH=/api/voucher/exchangegold
 KIMIA_MUTATE_ACCOUNT_ID=350
-KIMIA_MUTATE_BODY_FILE=<runner-local JSON built from §4.1 approved values>
 ```
 
-B3/B4:
+B3/B4 path:
 
 ```text
 KIMIA_MUTATE_PATH=/api/voucher/tradecash
 KIMIA_MUTATE_ACCOUNT_ID=350
-KIMIA_MUTATE_BODY_FILE=<runner-local JSON built from §4.2 approved values>
 ```
 
-The reviewed CLI performs a fresh preflight in the same process before each `mutate` invocation.
-
-Required evidence per attempt:
+For every mutation attempt capture:
 
 1. before balance + transaction snapshot;
-2. request metadata/path/payload hash;
-3. raw HTTP response in gitignored evidence storage;
+2. request metadata/path + payload hash;
+3. HTTP result in gitignored evidence storage;
 4. after balance + transaction readback;
-5. final outcome:
-   - `success`
-   - `http_error`
-   - `outcome_unknown`
-   - `success_readback_failed`
+5. final outcome: `success`, `http_error`, `outcome_unknown`, or `success_readback_failed`.
 
-Raw evidence remains under `var/kimia-verify/` and is not committed.
+On `outcome_unknown`: **do not retry**. Read back, record evidence, and STOP.
 
 ---
 
 ## 7) Chabokan control
 
-Preferred routine control path:
-
-GitHub Issue #1 — `Chabokan Control Console`
-
-Read-only commands:
+Routine Issue #1 control remains Read-only/ops-safe:
 
 ```text
 /chabokan status
@@ -278,52 +240,48 @@ Read-only commands:
 /chabokan preflight TALAMALA
 ```
 
-Current verification:
-
-- Issue-comment permission is working.
-- Verification Runner is deployed in forced Read-only mode.
-- Live catalog and request contracts were extracted successfully from the Iran-side service.
-- Routine Issue control still does **not** expose deploy or mutate.
-
-A future Write-enabled deployment/configuration is a separate action and requires the complete Owner signature below. The current service boot itself forces Write disabled.
+Routine Issue control exposes neither general deploy nor mutate. A future Write-enabled runner configuration is a separate bounded operation after §8 is signed.
 
 ---
 
 ## 8) OWNER SIGNATURE — required before B1
 
-Without all required YES fields below, **no mutation**.
+Without all required YES fields, **no mutation**.
 
 | Field | Owner fill |
 |-------|------------|
-| I authorize exactly Batch V1 B1–B4 | YES / NO |
-| Account `350` confirmed as test target | **YES — confirmed 2026-08-19** |
-| Account `350` has no Owner-imposed transaction/amount limit | **YES — confirmed 2026-08-19** |
+| I authorize exactly B1→B4, one attempt each | YES / NO |
+| Account `350` is the test target | **YES — confirmed 2026-08-19** |
+| Account `350` has no Owner-imposed amount/trading limit | **YES — confirmed 2026-08-19** |
 | Create account included | **NO** |
-| B1 buy `GoldPrice` + `Value` and units in §4 approved | YES / NO |
-| B2 sell `GoldPrice` + `Value` and units in §4 approved | YES / NO |
-| B3 receive `Value` + unit in §4 approved | YES / NO |
-| B4 pay `Value` + unit in §4 approved | YES / NO |
-| Live Swagger SHA-256 approved | `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` / NO |
-| Deployed Verification Runner source approved | `247f4fc2b29c43e703a32ca881960723815b3ebe` / NO |
-| Attempt budget approved: `buy=1,sell=1,receive=1,pay=1,create=0` | YES / NO |
-| Random Owner-token provisioned in runner secrets | YES / NO |
+| B1 values in §4.3 approved | YES / NO |
+| B2 values in §4.3 approved | YES / NO |
+| B3 value in §4.4 approved | YES / NO |
+| B4 value in §4.4 approved | YES / NO |
+| `GoldUnit=1` (gram) approved for B1/B2 | YES / NO |
+| Kimia money unit = Rial approved | **YES — Owner confirmed** |
+| Platform display/input money unit = Toman approved | **YES — Owner confirmed** |
+| Swagger SHA approved | `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` / NO |
+| Read-only verification source reviewed | `24a5b0e737178d859d8985dcff7a5570e475123e` / NO |
+| Attempt budget approved | `buy=1,sell=1,receive=1,pay=1,create=0` — YES / NO |
+| Random Owner token provisioned only in runner secrets | YES / NO |
 | Date (UTC) | `________________________________` |
 | Name / role | `________________________________` |
 
-**Owner instruction after signature:** execute only the signed steps, one at a time, never broaden scope, and stop on the first halt condition.
+After signature: execute only the signed steps, sequentially, and stop on the first halt condition.
 
 ---
 
 ## 9) Explicitly out of scope
 
 - Create account
-- Coin write
-- Currency write
-- Physical/barcode write
+- Coin Write
+- Currency Write
+- Physical/barcode Write
 - Settlement/order completion
 - Adjustment
 - Transfer
 - Edit/delete/void/reverse
 - Product capability promotion
 
-This batch is Ground Truth verification only.
+Batch V1 is Ground Truth verification only; successful verification does not automatically enable production Kimia Write.
