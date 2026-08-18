@@ -1,10 +1,8 @@
 name: Talamala Kimia Read-only Deploy Once
 
 on:
-  push:
-    branches: [main]
-    paths:
-      - .github/workflows/chabokan-kimia-readonly-deploy-once.yml
+  issue_comment:
+    types: [created]
 
 permissions:
   contents: read
@@ -19,9 +17,16 @@ env:
   CHABOKAN_CLI_VERSION: 0.9.0
   SOURCE_SHA: da2d156e1398b2af421c1108be03f66a923c85b7
   CONTROL_ISSUE: "1"
+  EXACT_COMMAND: "/readonly-kimia-deploy da2d156e1398b2af421c1108be03f66a923c85b7 TALAMALA"
 
 jobs:
   deploy-readonly:
+    if: >-
+      github.event.issue.number == 1 &&
+      github.event.comment.body == '/readonly-kimia-deploy da2d156e1398b2af421c1108be03f66a923c85b7 TALAMALA' &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
