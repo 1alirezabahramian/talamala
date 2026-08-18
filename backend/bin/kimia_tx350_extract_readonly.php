@@ -22,6 +22,7 @@ if (!is_array($data)) {
 $wanted = [
     'AccountId', 'VoucherId', 'RecordId', 'Date', 'Action', 'ActionName',
     'ProductId', 'ProductName', 'Weight', 'Fineness', 'UnitPrice', 'GoldPrice',
+    'GoldUnit', 'GoldUnitName', 'CurrencyId', 'CurrencySymbol',
     'Quantity', 'Weight750', 'SumMoney', 'Value', 'Amount', 'Money',
     'Description', 'Comment', 'RequestId',
 ];
@@ -49,7 +50,6 @@ $walk = function (mixed $node) use (&$walk, &$records): void {
 };
 $walk($data);
 
-// De-duplicate likely repeated nested objects using stable identity/fingerprint.
 $seen = [];
 $unique = [];
 foreach ($records as $record) {
@@ -92,7 +92,6 @@ for ($i = 0; $i < $limit; $i++) {
         }
     }
 
-    // Emit only selected financial/identity fields, never the complete raw record.
     printf(
         "PREFLIGHT_TX350_ROW=%s\n",
         json_encode($out, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION)
