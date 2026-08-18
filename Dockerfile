@@ -15,6 +15,7 @@ RUN php -m | grep -qi '^curl$' \
     && find backend/app/Integrations/Kimia/Verify -name '*.php' -print0 | xargs -0 -n1 php -l \
     && php -l backend/bin/kimia_verify_runner.php \
     && php -l backend/bin/kimia_contract_catalog_readonly.php \
+    && php -l backend/bin/kimia_tx350_extract_readonly.php \
     && sh -n ops/chabokan-kimia-runner/preflight.sh \
     && sh -n ops/chabokan-kimia-runner/boot.sh
 
