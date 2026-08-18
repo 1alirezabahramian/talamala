@@ -3,9 +3,9 @@
 declare(strict_types=1);
 
 /**
- * Read-only structural extractor for the live Kimia Swagger already captured by preflight.
- * It performs NO network calls and NO mutations. It prints only schema structure needed
- * to prepare the Owner-authorized verification batch; examples/default values are omitted.
+ * READ-ONLY live Swagger semantic extractor.
+ * Reads only var/kimia-verify/swagger_live.json captured by preflight.
+ * Performs NO network calls and NO mutations.
  */
 
 $root = dirname(__DIR__, 2);
@@ -26,6 +26,14 @@ $targets = [
     '/api/voucher/exchangegold',
     '/api/voucher/tradecash',
 ];
+
+function cleanText(mixed $value): mixed
+{
+    if (!is_string($value)) {
+        return $value;
+    }
+    return trim((string) preg_replace('/\s+/', ' ', strip_tags($value)));
+}
 
 /** @return mixed */
 function resolveRef(array $doc, string $ref)
@@ -90,6 +98,61 @@ function requestSchema(array $doc, array $post): ?array
 }
 
 /** @return array<string,mixed> */
+function propertyMeta(array $doc, array $prop): array
+{
+    $resolved = $prop;
+    $ref = isset($prop['$ref']) && is_string($prop['$ref']) ? $prop['$ref'] : null;
+    if ($ref !== null) {
+        $candidate = resolveRef($doc, $ref);
+        if (is_array($candidate)) {
+            $resolved = array_merge($candidate, $prop);
+        }
+    }
+
+    $keys = [
+        'type', 'format', 'nullable', 'readOnly', 'writeOnly',
+        'minimum', 'maximum', 'exclusiveMinimum', 'exclusiveMaximum',
+        'minLength', 'maxLength', 'pattern', 'multipleOf',
+        'default', 'example', 'enum', 'title', 'description'
+    ];
+    $out = ['ref' => $ref];
+    foreach ($keys as $key) {
+        if (array_key_exists($key, $resolved)) {
+            $value = $resolved[$key];
+            if (in_array($key, ['description', 'title'], true)) {
+                $value = cleanText($value);
+            }
+            $out[$key] = $value;
+        }
+    }
+
+    foreach (['oneOf', 'anyOf', 'allOf'] as $combiner) {
+        if (isset($resolved[$combiner]) && is_array($resolved[$combiner])) {
+            $summary = [];
+            foreach ($resolved[$combiner] as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $summary[] = [
+                    'ref' => $item['$ref'] ?? null,
+                    'type' => $item['type'] ?? null,
+                    'format' => $item['format'] ?? null,
+                    'enum' => $item['enum'] ?? null,
+                    'description' => isset($item['description']) ? cleanText($item['description']) : null,
+                ];
+            }
+            $out[$combiner] = $summary;
+        }
+    }
+
+    if (isset($resolved['items']) && is_array($resolved['items'])) {
+        $out['items'] = propertyMeta($doc, $resolved['items']);
+    }
+
+    return $out;
+}
+
+/** @return array<string,mixed> */
 function flattenSchema(array $doc, array $schema, array &$seen = []): array
 {
     if (isset($schema['$ref']) && is_string($schema['$ref'])) {
@@ -131,23 +194,9 @@ function flattenSchema(array $doc, array $schema, array &$seen = []): array
             }
         }
         foreach (($part['properties'] ?? []) as $name => $prop) {
-            if (!is_string($name) || !is_array($prop)) {
-                continue;
+            if (is_string($name) && is_array($prop)) {
+                $properties[$name] = propertyMeta($doc, $prop);
             }
-            $entry = [
-                'type' => $prop['type'] ?? null,
-                'format' => $prop['format'] ?? null,
-                'nullable' => $prop['nullable'] ?? null,
-                'ref' => $prop['$ref'] ?? null,
-                'description' => isset($prop['description']) && is_string($prop['description'])
-                    ? preg_replace('/\s+/', ' ', strip_tags($prop['description']))
-                    : null,
-            ];
-            if (isset($prop['items']) && is_array($prop['items'])) {
-                $entry['items_type'] = $prop['items']['type'] ?? null;
-                $entry['items_ref'] = $prop['items']['$ref'] ?? null;
-            }
-            $properties[$name] = $entry;
         }
     }
 
@@ -165,9 +214,12 @@ foreach ($targets as $target) {
         continue;
     }
 
-    $schema = requestSchema($doc, $post);
     echo 'PREFLIGHT_CONTRACT_PATH=' . $target . PHP_EOL;
     echo 'PREFLIGHT_CONTRACT_OPERATION_ID=' . (string) ($post['operationId'] ?? '') . PHP_EOL;
+    echo 'PREFLIGHT_CONTRACT_SUMMARY=' . (string) cleanText($post['summary'] ?? '') . PHP_EOL;
+    echo 'PREFLIGHT_CONTRACT_DESCRIPTION=' . (string) cleanText($post['description'] ?? '') . PHP_EOL;
+
+    $schema = requestSchema($doc, $post);
     if (!is_array($schema)) {
         echo 'PREFLIGHT_CONTRACT_SCHEMA=missing' . PHP_EOL;
         continue;
@@ -179,7 +231,30 @@ foreach ($targets as $target) {
     $flat = flattenSchema($doc, $schema, $seen);
     echo 'PREFLIGHT_CONTRACT_REQUIRED=' . json_encode($flat['required'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
     foreach (($flat['properties'] ?? []) as $name => $meta) {
-        echo 'PREFLIGHT_CONTRACT_FIELD=' . $target . ' ' . $name . ' ' . json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL;
+        echo 'PREFLIGHT_CONTRACT_FIELD=' . $target . ' ' . $name . ' ' . json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION) . PHP_EOL;
+    }
+}
+
+// Also surface any component/schema/property explicitly related to GoldUnit.
+foreach (($doc['components']['schemas'] ?? []) as $schemaName => $schema) {
+    if (!is_string($schemaName) || !is_array($schema)) {
+        continue;
+    }
+    $nameHit = stripos($schemaName, 'goldunit') !== false;
+    $propHits = [];
+    foreach (($schema['properties'] ?? []) as $propName => $prop) {
+        if (is_string($propName) && stripos($propName, 'goldunit') !== false && is_array($prop)) {
+            $propHits[$propName] = propertyMeta($doc, $prop);
+        }
+    }
+    if ($nameHit || $propHits !== []) {
+        echo 'PREFLIGHT_GOLDUNIT_SCHEMA=' . $schemaName . ' ' . json_encode([
+            'title' => isset($schema['title']) ? cleanText($schema['title']) : null,
+            'description' => isset($schema['description']) ? cleanText($schema['description']) : null,
+            'type' => $schema['type'] ?? null,
+            'enum' => $schema['enum'] ?? null,
+            'properties' => $propHits,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_PRESERVE_ZERO_FRACTION) . PHP_EOL;
     }
 }
 
