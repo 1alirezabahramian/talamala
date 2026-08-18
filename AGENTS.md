@@ -9,9 +9,13 @@ Build from business truth. Never invent Kimia, pricing, payment or settlement be
 3. Read `docs/traceability/CAPABILITY_LEDGER.md`
 4. Read `docs/adr/ADR_INDEX.md`
 5. Check current Git branch / SHA / open PRs
+6. Read `docs/00-master/CURRENT_STATE.md` (Phase-1 freeze + Kimia verification gate)
+7. For live Iran Kimia **read/ops only**: use GitHub Issue **#1** (`/chabokan …`) — never Owner as Chabokan messenger; never call Kimia from non-Iran sandbox
 
 ## Stop Conditions
 - **Phase-1 is FROZEN** at `0.3.8-phase1` (`PHASE1_SAFE_CLOSURE.md`). Do not invent Kimia Write, Pricing, Settlement, Payment, live SMS/Jibit, or Delta/tenant durability without archived Ground Truth.
+- **Kimia Write is default-deny.** Preflight OK / account 350 readable does **not** authorize Write. Bounded Write only after a **new** explicit Owner authorization.
+- Do not deploy arbitrary branches to `talamala-kimia-runner`; do not touch GoldPlatform from Talamala runner.
 Stop and surface the exact unknown when:
 - A financial or Kimia write path lacks ground truth
 - Two authoritative sources contradict each other
