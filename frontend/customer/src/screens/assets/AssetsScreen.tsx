@@ -92,7 +92,7 @@ export function AssetsScreen(props: AssetsScreenProps) {
           {error}
         </p>
         {!controlled ? (
-          <button type="buttn" className="tal-btn" onClick={() => setReload((n) => n + 1)}>
+          <button type="button" className="tal-btn" onClick={() => setReload((n) => n + 1)}>
             تلاش مجدد
           </button>
         ) : null}
@@ -104,7 +104,7 @@ export function AssetsScreen(props: AssetsScreenProps) {
     return (
       <div className="tal-screen tal-assets" dir="rtl" lang="fa">
         <h1>دارایی</h1>
-        <p className="tal-muted">داد؇ ای نیست</p>
+        <p className="tal-muted">داده‌ای نیست</p>
       </div>
     );
   }
