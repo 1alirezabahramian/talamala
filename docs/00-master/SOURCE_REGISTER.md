@@ -1,13 +1,13 @@
 # Talamala — Source Register
 **Stage:** 0  
 **Status:** Active  
-**Last updated:** 2026-08-12  
+**Last updated:** 2026-08-19  
 
 This register classifies every known business and technical rule according to the strength of its evidence.
 
 ## Classification Legend
 - **CONFIRMED** — Explicitly stated in normative specs or verified historical evidence with clear owner acceptance.
-- **PARTIAL** — Evidence exists but incomplete, needs validation against current official contracts.
+- **PARTIAL** — Evidence exists but incomplete, needs validation against current official contracts or runtime side effects.
 - **UNKNOWN** — No usable ground truth. Capability must remain `BLOCKED BY GROUND TRUTH`.
 - **HISTORICAL ONLY** — Useful for learning, not normative for greenfield Talamala.
 
@@ -71,20 +71,26 @@ This register classifies every known business and technical rule according to th
 | Controllers must never call Kimia HTTP client directly | CONFIRMED | Architecture Blueprint, Domain Workshop |
 | Anti-Corruption Layer required (ReadClient / WriteClient separate) | CONFIRMED | Master Prompt §9 |
 | customer_intent and kimia_action are separate fields | CONFIRMED | Domain Workshop |
-| Action codes 1/2/3/4/7/8 are known with context | PARTIAL | Project Memory + Domain Workshop (need current Swagger confirmation) |
-| Exact write request/response bodies for financial operations | UNKNOWN | Ground Truth Blockers |
-| Create Customer exact contract + duplicate semantics | UNKNOWN | Ground Truth Blockers |
-| Official current Kimia Swagger/OpenAPI file | UNKNOWN | Ground Truth Blockers |
+| Live `/api/voucher/exchangegold` uses `ExchangeRequest.Action`: `32=خرید`, `64=فروش` | CONFIRMED (context-scoped) | Iran-side live Swagger v1, SHA-256 `be0fb0c...77dfbb5cea`, evidence run `32192026653` |
+| Live `/api/voucher/tradecash` uses `TradeCashRequest.Action`: `2=دریافت`, `4=پرداخت` | CONFIRMED (context-scoped) | Same live evidence |
+| A numeric Kimia Action code may be treated as a global domain enum across endpoints | **NOT CONFIRMED / FORBIDDEN ASSUMPTION** | Live schemas show endpoint-specific contexts; map endpoint/context + Action + ActionName |
+| `exchangegold` request structure: required `AccountId`, `Action`, `GoldPrice`, `Value`; optional duplicate-prevention `RequestId` and other optional fields | CONFIRMED (request schema only) | Live `ExchangeRequest`, evidence run `32192026653` |
+| `tradecash` request structure: required `AccountId`, `Action`, `Value`; optional duplicate-prevention `RequestId` and other optional fields | CONFIRMED (request schema only) | Live `TradeCashRequest`, evidence run `32192026653` |
+| `RequestId` is described by live Swagger as duplicate-prevention identifier; UUID v4 recommended | CONFIRMED (schema description) | Same live evidence |
+| Exact success/error response bodies and balance/transaction side effects for `exchangegold` / `tradecash` | UNKNOWN pending bounded Write evidence | GT-003 / KIMIA_OWNER_AUTHORIZED_BATCH_V1 |
+| Exact write contracts for coin/currency/physical/transfer/adjustment/settlement families | UNKNOWN | GT-003 / GT-005 |
+| Create Customer exact contract + duplicate semantics | UNKNOWN | GT-002 |
+| Current official Kimia Swagger is reachable live from Iran runner: version `v1`, SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` | PARTIAL — live verified, raw official artifact not yet archived in repo | Chabokan live preflight + contract evidence |
 
 ## 7. External Providers
 
 | Provider | Purpose | Status | Notes |
 |----------|---------|--------|-------|
-| Kimia | Financial truth | PARTIAL (Read) / UNKNOWN (Write) | Need raw current Swagger |
+| Kimia | Financial truth | PARTIAL (Read + live request schema) / UNKNOWN (Write side effects) | Bounded Write verification still requires explicit Owner signature |
 | Jibit | Identity matching | PARTIAL | Official v1.5.2 PDF referenced; live credentials & current version needed |
 | SMS.ir | OTP | PARTIAL | Contract extract exists; tenant credentials & live proof needed |
 | BehPardakht Mellat | Payment | UNKNOWN | BLOCKED |
-| Goftino | Support chat | UNKNOWN | BLOCKED |
+| Goftino | Support chat integration | UNKNOWN | BLOCKED |
 | Price Provider | Market prices | UNKNOWN | BLOCKED |
 
 ## 8. Frontend / UX
@@ -93,9 +99,9 @@ This register classifies every known business and technical rule according to th
 |------|--------|--------|
 | Persian, RTL, mobile-first | CONFIRMED | UI/UX Spec, Frontend IA |
 | No financial calculation in browser | CONFIRMED | Same |
-| Loading / empty / error / forbidden / offline / retry states required | CONFIRMED | Same |
-| One real high-fidelity page must be approved before broad UI production | CONFIRMED | Same |
-| PWA-safe on iOS/Android/Windows/macOS | CONFIRMED | Same |
+| Loading / empty / error / forbidden / offline / retry states required | CONFIRMED | UI/UX Spec |
+| One real high-fidelity page must be approved before broad UI production | CONFIRMED | UI/UX Spec |
+| PWA-safe on iOS/Android/Windows/macOS | CONFIRMED | UI/UX Spec |
 
 ## 9. Security & Operations
 
@@ -110,4 +116,4 @@ This register classifies every known business and technical rule according to th
 ---
 
 **Next action for this register:**  
-Any new evidence (official Swagger, live API response, owner decision) must update the corresponding row and the Capability Ledger.  
+Bounded Write evidence must prove actual success/error responses and balance/transaction side effects before any Kimia Write capability is promoted.  
