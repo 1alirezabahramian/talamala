@@ -1,0 +1,48 @@
+name: Chabokan CLI Capabilities Once
+on:
+  issue_comment:
+    types: [created]
+permissions:
+  contents: read
+  issues: write
+jobs:
+  inspect:
+    if: >-
+      github.event.issue.number == 1 &&
+      github.event.comment.body == '/chabokan-cli-capabilities-once TALAMALA' &&
+      (github.event.comment.author_association == 'OWNER' || github.event.comment.author_association == 'MEMBER' || github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - name: Inspect CLI help safely
+        shell: bash
+        env:
+          CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
+        run: |
+          set -euo pipefail
+          echo "::add-mask::$CHABOKAN_TOKEN"
+          npm install -g '@chabokan.net/cli@0.9.0' >/dev/null
+          chabok login -t "$CHABOKAN_TOKEN" >/dev/null
+          {
+            echo '=== ROOT ==='
+            chabok --help || true
+            echo '=== SERVICE ==='
+            chabok service --help || true
+            echo '=== ENV ==='
+            chabok env --help || true
+            echo '=== SERVICE_EXEC ==='
+            chabok service exec --help || true
+            echo '=== SERVICE_ENV ==='
+            chabok service env --help || true
+          } | sed -E 's/[A-Za-z0-9_\-]{32,}/[redacted-long-token]/g'
+      - name: Report
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          gh api "repos/${GITHUB_REPOSITORY}/issues/1/comments" -f body="CHABOKAN_CLI_CAPS status=${JOB_STATUS} run=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
