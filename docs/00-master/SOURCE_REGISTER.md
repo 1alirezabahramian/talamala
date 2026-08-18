@@ -29,8 +29,8 @@ This register classifies every known business and technical rule according to th
 |------|--------|--------|
 | Never use binary float for money, weights, prices, quantities, commissions | CONFIRMED | Master Prompt §3, Domain Rules |
 | Use Decimal / fixed precision | CONFIRMED | Same |
-| Kimia uses Rial; customer display uses Toman | CONFIRMED | Domain Workshop, Project Memory |
-| Rial ↔ Toman conversion only in backend (Adapter) | CONFIRMED | Same |
+| Kimia uses Rial; customer/platform display uses Toman | CONFIRMED | Owner confirmation 2026-08-19 + prior Domain Workshop/Project Memory |
+| Rial ↔ Toman conversion only in backend (Adapter) | CONFIRMED | Domain Workshop / Project Memory |
 | Frontend never performs financial conversion or calculation | CONFIRMED | UI/UX Spec, Frontend IA |
 | 18k equivalence: `(weight × fineness) / 750` | CONFIRMED | Domain Rules, Workshop |
 
@@ -71,13 +71,16 @@ This register classifies every known business and technical rule according to th
 | Controllers must never call Kimia HTTP client directly | CONFIRMED | Architecture Blueprint, Domain Workshop |
 | Anti-Corruption Layer required (ReadClient / WriteClient separate) | CONFIRMED | Master Prompt §9 |
 | customer_intent and kimia_action are separate fields | CONFIRMED | Domain Workshop |
-| Live `/api/voucher/exchangegold` uses `ExchangeRequest.Action`: `32=خرید`, `64=فروش` | CONFIRMED (context-scoped) | Iran-side live Swagger v1, SHA-256 `be0fb0c...77dfbb5cea`, evidence run `32192026653` |
-| Live `/api/voucher/tradecash` uses `TradeCashRequest.Action`: `2=دریافت`, `4=پرداخت` | CONFIRMED (context-scoped) | Same live evidence |
+| Live `/api/voucher/exchangegold` uses `ExchangeRequest.Action`: `32=خرید`, `64=فروش` | CONFIRMED (context-scoped) | Iran-side live Swagger v1, SHA-256 `be0fb0c...77dfbb5cea` |
+| Live `/api/voucher/tradecash` uses `TradeCashRequest.Action`: `2=دریافت`, `4=پرداخت` | CONFIRMED (context-scoped) | Same live Swagger evidence |
 | A numeric Kimia Action code may be treated as a global domain enum across endpoints | **NOT CONFIRMED / FORBIDDEN ASSUMPTION** | Live schemas show endpoint-specific contexts; map endpoint/context + Action + ActionName |
-| `exchangegold` request structure: required `AccountId`, `Action`, `GoldPrice`, `Value`; optional duplicate-prevention `RequestId` and other optional fields | CONFIRMED (request schema only) | Live `ExchangeRequest`, evidence run `32192026653` |
-| `tradecash` request structure: required `AccountId`, `Action`, `Value`; optional duplicate-prevention `RequestId` and other optional fields | CONFIRMED (request schema only) | Live `TradeCashRequest`, evidence run `32192026653` |
-| `RequestId` is described by live Swagger as duplicate-prevention identifier; UUID v4 recommended | CONFIRMED (schema description) | Same live evidence |
-| Exact success/error response bodies and balance/transaction side effects for `exchangegold` / `tradecash` | UNKNOWN pending bounded Write evidence | GT-003 / KIMIA_OWNER_AUTHORIZED_BATCH_V1 |
+| `exchangegold` request structure: required `AccountId`, `Action`, `GoldPrice`, `Value`; optional `GoldUnit`, duplicate-prevention `RequestId`, and other optional fields | CONFIRMED (request schema) | Live `ExchangeRequest`; evidence runs `32194446109`, `32194486355` |
+| `tradecash` request structure: required `AccountId`, `Action`, `Value`; optional duplicate-prevention `RequestId` and other optional fields | CONFIRMED (request schema) | Live `TradeCashRequest`; same evidence |
+| `RequestId` is duplicate-prevention identifier; UUID v4 recommended | CONFIRMED (schema description) | Official/live Swagger |
+| Kimia `GoldUnit`: `0=مثقال`, `1=گرم`, `2=اونس`, `3=کیلوگرم` | CONFIRMED (Swagger contract) | Official Kimia Swagger artifact; live `ExchangeRequest` confirms `GoldUnit` field |
+| Batch V1 paper-gold verification uses `GoldUnit=1` so `GoldPrice` is interpreted as Rial/gram and `Value` as gold quantity in grams | CONFIRMED FOR BATCH V1 | Swagger GoldUnit contract + Owner money-unit rule + account `350` transaction evidence |
+| Account `350` real paper-gold history demonstrates gram relation (`181000000 × 0.2 = 36200000`; `180700000 × 10 = 1807000000`) | CONFIRMED (Read-only evidence) | Chabokan account-350 evidence run `32193878935`; raw snapshot SHA-256 `4a5354dd...387f265` |
+| Exact success/error response bodies and balance/transaction side effects for new `exchangegold` / `tradecash` writes | UNKNOWN pending bounded Write evidence | GT-003 / KIMIA_OWNER_AUTHORIZED_BATCH_V1 |
 | Exact write contracts for coin/currency/physical/transfer/adjustment/settlement families | UNKNOWN | GT-003 / GT-005 |
 | Create Customer exact contract + duplicate semantics | UNKNOWN | GT-002 |
 | Current official Kimia Swagger is reachable live from Iran runner: version `v1`, SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` | PARTIAL — live verified, raw official artifact not yet archived in repo | Chabokan live preflight + contract evidence |
