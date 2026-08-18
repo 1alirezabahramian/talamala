@@ -37,6 +37,11 @@ if [ -f var/kimia-verify/swagger_catalog.json ]; then
   '
 fi
 
+# Local-only parse of the live Swagger captured above. NO HTTP and NO mutation.
+if [ "$rc" -eq 0 ]; then
+  php backend/bin/kimia_contract_catalog_readonly.php || rc=$?
+fi
+
 printf '%s\n' "Write not attempted (read_only)."
 printf '%s\n' "Runner is now idle; no automatic retry and no Write."
 printf '%s\n' "A separate Owner authorization and separate deployment change are required before any mutate attempt."
