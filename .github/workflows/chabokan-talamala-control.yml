@@ -1,27 +1,6 @@
-name: Talamala Chabokan Control
+name: Talamala Chabokan Control — Kimia Batch V1 B1 One Shot
 
 on:
-  workflow_dispatch:
-    inputs:
-      action:
-        description: "Operation against talamala-kimia-runner"
-        required: true
-        type: choice
-        default: logs
-        options:
-          - status
-          - logs
-          - deploy
-          - restart
-          - start
-          - stop
-          - preflight
-      confirm:
-        description: "For deploy/restart/start/stop/preflight type TALAMALA"
-        required: false
-        default: ""
-  issue_comment:
-    types: [created]
   push:
     branches:
       - main
@@ -38,288 +17,207 @@ concurrency:
 
 env:
   CHABOKAN_SERVICE: talamala-kimia-runner
-  TALAMALA_RUNNER_REF: ops/chabokan-kimia-runner
   CHABOKAN_CLI_VERSION: 0.9.0
-  CHABOKAN_CONTROL_ISSUE: "1"
+  CONTROL_ISSUE: "1"
+  SOURCE_SHA: 24a5b0e737178d859d8985dcff7a5570e475123e
+  EXPECTED_SWAGGER_SHA: be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea
 
 jobs:
-  validate:
-    name: Validate control contract
-    if: github.event_name != 'issue_comment'
+  b1-buy-once:
     runs-on: ubuntu-latest
-    timeout-minutes: 8
+    timeout-minutes: 16
     steps:
-      - uses: actions/checkout@v4
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Validate pinned Chabokan CLI contract
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
-          chabok version
-          chabok deploy --help | grep -F -- "--service"
-          chabok service logs --help | grep -F -- "--service"
-          chabok service restart --help | grep -F -- "--service"
-          chabok service start --help | grep -F -- "--service"
-          chabok service stop --help | grep -F -- "--service"
-
-      - name: Validate service lock and source ref
-        shell: bash
-        run: |
-          set -euo pipefail
-          test "${CHABOKAN_SERVICE}" = "talamala-kimia-runner"
-          test "${TALAMALA_RUNNER_REF}" = "ops/chabokan-kimia-runner"
-          test "${CHABOKAN_CONTROL_ISSUE}" = "1"
-
-  operate:
-    name: "Chabokan: ${{ inputs.action }}"
-    if: github.event_name == 'workflow_dispatch'
-    needs: validate
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Validate requested operation
-        shell: bash
-        env:
-          ACTION: ${{ inputs.action }}
-          CONFIRM: ${{ inputs.confirm }}
-        run: |
-          set -euo pipefail
-          case "$ACTION" in
-            status|logs)
-              ;;
-            deploy|restart|start|stop|preflight)
-              if [ "$CONFIRM" != "TALAMALA" ]; then
-                echo "::error::Confirmation required. Type TALAMALA."
-                exit 64
-              fi
-              ;;
-            *)
-              echo "::error::Unsupported action: $ACTION"
-              exit 64
-              ;;
-          esac
-
-      - name: Checkout dedicated Talamala runner source
-        if: inputs.action == 'deploy'
+      - name: Checkout exact reviewed Iran runner
         uses: actions/checkout@v4
         with:
-          ref: ops/chabokan-kimia-runner
+          ref: ${{ env.SOURCE_SHA }}
           fetch-depth: 1
 
       - uses: actions/setup-node@v4
         with:
           node-version: "24"
 
-      - name: Install pinned Chabokan CLI
+      - name: Validate immutable B1 scope
         shell: bash
         run: |
           set -euo pipefail
-          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
-          chabok version
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test "$(cat VERSION)" = "0.3.8-phase1"
+          test "$CHABOKAN_SERVICE" = "talamala-kimia-runner"
+          grep -Fq 'ENV KIMIA_WRITE_VERIFY_ENABLE=0' Dockerfile
+          grep -Fq 'export KIMIA_WRITE_VERIFY_ENABLE=0' ops/chabokan-kimia-runner/boot.sh
+          php -l backend/bin/kimia_verify_runner.php
+          php -l backend/app/Integrations/Kimia/Verify/KimiaMutationVerifier.php
+          php -l backend/app/Integrations/Kimia/Verify/KimiaWriteGate.php
+          cp ops/chabokan-kimia-runner/boot.sh /tmp/readonly-boot.sh
 
-      - name: Authenticate to Chabokan
+      - name: Prepare exact Owner-authorized B1 image
+        shell: bash
+        run: |
+          set -euo pipefail
+          RUN_MARKER="${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          echo "RUN_MARKER=$RUN_MARKER" >> "$GITHUB_ENV"
+          OWNER_TOKEN="$(openssl rand -hex 32)"
+          echo "::add-mask::$OWNER_TOKEN"
+          mkdir -p backend/.kimia-batch-v1
+          cat > backend/.kimia-batch-v1/buy.json <<'JSON'
+          {"AccountId":350,"Action":32,"GoldUnit":1,"GoldPrice":181000000,"Value":0.2,"RequestId":"5bf941ef-02b7-465f-abf6-fc17021baa71","AddToExistingDateVoucher":false}
+          JSON
+
+          cat > ops/chabokan-kimia-runner/boot.sh <<'SH'
+          #!/bin/sh
+          set -u
+          echo 'TALAMALA_KIMIA_RUNNER boot'
+          echo 'mode=verification-write-batch-v1-b1'
+          echo 'BATCH_V1_RUN=__RUN_MARKER__ OP=buy'
+          export KIMIA_WRITE_VERIFY_ENABLE=0
+          unset KIMIA_WRITE_OWNER_AUTH KIMIA_WRITE_OWNER_TOKEN KIMIA_WRITE_ATTEMPT_BUDGET KIMIA_WRITE_ACCOUNT_ALLOWLIST KIMIA_MUTATE_PATH KIMIA_MUTATE_BODY_FILE KIMIA_MUTATE_ACCOUNT_ID 2>/dev/null || true
+
+          php backend/bin/kimia_verify_runner.php preflight > /tmp/pf.txt 2>&1
+          pf_rc=$?
+          cat /tmp/pf.txt
+          if [ "$pf_rc" -ne 0 ]; then
+            echo 'BATCH_V1_HALTED=__RUN_MARKER__:buy:preflight_failed'
+            echo 'write_gate=0'
+            exec tail -f /dev/null
+          fi
+          actual_sha="$(sed -n 's/^swagger_sha256=//p' /tmp/pf.txt | tail -1)"
+          if [ "$actual_sha" != '__SWAGGER_SHA__' ]; then
+            echo 'BATCH_V1_HALTED=__RUN_MARKER__:buy:swagger_hash_mismatch'
+            echo 'write_gate=0'
+            exec tail -f /dev/null
+          fi
+
+          GUARD='/tmp/kimia-batch-v1-__RUN_MARKER__-buy.guard'
+          if [ -e "$GUARD" ]; then
+            echo 'BATCH_V1_HALTED=__RUN_MARKER__:buy:replay_guard'
+            echo 'write_gate=0'
+            exec tail -f /dev/null
+          fi
+
+          export KIMIA_WRITE_VERIFY_ENABLE=1
+          export KIMIA_WRITE_OWNER_TOKEN='__OWNER_TOKEN__'
+          export KIMIA_WRITE_OWNER_AUTH='__OWNER_TOKEN__'
+          export KIMIA_WRITE_ACCOUNT_ALLOWLIST='350'
+          export KIMIA_WRITE_ATTEMPT_BUDGET='buy=1,sell=0,receive=0,pay=0,create=0'
+          export KIMIA_MUTATE_ACCOUNT_ID='350'
+          export KIMIA_MUTATE_PATH='/api/voucher/exchangegold'
+          export KIMIA_MUTATE_BODY_FILE='/app/backend/.kimia-batch-v1/buy.json'
+          echo 'write_gate=1 owner_authorized_batch=V1 step=B1 account=350 budget=buy1 request_id=5bf941ef-02b7-465f-abf6-fc17021baa71'
+          touch "$GUARD"
+
+          set +e
+          php backend/bin/kimia_verify_runner.php mutate buy > /tmp/mutate.txt 2>&1
+          mutate_rc=$?
+          set -e
+          cat /tmp/mutate.txt
+
+          php -r '
+            $root="var/kimia-verify";
+            foreach (glob($root."/writes/*/buy/*/response_meta.json") ?: [] as $p) {
+              $j=json_decode((string)file_get_contents($p),true);
+              echo "BATCH_V1_RESPONSE_META=".json_encode($j,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+            }
+            foreach (glob($root."/writes/*/buy/*/response_raw.txt") ?: [] as $p) {
+              $raw=(string)file_get_contents($p); $j=json_decode($raw,true);
+              $redact=function($v,$key="") use (&$redact) {
+                if (preg_match("/name|mobile|phone|national|email|password|secret|token|comment/i",(string)$key)) return "[REDACTED]";
+                if (is_array($v)) { $o=[]; foreach($v as $k=>$x) $o[$k]=$redact($x,(string)$k); return $o; }
+                return $v;
+              };
+              echo "BATCH_V1_RESPONSE_SHA256=".hash("sha256",$raw).PHP_EOL;
+              echo "BATCH_V1_RESPONSE_SAFE=".json_encode($redact(is_array($j)?$j:$raw),JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+            }
+            foreach (glob($root."/state/write_attempt_state_*.json") ?: [] as $p) {
+              $j=json_decode((string)file_get_contents($p),true);
+              echo "BATCH_V1_STATE=".json_encode($j,JSON_UNESCAPED_UNICODE|JSON_UNESCAPED_SLASHES).PHP_EOL;
+            }
+          '
+
+          export KIMIA_WRITE_VERIFY_ENABLE=0
+          unset KIMIA_WRITE_OWNER_AUTH KIMIA_WRITE_OWNER_TOKEN KIMIA_WRITE_ATTEMPT_BUDGET KIMIA_WRITE_ACCOUNT_ALLOWLIST KIMIA_MUTATE_PATH KIMIA_MUTATE_BODY_FILE KIMIA_MUTATE_ACCOUNT_ID 2>/dev/null || true
+          echo 'write_gate=0'
+          if [ "$mutate_rc" -eq 0 ]; then
+            echo 'BATCH_V1_OP_RESULT=__RUN_MARKER__:buy:success'
+          else
+            echo "BATCH_V1_HALTED=__RUN_MARKER__:buy:mutate_rc_$mutate_rc"
+          fi
+          exec tail -f /dev/null
+          SH
+          sed -i "s/__RUN_MARKER__/$RUN_MARKER/g; s/__SWAGGER_SHA__/$EXPECTED_SWAGGER_SHA/g; s/__OWNER_TOKEN__/$OWNER_TOKEN/g" ops/chabokan-kimia-runner/boot.sh
+          chmod 700 ops/chabokan-kimia-runner/boot.sh
+          sh -n ops/chabokan-kimia-runner/boot.sh
+
+      - name: Install and authenticate pinned Chabokan CLI
         shell: bash
         env:
           CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${CHABOKAN_TOKEN:-}" ]; then
-            echo "::error::Repository secret CHABOKAN_TOKEN is not configured."
-            exit 78
-          fi
           echo "::add-mask::$CHABOKAN_TOKEN"
+          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}" >/dev/null
           chabok login -t "$CHABOKAN_TOKEN" >/dev/null
-          echo "Chabokan authentication: OK"
+          chabok service list > /tmp/services.txt
+          grep -Fq "$CHABOKAN_SERVICE" /tmp/services.txt
 
-      - name: Verify dedicated service exists without exposing account inventory
-        shell: bash
-        run: |
-          set -euo pipefail
-          chabok service list > /tmp/chabokan-services.txt
-          grep -Fq "${CHABOKAN_SERVICE}" /tmp/chabokan-services.txt || {
-            echo "::error::Dedicated service ${CHABOKAN_SERVICE} not found."
-            exit 69
-          }
-          echo "Dedicated service lock: OK (${CHABOKAN_SERVICE})"
-
-      - name: Execute service-locked operation
-        shell: bash
-        env:
-          ACTION: ${{ inputs.action }}
-        run: |
-          set -euo pipefail
-          case "$ACTION" in
-            status)
-              chabok service list | grep -F "${CHABOKAN_SERVICE}"
-              ;;
-            logs)
-              chabok service logs -s "${CHABOKAN_SERVICE}"
-              ;;
-            deploy)
-              echo "source_ref=${TALAMALA_RUNNER_REF}"
-              echo "source_sha=$(git rev-parse HEAD)"
-              chabok deploy -s "${CHABOKAN_SERVICE}"
-              sleep 15
-              chabok service logs -s "${CHABOKAN_SERVICE}" || true
-              ;;
-            restart)
-              chabok service restart -s "${CHABOKAN_SERVICE}"
-              sleep 10
-              chabok service logs -s "${CHABOKAN_SERVICE}" || true
-              ;;
-            start)
-              chabok service start -s "${CHABOKAN_SERVICE}"
-              ;;
-            stop)
-              chabok service stop -s "${CHABOKAN_SERVICE}"
-              ;;
-            preflight)
-              chabok service restart -s "${CHABOKAN_SERVICE}"
-              sleep 10
-              chabok service logs -s "${CHABOKAN_SERVICE}" || true
-              ;;
-          esac
-
-  issue-command:
-    name: "Chabokan issue command"
-    if: >-
-      github.event_name == 'issue_comment' &&
-      github.event.issue.number == 1 &&
-      startsWith(github.event.comment.body, '/chabokan ')
-    runs-on: ubuntu-latest
-    timeout-minutes: 15
-    steps:
-      - name: Authorize collaborator and parse command
-        id: command
-        shell: bash
-        env:
-          BODY: ${{ github.event.comment.body }}
-          ASSOCIATION: ${{ github.event.comment.author_association }}
-        run: |
-          set -euo pipefail
-
-          case "$ASSOCIATION" in
-            OWNER|MEMBER|COLLABORATOR)
-              ;;
-            *)
-              echo "::error::Only repository owner/collaborators may use Chabokan control commands."
-              exit 77
-              ;;
-          esac
-
-          read -r PREFIX ACTION CONFIRM EXTRA <<< "$BODY"
-          if [ "$PREFIX" != "/chabokan" ] || [ -n "${EXTRA:-}" ]; then
-            echo "::error::Invalid command format."
-            exit 64
-          fi
-
-          case "$ACTION" in
-            status|logs)
-              if [ -n "${CONFIRM:-}" ]; then
-                echo "::error::status/logs take no confirmation argument."
-                exit 64
-              fi
-              ;;
-            restart|start|stop|preflight)
-              if [ "${CONFIRM:-}" != "TALAMALA" ]; then
-                echo "::error::Confirmation required. Append TALAMALA."
-                exit 64
-              fi
-              ;;
-            deploy)
-              echo "::error::deploy is intentionally disabled from issue comments. Use workflow_dispatch."
-              exit 65
-              ;;
-            *)
-              echo "::error::Unsupported action: $ACTION"
-              exit 64
-              ;;
-          esac
-
-          echo "action=$ACTION" >> "$GITHUB_OUTPUT"
-          echo "Authorized issue command: $ACTION"
-
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "24"
-
-      - name: Install pinned Chabokan CLI
-        shell: bash
-        run: |
-          set -euo pipefail
-          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
-          chabok version
-
-      - name: Authenticate and enforce dedicated service lock
+      - name: Deploy, restart, and observe exact B1 marker
+        id: execute
         shell: bash
         env:
           CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
         run: |
           set -euo pipefail
-          if [ -z "${CHABOKAN_TOKEN:-}" ]; then
-            echo "::error::Repository secret CHABOKAN_TOKEN is not configured."
-            exit 78
-          fi
           echo "::add-mask::$CHABOKAN_TOKEN"
-          chabok login -t "$CHABOKAN_TOKEN" >/dev/null
-          chabok service list > /tmp/chabokan-services.txt
-          grep -Fq "${CHABOKAN_SERVICE}" /tmp/chabokan-services.txt || {
-            echo "::error::Dedicated service ${CHABOKAN_SERVICE} not found."
-            exit 69
-          }
-          echo "Chabokan authentication: OK"
-          echo "Dedicated service lock: OK (${CHABOKAN_SERVICE})"
+          chabok deploy -s "$CHABOKAN_SERVICE"
+          chabok service restart -s "$CHABOKAN_SERVICE"
+          outcome=timeout
+          for i in $(seq 1 36); do
+            sleep 5
+            chabok service logs -s "$CHABOKAN_SERVICE" > /tmp/b1.log 2>&1 || true
+            if grep -Fq "BATCH_V1_OP_RESULT=${RUN_MARKER}:buy:success" /tmp/b1.log; then outcome=success; break; fi
+            if grep -Fq "BATCH_V1_HALTED=${RUN_MARKER}:buy:" /tmp/b1.log; then outcome=halted; break; fi
+          done
+          grep -E "BATCH_V1_|mode=verification-write-batch-v1-b1|PREFLIGHT_OK|swagger_(sha256|version)|write_gate=" /tmp/b1.log | tail -120 || true
+          echo "outcome=$outcome" >> "$GITHUB_OUTPUT"
+          test "$outcome" = success
 
-      - name: Execute issue command with sanitized output
+      - name: Restore read-only service and prove unique restore boot
+        id: restore
+        if: always()
         shell: bash
         env:
-          ACTION: ${{ steps.command.outputs.action }}
+          CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
         run: |
           set -euo pipefail
+          echo "::add-mask::$CHABOKAN_TOKEN"
+          rm -rf backend/.kimia-batch-v1
+          {
+            head -n 1 /tmp/readonly-boot.sh
+            echo "echo 'BATCH_V1_RESTORE_MARKER=${RUN_MARKER}-buy'"
+            tail -n +2 /tmp/readonly-boot.sh
+          } > ops/chabokan-kimia-runner/boot.sh
+          grep -Fq 'export KIMIA_WRITE_VERIFY_ENABLE=0' ops/chabokan-kimia-runner/boot.sh
+          sh -n ops/chabokan-kimia-runner/boot.sh
+          chabok login -t "$CHABOKAN_TOKEN" >/dev/null
+          chabok deploy -s "$CHABOKAN_SERVICE"
+          chabok service restart -s "$CHABOKAN_SERVICE"
+          restored=0
+          for i in $(seq 1 36); do
+            sleep 5
+            chabok service logs -s "$CHABOKAN_SERVICE" > /tmp/restore.log 2>&1 || true
+            if grep -Fq "BATCH_V1_RESTORE_MARKER=${RUN_MARKER}-buy" /tmp/restore.log && grep -Fq 'mode=verification-read-only' /tmp/restore.log && grep -Fq 'write_gate=0' /tmp/restore.log; then restored=1; break; fi
+          done
+          grep -E "BATCH_V1_RESTORE_MARKER=${RUN_MARKER}-buy|mode=verification-read-only|PREFLIGHT_TX350_(RAW_SHA256|RECORD_COUNT|ROW)|PREFLIGHT_OK|swagger_(sha256|version)|write_gate=0|Write not attempted" /tmp/restore.log | tail -100 || true
+          echo "restored=$restored" >> "$GITHUB_OUTPUT"
+          test "$restored" = 1
 
-          sanitize_logs() {
-            grep -E 'TALAMALA_KIMIA_RUNNER|PREFLIGHT_|OK P[0-6]|swagger_(version|sha256)|base_host=|Write not attempted|write_gate=' || true
-          }
-
-          case "$ACTION" in
-            status)
-              chabok service list | grep -F "${CHABOKAN_SERVICE}"
-              ;;
-            logs)
-              chabok service logs -s "${CHABOKAN_SERVICE}" 2>&1 | sanitize_logs
-              ;;
-            restart)
-              chabok service restart -s "${CHABOKAN_SERVICE}"
-              echo "restart_requested=true"
-              ;;
-            start)
-              chabok service start -s "${CHABOKAN_SERVICE}"
-              echo "start_requested=true"
-              ;;
-            stop)
-              chabok service stop -s "${CHABOKAN_SERVICE}"
-              echo "stop_requested=true"
-              ;;
-            preflight)
-              chabok service restart -s "${CHABOKAN_SERVICE}"
-              sleep 10
-              chabok service logs -s "${CHABOKAN_SERVICE}" 2>&1 | sanitize_logs
-              ;;
-          esac
-
-      - name: Acknowledge completed issue command
-        if: success()
+      - name: Report B1 result
+        if: always()
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
-          ACTION: ${{ steps.command.outputs.action }}
+          EXEC: ${{ steps.execute.outputs.outcome }}
+          RESTORED: ${{ steps.restore.outputs.restored }}
         run: |
           set -euo pipefail
-          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
-          gh api "repos/${GITHUB_REPOSITORY}/issues/${CHABOKAN_CONTROL_ISSUE}/comments" \
-            -f body="✅ Chabokan command \`${ACTION}\` completed for \`${CHABOKAN_SERVICE}\`. Run: ${RUN_URL}"
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${CONTROL_ISSUE}/comments" -f body="KIMIA_BATCH_V1_R3 op=B1-buy outcome=${EXEC:-unknown} restore=${RESTORED:-unknown} source=${SOURCE_SHA} run=https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
