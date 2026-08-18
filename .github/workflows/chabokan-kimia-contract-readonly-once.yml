@@ -1,0 +1,107 @@
+name: Talamala Kimia Contract Read-only Once
+
+on:
+  issue_comment:
+    types: [created]
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: talamala-kimia-contract-readonly-once
+  cancel-in-progress: false
+
+env:
+  CHABOKAN_SERVICE: talamala-kimia-runner
+  CHABOKAN_CLI_VERSION: 0.9.0
+  SOURCE_SHA: 247f4fc2b29c43e703a32ca881960723815b3ebe
+  CONTROL_ISSUE: "1"
+
+jobs:
+  deploy-readonly:
+    if: >-
+      github.event.issue.number == 1 &&
+      github.event.comment.body == '/readonly-kimia-contract-deploy 247f4fc2b29c43e703a32ca881960723815b3ebe TALAMALA' &&
+      (github.event.comment.author_association == 'OWNER' ||
+       github.event.comment.author_association == 'MEMBER' ||
+       github.event.comment.author_association == 'COLLABORATOR')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout exact operational source
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ env.SOURCE_SHA }}
+          fetch-depth: 1
+
+      - name: Verify read-only source contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -f backend/bin/kimia_contract_catalog_readonly.php
+          grep -Fq 'ENV KIMIA_WRITE_VERIFY_ENABLE=0' Dockerfile
+          grep -Fq 'export KIMIA_WRITE_VERIFY_ENABLE=0' ops/chabokan-kimia-runner/boot.sh
+          grep -Fq 'kimia_contract_catalog_readonly.php' ops/chabokan-kimia-runner/boot.sh
+          echo "source_sha=$SOURCE_SHA"
+          echo "read_only_contract=OK"
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+
+      - name: Install pinned Chabokan CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
+          chabok version
+
+      - name: Authenticate and service-lock
+        shell: bash
+        env:
+          CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${CHABOKAN_TOKEN:-}" || exit 78
+          echo "::add-mask::$CHABOKAN_TOKEN"
+          chabok login -t "$CHABOKAN_TOKEN" >/dev/null
+          chabok service list > /tmp/services
+          grep -Fq "${CHABOKAN_SERVICE}" /tmp/services
+
+      - name: Deploy exact read-only source
+        shell: bash
+        run: |
+          set -euo pipefail
+          chabok deploy -s "${CHABOKAN_SERVICE}"
+
+      - name: Verify live preflight and request-contract extraction
+        shell: bash
+        run: |
+          set -euo pipefail
+          ok=0
+          for i in 1 2 3 4 5 6; do
+            sleep 10
+            chabok service logs -s "${CHABOKAN_SERVICE}" > /tmp/log 2>&1 || true
+            if grep -Fq 'PREFLIGHT_CONTRACT_EXTRACT_OK=true' /tmp/log; then ok=1; break; fi
+          done
+          grep -E 'mode=verification-read-only|write_gate=0|PREFLIGHT_OK|swagger_(version|sha256)|PREFLIGHT_CONTRACT_|Write not attempted' /tmp/log || true
+          test "$ok" = 1
+          grep -Fq 'mode=verification-read-only' /tmp/log
+          grep -Fq 'write_gate=0' /tmp/log
+          grep -Fq 'PREFLIGHT_OK' /tmp/log
+          grep -Fq 'Write not attempted' /tmp/log
+          echo "contract_extract_verified=true"
+
+      - name: Report result
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${CONTROL_ISSUE}/comments" \
+            -f body="READONLY_CONTRACT status=${JOB_STATUS} source=${SOURCE_SHA} run=${RUN_URL}"
