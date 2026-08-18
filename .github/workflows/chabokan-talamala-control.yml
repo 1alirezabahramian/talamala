@@ -30,6 +30,7 @@ on:
 
 permissions:
   contents: read
+  issues: write
 
 concurrency:
   group: talamala-chabokan-control
@@ -310,3 +311,15 @@ jobs:
               chabok service logs -s "${CHABOKAN_SERVICE}" 2>&1 | sanitize_logs
               ;;
           esac
+
+      - name: Acknowledge completed issue command
+        if: success()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ACTION: ${{ steps.command.outputs.action }}
+        run: |
+          set -euo pipefail
+          RUN_URL="https://github.com/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          gh api "repos/${GITHUB_REPOSITORY}/issues/${CHABOKAN_CONTROL_ISSUE}/comments" \
+            -f body="✅ Chabokan command \`${ACTION}\` completed for \`${CHABOKAN_SERVICE}\`. Run: ${RUN_URL}"
