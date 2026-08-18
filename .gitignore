@@ -20,3 +20,9 @@ var/
 .DS_Store
 *.log
 .phpunit.result.cache
+
+# Root handoff / evidence archives (do not re-add to source tree)
+/talamala-*-evidence*.zip
+/talamala-*-handoff*.zip
+/Talamala_*HANDOFF*.zip
+/talamala-multi-stage-*.zip

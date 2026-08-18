@@ -1,4 +1,4 @@
-# Talamala — Current State (2026-08-17)
+# Talamala — Current State (2026-08-18)
 
 ## VERSION
 `0.3.8-phase1`
@@ -8,8 +8,9 @@
 See `docs/00-master/PHASE1_SAFE_CLOSURE.md`.
 
 No speculative domain development until valid Ground Truth is archived.
+Do not bump VERSION merely for ops/docs.
 
-## Smokes (freeze baseline)
+## Smokes (Phase-1 freeze baseline)
 | Check | Expect |
 |-------|--------|
 | domain_smoke | PASS=8 FAIL=0 |
@@ -23,13 +24,28 @@ No speculative domain development until valid Ground Truth is archived.
 | openapi_parity | PASS |
 
 ## Operator
-- `make help` · `make info` · `make check` · `make serve`
-- Freeze baseline SHA: `f1e9eb2` (Owner-confirmed)
+- App: `make help` · `make info` · `make check` · `make serve`
+- Phase-1 code freeze baseline: `f1e9eb2`
+- **Chabokan control (preferred):** GitHub Issue **#1** — Chabokan Control Console  
+  Commands: `/chabokan status|logs|preflight TALAMALA|restart TALAMALA|start TALAMALA|stop TALAMALA`  
+  (deploy via Issue intentionally **not** allowed)
+- Fallback UI: Actions → **Talamala Chabokan Control** (service locked: `talamala-kimia-runner`)
+- Do not route Owner through Chabokan console for routine ops
+- Do not call Kimia from non-Iran sandbox
 
 ## BLOCKED (requires official GT)
 Kimia Write · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
 
 ## Kimia Write Verification (separate track)
-**STOPPED** at Read-Only Preflight gate. Resume: `docs/providers/official/KIMIA_WRITE_VERIFICATION_RESUME.md`
-Runner (read-only): `php backend/bin/kimia_preflight_readonly.php`
-Write default-deny until live swagger hash + env creds + baseline Read + Owner enable.
+| Item | State |
+|------|--------|
+| Preflight (Iran runner) | **PREFLIGHT_OK** ×2 (live evidence) |
+| Live Swagger | v1 · SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` |
+| Account 350 Read / balance / tx | PASS |
+| `write_attempted` | **false** |
+| Write gate | **CLOSED** (default-deny) |
+
+Evidence: `docs/providers/official/KIMIA_LIVE_PREFLIGHT_EVIDENCE_2026-08-18.md`  
+Resume: `docs/providers/official/KIMIA_WRITE_VERIFICATION_RESUME.md`
+
+**No Kimia Write** without a **new** explicit Owner authorization.

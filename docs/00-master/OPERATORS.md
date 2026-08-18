@@ -51,3 +51,26 @@ Kimia Write · live price · settlement · payment — BLOCKED BY GROUND TRUTH
 
 - `VERSION` file at repo root
 - Optional `TALAMALA_BUILD_SHA` env (short SHA on landing)
+
+## Chabokan control (Issue console)
+
+**Preferred path for agents:** comment on GitHub Issue **#1** (Chabokan Control Console):
+
+```text
+/chabokan status
+/chabokan logs
+/chabokan preflight TALAMALA
+/chabokan restart TALAMALA
+/chabokan start TALAMALA
+/chabokan stop TALAMALA
+```
+
+Rules:
+- Service lock: `talamala-kimia-runner` only
+- `preflight` / restart / start / stop require the confirmation token **TALAMALA**
+- **deploy is not available** from Issue commands (by design)
+- Never print `CHABOKAN_TOKEN`
+- Successful preflight ≠ Kimia Write permission
+- Do not touch GoldPlatform from this runner
+
+Alternate: Actions → workflow **Talamala Chabokan Control**.
