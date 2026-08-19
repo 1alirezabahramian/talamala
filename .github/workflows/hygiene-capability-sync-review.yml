@@ -1,0 +1,31 @@
+name: Hygiene Capability Sync Review
+
+on:
+  pull_request:
+    paths:
+      - 'Makefile'
+      - 'docs/00-master/STAGE_HYGIENE_CAPABILITY_SYNC_20260819.md'
+      - 'docs/traceability/CAPABILITY_LEDGER.md'
+      - '.github/workflows/hygiene-capability-sync-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  hygiene-smokes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - name: Full check
+        run: php backend/bin/check.php
+      - name: Create Customer contract smoke
+        run: make kimia-create-customer-contract
+      - name: Kimia write contract smoke
+        run: make kimia-write-contract
+      - name: Operator info
+        run: make info
