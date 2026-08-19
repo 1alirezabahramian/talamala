@@ -1,56 +1,54 @@
 # Kimia Create Customer — Ground Truth (GT-002)
 
-**Status:** **NOT GROUNDED** for path/body/errors  
-**Live Swagger (Iran preflight):** version `v1` · SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea`  
-**Raw swagger.json in repo:** **absent**  
-**Sandbox reachability to Kimia host:** **no** (must extract on `talamala-kimia-runner` / Owner)
+**Status:** **PARTIAL — core live Swagger HTTP contract GROUNDED**  
+**Live Swagger:** version `v1` · SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea`  
+**Iran evidence run:** `32245857002` · runner source `e820915c097873323bc1dc2dead75d64eb032785`  
+**Live Create:** **NOT EXECUTED / NOT AUTHORIZED**
 
-## Why implementation is fail-closed
+## Grounded Create Account contract
 
-| Item | State |
-|------|--------|
-| Exact POST path for create customer/account | **UNKNOWN** |
-| Request schema (required/optional) | **UNKNOWN** |
-| Success response (id field name, shape) | **UNKNOWN** |
-| Duplicate / validation error codes | **UNKNOWN** |
-| Read-back rule after create | Domain says readback required; **not proven for Create** |
+| Item | Live Swagger Ground Truth |
+|------|---------------------------|
+| Method | `POST` |
+| Path | `/api/account` |
+| Summary | ایجاد حساب |
+| Allowed account categories (operation description) | بنکداری، تکفروشی، امانات |
+| Request schema | `AccountDto` |
+| Swagger required properties | **none** (`[]`) |
+| Success | HTTP `200` |
+| Success body | primitive `integer/int32` = شناسه حساب ایجاد شده |
+| Documented error | HTTP `400` = خطا در پردازش درخواست |
 
-SOURCE_REGISTER: *Create Customer exact contract + duplicate semantics | UNKNOWN | GT-002*
+### AccountDto properties
 
-Inventing `POST /api/account` body fields would violate Talamala non-negotiables.
+All properties are optional/nullable in the current Swagger schema:
 
-## Confirmed related Read (not Create)
+`AccountCode`, `AccountId`, `Address`, `Comment`, `DateBirthday`, `EconomicCode`, `IsVisible`, `Mobile`, `Name`, `NationalCode`, `PostalCode`, `ShopName`, `Tel`, `Type`.
 
-| Method | Path | Notes |
-|--------|------|--------|
-| GET | `/api/account` | query `Type` (not accountType) |
-| GET | `/api/account/groups` | query `accountType` |
+Important constraints include: `Name/Mobile/ShopName/Tel/Address` max 255, `NationalCode/EconomicCode` max 20, `PostalCode` max 10, `Comment` max 500. `IsVisible` defaults to `true`.
 
-Observed **list** row shape in test double only (not create schema): `AccountId`, `Name`, `Type`, `Mobile`.
+`Type` description in live Swagger lists: `1=بنکداری`, `3=تکفروشی`, `5=سرمایه و برداشت`, `6=بانک`, `8=حساب داخلی`, `9=ذوب`, `10=امانات`, `11=هزینه`, `12=کارمندان`. The Create operation description narrows allowed Create categories to بنکداری / تکفروشی / امانات. Talamala must not infer additional Create types from the broader DTO description.
 
-## Extraction checklist (Owner / Chabokan runner)
+## Still NOT grounded
 
-On runner with live Swagger:
+Swagger exposes only a generic HTTP `400`; it does **not** separately document:
 
-```bash
-php backend/bin/kimia_verify_runner.php catalog
-# inspect var/kimia-verify/swagger_live.json + swagger_catalog.json
-```
+- duplicate-customer detection/status/body semantics;
+- validation error body/codes;
+- authoritative post-create readback/reconciliation behavior.
 
-Fill only from live OpenAPI components/paths (no guess): HTTP method, path, operationId, request schema, required/optional properties, property types/enums, success HTTP status/body id, duplicate and validation errors.
+Therefore GT-002 is **PARTIAL**, not fully closed. The HTTP method/path/request/success contract is grounded; duplicate/validation/readback semantics remain blocked pending separate evidence.
 
-Then archive Swagger excerpt/hash. Any live Create requires a **separate explicit Owner authorization**.
+## Safety boundary
+
+- No Live Create was performed while extracting this evidence.
+- The runner forced `KIMIA_WRITE_VERIFY_ENABLE=0`; evidence ended with `Write not attempted (read_only)`.
+- No registration/order/settlement wiring is authorized by this evidence.
+- Any Live Create needs a **new, separate, explicit Owner authorization** plus exact test values.
+- Settlement remains blocked by its own Ground Truth.
 
 ## Existing product binding — do not duplicate
 
-- `CustomerRegistrationService` creates Talamala customer; `kimiaAccountId: null` until bind.
+- `CustomerRegistrationService` creates the Talamala customer; `kimiaAccountId: null` until bind.
 - `bindKimiaAccount(...)` attaches an existing Kimia account id.
-- Kimia Create is a separate Integrations concern once GT-002 is closed.
-
-## ACL until grounded
-
-- `KimiaCreateCustomerContract::isGrounded() === false` by default.
-- `HttpKimiaCreateCustomerClient` refuses POST while ungrounded.
-- Grounded HTTP contract must be `POST` with a relative Kimia path only; external/full URLs are rejected.
-- `FakeKimiaCreateCustomerClient` is test-only with explicit fixture contract.
-- **No live Create in this delivery.**
+- Kimia Create remains a separate Integrations concern; this Ground Truth does not wire it into registration.
