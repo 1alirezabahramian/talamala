@@ -15,6 +15,7 @@ final class FakeKimiaCreateCustomerClient implements KimiaCreateCustomerClient
     public function create(array $payload): KimiaCreateCustomerResult
     {
         $this->contract->assertPayloadKeys($payload);
+        KimiaAccountDtoInput::assertValues($payload);
         $this->calls[] = $payload;
         $id = ++$this->seq;
         $field = $this->contract->successIdField ?? 'AccountId';
