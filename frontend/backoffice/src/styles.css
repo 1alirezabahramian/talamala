@@ -182,3 +182,37 @@ button:disabled {
   font-size: 0.8rem;
   border-top: 1px solid #e2e8f0;
 }
+
+/* a11y focus */
+:focus-visible {
+  outline: 2px solid #1a56db;
+  outline-offset: 2px;
+}
+
+.tal-field {
+  margin-bottom: 0.85rem;
+}
+.tal-hint {
+  margin: 0.25rem 0 0;
+  font-size: 0.8rem;
+  color: #64748b;
+}
+.tal-field-error {
+  margin: 0.25rem 0 0;
+  font-size: 0.85rem;
+  color: #b91c1c;
+}
+
+.tal-skip-link {
+  position: absolute;
+  inset-inline-start: -999px;
+  top: 0;
+  background: #0f172a;
+  color: #fff;
+  padding: 0.5rem 1rem;
+  z-index: 100;
+}
+.tal-skip-link:focus {
+  inset-inline-start: 0.5rem;
+  top: 0.5rem;
+}

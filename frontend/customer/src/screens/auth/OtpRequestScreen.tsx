@@ -11,6 +11,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { isValidIranMobile, normalizeIranMobile, requestOtp, type OtpPurpose } from '../../api/auth';
+import { FormField } from '../../ui';
 
 export type OtpRequestProps = {
   purpose?: OtpPurpose;
@@ -56,31 +57,32 @@ export function OtpRequestScreen(props: OtpRequestProps) {
   return (
     <div className="tal-screen tal-otp-request" dir="rtl" lang="fa">
       <header className="tal-header">
-        <h1>ورود با پیامک</h1>
-        <p className="tal-muted">شماره موبایل خود را وارد کنید</p>
+        <h1>{purpose === 'login' ? 'ورود با پیامک' : 'ثبت‌نام با پیامک'}</h1>
+        <p className="tal-muted">شماره موبایل ایران را وارد کنید</p>
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>
-        <label htmlFor="mobile">موبایل</label>
-        <input
+        <FormField
           id="mobile"
-          name="mobile"
-          type="tel"
-          inputMode="numeric"
-          autoComplete="tel"
-          placeholder="09121234567"
-          value={mobile}
-          disabled={busy}
-          onChange={(ev) => setMobile(ev.target.value)}
-          maxLength={13}
-          dir="ltr"
-        />
-
-        {error ? (
-          <p className="tal-error" role="alert">
-            {error}
-          </p>
-        ) : null}
+          label="موبایل"
+          hint="مثال: 09121234567"
+          error={error}
+        >
+          <input
+            id="mobile"
+            name="mobile"
+            type="tel"
+            inputMode="numeric"
+            autoComplete="tel"
+            placeholder="09121234567"
+            value={mobile}
+            disabled={busy}
+            onChange={(ev) => setMobile(ev.target.value)}
+            maxLength={13}
+            dir="ltr"
+            aria-invalid={!!error}
+          />
+        </FormField>
 
         <button type="submit" disabled={busy || mobile.trim() === ''}>
           {busy ? 'در حال ارسال…' : 'دریافت کد'}
