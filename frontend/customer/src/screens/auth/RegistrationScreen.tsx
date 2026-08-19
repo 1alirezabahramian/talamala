@@ -6,6 +6,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { registerCustomer } from '../../api/auth';
+import { FormField } from '../../ui';
 
 export type RegistrationScreenProps = {
   mobile: string;
@@ -67,8 +68,8 @@ export function RegistrationScreen(props: RegistrationScreenProps) {
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>
-        <label htmlFor="full_name">نام کامل</label>
-        <input
+        <FormField id="full_name" label="نام کامل" hint="مطابق کارت ملی">
+          <input
           id="full_name"
           name="full_name"
           type="text"
@@ -77,6 +78,7 @@ export function RegistrationScreen(props: RegistrationScreenProps) {
           disabled={loading}
           onChange={(ev) => setFullName(ev.target.value)}
         />
+        </FormField>
 
         <label htmlFor="national_code">کد ملی</label>
         <input

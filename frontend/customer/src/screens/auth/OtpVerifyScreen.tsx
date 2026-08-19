@@ -5,6 +5,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { verifyOtp } from '../../api/auth';
+import { FormField } from '../../ui';
 
 export type OtpVerifyProps = {
   challengeId: string;
@@ -71,20 +72,21 @@ export function OtpVerifyScreen(props: OtpVerifyProps) {
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>
-        <label htmlFor="otp">کد یک‌بارمصرف</label>
-        <input
-          id="otp"
-          name="otp"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          placeholder="------"
-          value={code}
-          disabled={busy}
-          onChange={(ev) => setCode(ev.target.value.replace(/\D+/g, '').slice(0, 8))}
-          maxLength={8}
-          dir="ltr"
-        />
+        <FormField id="otp" label="کد یک‌بارمصرف">
+          <input
+            id="otp"
+            name="otp"
+            type="text"
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="------"
+            value={code}
+            disabled={busy}
+            onChange={(ev) => setCode(ev.target.value.replace(/\D+/g, '').slice(0, 8))}
+            maxLength={8}
+            dir="ltr"
+          />
+        </FormField>
 
         {error ? (
           <p className="tal-error" role="alert">

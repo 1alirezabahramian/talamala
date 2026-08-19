@@ -6,6 +6,7 @@
 import { useEffect, useState } from 'react';
 import { staffLogin, staffRotatePassword, logout } from './api/auth';
 import { RegistrationQueueScreen } from './screens/RegistrationQueueScreen';
+import { FormField } from './ui';
 import { CustodyOpsScreen } from './screens/CustodyOpsScreen';
 
 const SESSION_KEY = 'talamala_staff_session_v1';
@@ -139,23 +140,25 @@ export function AppBackoffice() {
           <h1>ورود کارکنان</h1>
           <p className="tal-muted">Tenant از Host / X-Talamala-Host — بدون tenant در بدنه</p>
           <form onSubmit={onLogin} className="bo-form">
-            <label htmlFor="user">نام کاربری</label>
-            <input
-              id="user"
-              autoComplete="username"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              disabled={busy}
-            />
-            <label htmlFor="pass">رمز عبور</label>
-            <input
-              id="pass"
-              type="password"
-              autoComplete="current-password"
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              disabled={busy}
-            />
+            <FormField id="user" label="نام کاربری">
+              <input
+                id="user"
+                autoComplete="username"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                disabled={busy}
+              />
+            </FormField>
+            <FormField id="pass" label="رمز عبور">
+              <input
+                id="pass"
+                type="password"
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                disabled={busy}
+              />
+            </FormField>
             {error ? (
               <p className="error" role="alert">
                 {error}
@@ -177,15 +180,16 @@ export function AppBackoffice() {
           <h1>تعویض رمز الزامی</h1>
           <p className="tal-muted">اولین ورود — رمز جدید حداقل ۱۰ کاراکتر</p>
           <form onSubmit={onRotate} className="bo-form">
-            <label htmlFor="np">رمز جدید</label>
-            <input
-              id="np"
-              type="password"
-              autoComplete="new-password"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              disabled={busy}
-            />
+            <FormField id="np" label="رمز جدید" hint="حداقل ۱۰ کاراکتر">
+              <input
+                id="np"
+                type="password"
+                autoComplete="new-password"
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                disabled={busy}
+              />
+            </FormField>
             {error ? (
               <p className="error" role="alert">
                 {error}

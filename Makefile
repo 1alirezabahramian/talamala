@@ -1,12 +1,12 @@
 help:
 	@echo 'Talamala targets:'
 	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
-	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract'
+	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract|release-build'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend
 
 check:
 	php backend/bin/check.php
@@ -71,3 +71,9 @@ info:
 	@echo 'Kimia Write ACL: Batch V1 partial (no Order wire)'
 	@echo 'Create Account ACL: PARTIAL (no Live Create, no registration wire)'
 	@echo 'Blocked: Live Create evidence · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit · Delta'
+
+release-build:
+	bash scripts/release_build.sh
+
+verify-frontend:
+	bash scripts/verify_frontend.sh
