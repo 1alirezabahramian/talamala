@@ -20,6 +20,7 @@ final class HttpKimiaCreateCustomerClient implements KimiaCreateCustomerClient
     {
         $this->contract->assertGroundedForHttp();
         $this->contract->assertPayloadKeys($payload);
+        KimiaAccountDtoInput::assertValues($payload);
         $path = (string) $this->contract->path;
         $url = $this->baseUrl . $path;
         $body = json_encode($payload, JSON_UNESCAPED_UNICODE);
