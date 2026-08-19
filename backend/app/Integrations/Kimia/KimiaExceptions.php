@@ -22,3 +22,5 @@ final class KimiaHttpException extends KimiaException
 }
 
 final class KimiaUnexpectedResponseException extends KimiaException {}
+
+final class KimiaContractNotGroundedException extends KimiaException {}
