@@ -4,11 +4,13 @@ help:
 	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract|release-build'
 	@echo '  make pilot-preflight     # offline Phase-1 pilot readiness (no Live Kimia)'
 	@echo '  make pilot-host-smoke    # TALAMALA_BASE_URL=https://host  GET healthz/readyz only'
+	@echo '  make pilot-env-check     # .env / template write-deny posture'
+	@echo '  make pilot-all           # env-check + preflight (+ host if BASE_URL)'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all
 
 check:
 	php backend/bin/check.php
@@ -70,7 +72,8 @@ info:
 	@echo VERSION=$$(cat VERSION 2>/dev/null || echo unknown)
 	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
 	@echo 'Phase-1: SAFE CLOSURE (frozen at 0.3.8-phase1)'
-	@echo 'Pilot: make pilot-preflight · make release-build · make pilot-host-smoke'
+	@echo 'Pilot: make pilot-all · pilot-env-check · pilot-preflight · release-build · pilot-host-smoke'
+	@echo 'Runbook: docs/00-master/PILOT_RUNBOOK.md'
 	@echo 'Kimia Write ACL: Batch V1 partial (no Order wire)'
 	@echo 'Create Account ACL: PARTIAL (no Live Create, no registration wire)'
 	@echo 'Blocked: Live Create evidence · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit · Delta'
@@ -91,3 +94,11 @@ pilot-preflight:
 # Does not call Kimia, does not send OTP/staff credentials.
 pilot-host-smoke:
 	bash scripts/pilot_host_smoke.sh
+
+# Env posture for pilot (write-deny, no secret dump)
+pilot-env-check:
+	bash scripts/pilot_env_check.sh
+
+# env-check → preflight → optional host smoke (TALAMALA_BASE_URL)
+pilot-all:
+	bash scripts/pilot_all.sh
