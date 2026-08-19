@@ -2,11 +2,12 @@ help:
 	@echo 'Talamala targets:'
 	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
 	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract|release-build'
+	@echo '  make pilot-preflight   # offline Phase-1 pilot readiness (no Live Kimia)'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight
 
 check:
 	php backend/bin/check.php
@@ -77,3 +78,9 @@ release-build:
 
 verify-frontend:
 	bash scripts/verify_frontend.sh
+
+# Offline Phase-1 pilot readiness: VERSION pin, freeze docs, write-deny defaults,
+# php-syntax, domain_smoke, openapi parity, Kimia ACL contract smokes, frontend typecheck.
+# Does not require pdo_sqlite or Iran runner. Never enables Live Write/Create.
+pilot-preflight:
+	bash scripts/pilot_preflight.sh

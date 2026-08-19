@@ -1,5 +1,9 @@
 # Phase-1 pilot go-live checklist
 
+## Offline preflight (any sandbox)
+- [ ] `make pilot-preflight` green (VERSION pin · freeze docs · write-deny · domain_smoke · openapi parity · Kimia ACL contracts · frontend typecheck)
+- [ ] No Live Kimia Write/Create; settlement remains blocked
+
 ## Before traffic
 - [ ] Release SHA recorded
 - [ ] `make release-build` or equivalent green

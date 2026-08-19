@@ -1,12 +1,20 @@
 # Deploy Phase-1 (pilot)
 
+## 0. Offline preflight (recommended first)
+
+```bash
+make pilot-preflight   # VERSION · freeze docs · write-deny · domain · parity · typecheck
+```
+
+Does not require pdo_sqlite or Iran runner. See `PILOT_CHECKLIST.md`.
+
 ## 1. Build
 
 ```bash
 git checkout <release-sha>
 cd frontend/customer && npm ci && npm run build
 cd ../backoffice && npm ci && npm run build
-php backend/bin/check.php   # ALL CHECKS PASSED
+php backend/bin/check.php   # ALL CHECKS PASSED (needs pdo_sqlite)
 ```
 
 ## 2. Environment (never commit secrets)
