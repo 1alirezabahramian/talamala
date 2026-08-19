@@ -16,7 +16,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-007 | Identity | Admin approval queue | IMPLEMENTED | |
 | CAP-008 | Kimia | Read client | IMPLEMENTED | Http + Fake |
 | CAP-009 | Kimia | Assets Toman mapping | IMPLEMENTED | |
-| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Live Batch V1 + hardened ACL + Application read-before/read-after; Create Customer / Order wiring still BLOCKED |
+| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Live Batch V1 + shared input guards + contract smoke + Application read-before/read-after; Create Customer / Order/Settlement wiring still BLOCKED |
 | CAP-011 | Quote | Immutable quote model | IMPLEMENTED | |
 | CAP-012 | Quote | Price provider | BLOCKED | Ground truth |
 | CAP-013 | Order | Accept from quote | IMPLEMENTED | |
@@ -26,7 +26,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-017 | Frontend | Customer screens | PARTIAL | Thin Vite · structure only |
 | CAP-018 | Frontend | Backoffice screens | PARTIAL | Thin Vite · structure only |
 | CAP-019 | Payment | Gateways | BLOCKED | Ground truth |
-| CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed smoke gates (http 49) |
+| CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed smoke gates (http 78) |
 | CAP-021 | Security | Session↔tenant isolation | IMPLEMENTED | Customer + staff · 403 mismatch |
 | CAP-022 | Security | Minimal CSP on static HTML | IMPLEMENTED | unsafe-inline for zero-build demos |
 | CAP-023 | Security | Permissions-Policy baseline | IMPLEMENTED | API + HTML · camera/mic/geo off |
@@ -52,6 +52,6 @@ Do not copy GoldPlatform completion percentages.
 
 ## Release notes (2026-08-16)
 - Frontend typecheck optional in CI (`continue-on-error`)
-- http_smoke PASS=49 (staff cross-tenant negative gated)
+- http_smoke PASS=78 FAIL=0
 - spa_router_smoke exact PASS=6 in CI
-- VERSION 0.3.8-phase1 · cors 11 · landing 16 · Permissions-Policy
+- VERSION 0.3.8-phase1 · cors 13 · landing 18 · Permissions-Policy
