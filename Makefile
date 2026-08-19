@@ -1,12 +1,12 @@
 help:
 	@echo 'Talamala targets:'
 	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
-	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract'
+	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract
 
 check:
 	php backend/bin/check.php
@@ -45,6 +45,9 @@ php-syntax:
 
 kimia-write-contract:
 	php backend/bin/kimia_write_contract_smoke.php
+
+kimia-create-customer-contract:
+	php backend/bin/kimia_create_customer_contract_smoke.php
 
 # Optional / advisory (Node required). Does not block CI green SHA.
 frontend-typecheck:
