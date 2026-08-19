@@ -1,6 +1,10 @@
 name: Kimia Create Customer Catalog Temp
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/kimia-create-customer-catalog-temp.yml
   issue_comment:
     types: [created]
 
@@ -20,9 +24,10 @@ env:
 jobs:
   catalog:
     if: >-
-      github.event.issue.number == 1 &&
-      github.event.comment.body == '/kimia-create-customer-catalog-deploy TALAMALA' &&
-      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
+      github.event_name == 'push' ||
+      (github.event.issue.number == 1 &&
+       github.event.comment.body == '/kimia-create-customer-catalog-deploy TALAMALA' &&
+       contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association))
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
