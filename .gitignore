@@ -13,6 +13,7 @@ var/
 .env
 .env.*
 !.env.example
+!.env.pilot.example
 
 # IDE / OS
 .idea/
