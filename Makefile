@@ -69,4 +69,5 @@ info:
 	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
 	@echo 'Phase-1: SAFE CLOSURE (frozen at 0.3.8-phase1)'
 	@echo 'Kimia Write ACL: Batch V1 partial (no Order wire)'
-	@echo 'Blocked: Create Customer · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit · Delta'
+	@echo 'Create Account ACL: PARTIAL (no Live Create, no registration wire)'
+	@echo 'Blocked: Live Create evidence · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit · Delta'
