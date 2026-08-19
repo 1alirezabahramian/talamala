@@ -37,6 +37,7 @@ Do not bump VERSION merely for ops/docs.
 Live: buy/sell `exchangegold` (32/64) · receive/pay `tradecash` (2/4) · ids 77193–77196 · runner restored read-only.
 Evidence: `docs/providers/official/KIMIA_WRITE_VERIFICATION_EVIDENCE_2026-08-19.md`
 ACL: `KimiaWriteClient` / `HttpKimiaWriteClient` + `KimiaWriteApplicationService` with mandatory balance read-before/read-after. No Kernel/Order/Settlement wiring.
+Contract hardening: shared `KimiaWriteInput` guards + offline `make kimia-write-contract` smoke + machine-readable Batch V1 contract.
 
 ## BLOCKED (requires further GT)
 Kimia Create Customer · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
