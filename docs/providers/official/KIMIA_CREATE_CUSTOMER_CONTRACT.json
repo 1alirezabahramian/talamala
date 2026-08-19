@@ -1,16 +1,77 @@
 {
-  "status": "NOT_GROUNDED",
+  "status": "GROUNDED",
   "gt": "GT-002",
+  "grounding_scope": "Live Swagger HTTP contract; duplicate/validation/readback semantics remain partial",
   "swagger_sha256_live_preflight": "be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea",
   "swagger_version_live_preflight": "v1",
+  "live_evidence_run": 32245857002,
+  "live_evidence_source_sha": "e820915c097873323bc1dc2dead75d64eb032785",
   "raw_swagger_archived_in_repo": false,
-  "method": null,
-  "path": null,
-  "request_schema": null,
+  "method": "POST",
+  "path": "/api/account",
+  "summary": "ایجاد حساب",
+  "description": "نوع حساب‌های مجاز: [بنکداری، تکفروشی، امانات]",
+  "request_schema": "AccountDto",
   "required_fields": [],
-  "optional_fields": [],
-  "success_http_status": null,
+  "optional_fields": [
+    "AccountCode",
+    "AccountId",
+    "Address",
+    "Comment",
+    "DateBirthday",
+    "EconomicCode",
+    "IsVisible",
+    "Mobile",
+    "Name",
+    "NationalCode",
+    "PostalCode",
+    "ShopName",
+    "Tel",
+    "Type"
+  ],
+  "field_contract": {
+    "AccountCode": {"type": "integer", "format": "int32", "nullable": true},
+    "AccountId": {"type": "integer", "format": "int32", "nullable": true},
+    "Address": {"type": "string", "nullable": true, "maxLength": 255},
+    "Comment": {"type": "string", "nullable": true, "maxLength": 500},
+    "DateBirthday": {"type": "string", "format": "date-time", "nullable": true},
+    "EconomicCode": {"type": "string", "nullable": true, "maxLength": 20},
+    "IsVisible": {"type": "boolean", "nullable": true, "default": true},
+    "Mobile": {"type": "string", "nullable": true, "maxLength": 255},
+    "Name": {"type": "string", "nullable": true, "maxLength": 255},
+    "NationalCode": {"type": "string", "nullable": true, "maxLength": 20},
+    "PostalCode": {"type": "string", "nullable": true, "maxLength": 10},
+    "ShopName": {"type": "string", "nullable": true, "maxLength": 255},
+    "Tel": {"type": "string", "nullable": true, "maxLength": 255},
+    "Type": {
+      "type": "integer",
+      "format": "int32",
+      "nullable": true,
+      "description": "1=بنکداری, 3=تکفروشی, 5=سرمایه و برداشت, 6=بانک, 8=حساب داخلی, 9=ذوب, 10=امانات, 11=هزینه, 12=کارمندان"
+    }
+  },
+  "success_http_status": 200,
   "success_id_field": null,
-  "error_catalog": [],
-  "notes": "Populate only from live OpenAPI extract on talamala-kimia-runner. Do not invent."
+  "success_body": {
+    "shape": "primitive",
+    "type": "integer",
+    "format": "int32",
+    "meaning": "شناسه حساب ایجاد شده"
+  },
+  "error_catalog": [
+    {
+      "http_status": 400,
+      "description": "خطا در پردازش درخواست",
+      "response_schema": null,
+      "duplicate_semantics": "UNKNOWN",
+      "validation_semantics": "UNKNOWN"
+    }
+  ],
+  "remaining_unknowns": [
+    "Duplicate-customer detection/status/body semantics are not separately documented by Swagger",
+    "Validation error body/codes are not documented beyond generic HTTP 400",
+    "Authoritative Create Customer readback/reconciliation rule has not been live-proven"
+  ],
+  "live_create_authorized": false,
+  "notes": "Grounded only from live Swagger captured on talamala-kimia-runner. Swagger marks no AccountDto properties as required. No live Create was executed. A separate explicit Owner authorization is required before any live Create."
 }

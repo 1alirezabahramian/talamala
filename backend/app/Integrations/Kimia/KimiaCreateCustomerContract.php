@@ -30,16 +30,26 @@ final class KimiaCreateCustomerContract
         if (!is_file($path)) return self::notGrounded();
         $data = json_decode((string) file_get_contents($path), true);
         if (!is_array($data)) return self::notGrounded();
-        $grounded = ($data['status'] ?? '') === 'GROUNDED' && !empty($data['method']) && !empty($data['path']) && !empty($data['required_fields']) && is_array($data['required_fields']);
+
+        $required = $data['required_fields'] ?? null;
+        $optional = $data['optional_fields'] ?? null;
+        $grounded = ($data['status'] ?? '') === 'GROUNDED'
+            && !empty($data['method'])
+            && !empty($data['path'])
+            && !empty($data['request_schema'])
+            && is_array($required)
+            && is_array($optional)
+            && isset($data['success_http_status']);
+
         return new self(
             $grounded,
             isset($data['method']) ? (string) $data['method'] : null,
             isset($data['path']) ? (string) $data['path'] : null,
             isset($data['request_schema']) ? (string) $data['request_schema'] : null,
-            array_values(array_map('strval', $data['required_fields'] ?? [])),
-            array_values(array_map('strval', $data['optional_fields'] ?? [])),
+            array_values(array_map('strval', is_array($required) ? $required : [])),
+            array_values(array_map('strval', is_array($optional) ? $optional : [])),
             isset($data['success_http_status']) ? (int) $data['success_http_status'] : null,
-            isset($data['success_id_field']) ? (string) $data['success_id_field'] : null,
+            isset($data['success_id_field']) && $data['success_id_field'] !== null ? (string) $data['success_id_field'] : null,
             is_array($data['error_catalog'] ?? null) ? $data['error_catalog'] : [],
             isset($data['swagger_sha256_live_preflight']) ? (string) $data['swagger_sha256_live_preflight'] : null,
             isset($data['notes']) ? (string) $data['notes'] : null,
@@ -56,6 +66,8 @@ final class KimiaCreateCustomerContract
         if ($path === '' || $path[0] !== '/' || str_starts_with($path, '//') || str_contains($path, '://') || preg_match('/[\r\n?#]/', $path)) {
             throw new KimiaContractNotGroundedException('Create Customer grounded contract path must be a relative Kimia API path');
         }
+        if ($this->requestSchema === null || $this->requestSchema === '') throw new KimiaContractNotGroundedException('Create Customer request schema must be grounded');
+        if ($this->successHttpStatus === null) throw new KimiaContractNotGroundedException('Create Customer success HTTP status must be grounded');
     }
 
     public function assertPayloadKeys(array $payload): void

@@ -4,9 +4,90 @@ on:
   issue_comment:
     types: [created]
 
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: kimia-create-customer-catalog-temp
+  cancel-in-progress: false
+
+env:
+  CHABOKAN_SERVICE: talamala-kimia-runner
+  RUNNER_REF: ops/chabokan-kimia-runner
+  CHABOKAN_CLI_VERSION: 0.9.0
+
 jobs:
-  disabled:
-    if: false
+  catalog:
+    if: >-
+      github.event.issue.number == 1 &&
+      github.event.comment.body == '/kimia-create-customer-catalog-deploy TALAMALA' &&
+      contains(fromJSON('["OWNER","MEMBER","COLLABORATOR"]'), github.event.comment.author_association)
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
-      - run: echo disabled
+      - name: Checkout exact read-only runner source
+        uses: actions/checkout@v4
+        with:
+          ref: ops/chabokan-kimia-runner
+          fetch-depth: 1
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+
+      - name: Install pinned Chabokan CLI
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm install -g "@chabokan.net/cli@${CHABOKAN_CLI_VERSION}"
+          chabok version
+
+      - name: Authenticate and enforce service lock
+        shell: bash
+        env:
+          CHABOKAN_TOKEN: ${{ secrets.CHABOKAN_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${CHABOKAN_TOKEN:-}"
+          echo "::add-mask::$CHABOKAN_TOKEN"
+          chabok login -t "$CHABOKAN_TOKEN" >/dev/null
+          chabok service list > /tmp/services.txt
+          grep -Fq "${CHABOKAN_SERVICE}" /tmp/services.txt
+          test "$(git branch --show-current)" = "${RUNNER_REF}"
+          echo "RUNNER_SOURCE_SHA=$(git rev-parse HEAD)"
+
+      - name: Deploy fixed read-only runner source
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -Fq 'ENV KIMIA_WRITE_VERIFY_ENABLE=0' Dockerfile
+          grep -Fq 'export KIMIA_WRITE_VERIFY_ENABLE=0' ops/chabokan-kimia-runner/boot.sh
+          chabok deploy -s "${CHABOKAN_SERVICE}"
+          sleep 20
+
+      - name: Extract sanitized Create Customer GT
+        id: extract
+        shell: bash
+        run: |
+          set -euo pipefail
+          chabok service logs -s "${CHABOKAN_SERVICE}" 2>&1 \
+            | grep -E 'CREATE_CUSTOMER_GT_|PREFLIGHT_|write_gate=|Write not attempted|mode=verification-read-only' \
+            | tail -n 220 | tee /tmp/create-customer-gt.log
+          grep -Fq 'CREATE_CUSTOMER_GT_EXTRACT_OK=true' /tmp/create-customer-gt.log
+          grep -Fq 'write_gate=0' /tmp/create-customer-gt.log
+
+      - name: Report result to Issue 1
+        if: always()
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          JOB_STATUS: ${{ job.status }}
+        run: |
+          set -euo pipefail
+          LOG=''
+          if [ -f /tmp/create-customer-gt.log ]; then
+            LOG=$(tail -c 20000 /tmp/create-customer-gt.log)
+          fi
+          BODY=$(printf 'KIMIA_CREATE_CUSTOMER_CATALOG outcome=%s source=%s run=https://github.com/%s/actions/runs/%s\n```text\n%s\n```' "$JOB_STATUS" "$(git rev-parse HEAD 2>/dev/null || echo unknown)" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" "$LOG")
+          gh api "repos/${GITHUB_REPOSITORY}/issues/1/comments" -f body="$BODY"
