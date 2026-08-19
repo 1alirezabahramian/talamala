@@ -50,13 +50,11 @@ final class HttpKimiaWriteClient implements KimiaWriteClient
 
     private function exchangeGold(int $accountId, int $action, string $operation, string $goldPrice, string $value, string $requestId, int $goldUnit): KimiaWriteResult
     {
-        $this->assertAccountId($accountId);
-        $this->assertPositiveDecimal($goldPrice, 'GoldPrice');
-        $this->assertPositiveDecimal($value, 'Value');
-        $this->assertRequestId($requestId);
-        if (!in_array($goldUnit, [0, 1, 2, 3], true)) {
-            throw new \InvalidArgumentException('GoldUnit must be one of 0,1,2,3');
-        }
+        KimiaWriteInput::assertAccountId($accountId);
+        KimiaWriteInput::assertPositiveDecimal($goldPrice, 'GoldPrice');
+        KimiaWriteInput::assertPositiveDecimal($value, 'Value');
+        KimiaWriteInput::assertRequestId($requestId);
+        KimiaWriteInput::assertGoldUnit($goldUnit);
 
         return $this->postJson(
             self::PATH_EXCHANGE_GOLD,
@@ -76,9 +74,9 @@ final class HttpKimiaWriteClient implements KimiaWriteClient
 
     private function tradeCash(int $accountId, int $action, string $operation, string $valueRial, string $requestId): KimiaWriteResult
     {
-        $this->assertAccountId($accountId);
-        $this->assertPositiveDecimal($valueRial, 'Value');
-        $this->assertRequestId($requestId);
+        KimiaWriteInput::assertAccountId($accountId);
+        KimiaWriteInput::assertPositiveDecimal($valueRial, 'Value');
+        KimiaWriteInput::assertRequestId($requestId);
 
         return $this->postJson(
             self::PATH_TRADE_CASH,
@@ -92,31 +90,6 @@ final class HttpKimiaWriteClient implements KimiaWriteClient
             $operation,
             ['Value'],
         );
-    }
-
-    private function assertAccountId(int $accountId): void
-    {
-        if ($accountId <= 0) {
-            throw new \InvalidArgumentException('AccountId must be positive');
-        }
-    }
-
-    private function assertPositiveDecimal(string $value, string $field): void
-    {
-        $value = trim($value);
-        if (!preg_match('/^(?:0|[1-9]\d*)(?:\.\d+)?$/', $value)) {
-            throw new \InvalidArgumentException($field . ' must be a canonical decimal string');
-        }
-        if (preg_match('/^0(?:\.0+)?$/', $value)) {
-            throw new \InvalidArgumentException($field . ' must be greater than zero');
-        }
-    }
-
-    private function assertRequestId(string $requestId): void
-    {
-        if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i', $requestId)) {
-            throw new \InvalidArgumentException('RequestId must be a UUID v4');
-        }
     }
 
     /**
