@@ -39,6 +39,11 @@ Evidence: `docs/providers/official/KIMIA_WRITE_VERIFICATION_EVIDENCE_2026-08-19.
 ACL: `KimiaWriteClient` / `HttpKimiaWriteClient` + `KimiaWriteApplicationService` with mandatory balance read-before/read-after. No Kernel/Order/Settlement wiring.
 Contract hardening: shared `KimiaWriteInput` guards + offline `make kimia-write-contract` smoke + machine-readable Batch V1 contract.
 
+## Kimia Create Customer (GT-002)
+**NOT GROUNDED** — Create ACL is fail-closed; no path/body was guessed and no live Create was executed.  
+Local gate: `make kimia-create-customer-contract` (offline only).  
+Grounding source: live Swagger extract on `talamala-kimia-runner`, followed by a separate explicit Owner authorization for any live Create.
+
 ## BLOCKED (requires further GT)
 Kimia Create Customer · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
 

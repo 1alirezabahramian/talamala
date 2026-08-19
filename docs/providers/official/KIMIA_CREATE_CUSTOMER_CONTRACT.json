@@ -1,0 +1,16 @@
+{
+  "status": "NOT_GROUNDED",
+  "gt": "GT-002",
+  "swagger_sha256_live_preflight": "be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea",
+  "swagger_version_live_preflight": "v1",
+  "raw_swagger_archived_in_repo": false,
+  "method": null,
+  "path": null,
+  "request_schema": null,
+  "required_fields": [],
+  "optional_fields": [],
+  "success_http_status": null,
+  "success_id_field": null,
+  "error_catalog": [],
+  "notes": "Populate only from live OpenAPI extract on talamala-kimia-runner. Do not invent."
+}
