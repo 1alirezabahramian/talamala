@@ -1,0 +1,33 @@
+name: Kimia Create AccountDto Guard Review
+
+on:
+  pull_request:
+    paths:
+      - 'backend/app/Integrations/Kimia/KimiaAccountDtoInput.php'
+      - 'backend/app/Integrations/Kimia/HttpKimiaCreateCustomerClient.php'
+      - 'backend/app/Integrations/Kimia/FakeKimiaCreateCustomerClient.php'
+      - 'backend/bin/kimia_create_customer_contract_smoke.php'
+      - '.github/workflows/kimia-create-account-dto-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  account-dto-guard-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+      - name: Grounded AccountDto smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          out="$(make kimia-create-customer-contract)"
+          printf '%s\n' "$out"
+          grep -Fq 'PASS=19 FAIL=0' <<< "$out"
+      - name: Full check
+        run: php backend/bin/check.php
