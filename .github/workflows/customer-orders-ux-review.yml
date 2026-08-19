@@ -1,0 +1,29 @@
+name: Customer Orders UX Review
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/customer/src/screens/orders/OrderAcceptScreen.tsx'
+      - 'frontend/customer/src/screens/orders/OrdersListScreen.tsx'
+      - '.github/workflows/customer-orders-ux-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  customer-orders-ux:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: frontend/customer/package-lock.json
+      - name: Install customer dependencies
+        run: cd frontend/customer && npm ci
+      - name: Customer typecheck
+        run: cd frontend/customer && npm run typecheck
+      - name: Customer build
+        run: cd frontend/customer && npm run build
