@@ -61,3 +61,7 @@ Evidence: `docs/providers/official/KIMIA_LIVE_PREFLIGHT_EVIDENCE_2026-08-18.md`
 Resume: `docs/providers/official/KIMIA_WRITE_VERIFICATION_RESUME.md`
 
 **No Kimia Write** without a **new** explicit Owner authorization.
+
+## Phase-1 pilot release posture
+See `docs/00-master/RELEASE_SCOPE_PHASE1.md` and `docs/00-master/DEPLOY_PHASE1.md`.
+Pilot release may expose only the bounded Phase-1 capabilities documented there; live pricing, automated settlement, online payment, unattended Kimia write, and unproven production SMS/Jibit remain out of scope.

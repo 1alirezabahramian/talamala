@@ -31,6 +31,11 @@ White-label multi-tenant platform for gold & precious-metal businesses.
 
 Frontend typecheck is **optional** in CI (`continue-on-error`).
 
+## Phase-1 pilot release
+
+See `docs/00-master/RELEASE_SCOPE_PHASE1.md` and `DEPLOY_PHASE1.md`.  
+Settlement, live pricing, and unattended Kimia writes are **out of scope** for this pilot.
+
 ## Non-negotiables
 
 - Kimia = sole truth for Money / Gold / Coin / Currency
