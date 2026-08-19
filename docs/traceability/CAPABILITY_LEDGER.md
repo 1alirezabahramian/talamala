@@ -16,15 +16,15 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-007 | Identity | Admin approval queue | IMPLEMENTED | |
 | CAP-008 | Kimia | Read client | IMPLEMENTED | Http + Fake |
 | CAP-009 | Kimia | Assets Toman mapping | IMPLEMENTED | |
-| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Live Batch V1 + shared input guards + contract smoke + Application read-before/read-after; Create Customer / Order/Settlement wiring still BLOCKED |
+| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Batch V1 live + ACL + App readback; Order/Settlement wire BLOCKED |
 | CAP-011 | Quote | Immutable quote model | IMPLEMENTED | |
 | CAP-012 | Quote | Price provider | BLOCKED | Ground truth |
 | CAP-013 | Order | Accept from quote | IMPLEMENTED | |
 | CAP-014 | Order | Settlement write | BLOCKED | Ground truth |
 | CAP-015 | Custody | Lifecycle | IMPLEMENTED | Talamala truth |
 | CAP-016 | API | OpenAPI auth/customer/backoffice | IMPLEMENTED | Runtime parity + CI gate |
-| CAP-017 | Frontend | Customer screens | PARTIAL | Thin Vite · structure only |
-| CAP-018 | Frontend | Backoffice screens | PARTIAL | Thin Vite · structure only |
+| CAP-017 | Frontend | Customer screens | PARTIAL | OTP login/register · shell assets/orders/custody · session persistence |
+| CAP-018 | Frontend | Backoffice screens | PARTIAL | Staff login/rotate · registration queue approve · custody ops · session |
 | CAP-019 | Payment | Gateways | BLOCKED | Ground truth |
 | CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed smoke gates (http 78) |
 | CAP-021 | Security | Session↔tenant isolation | IMPLEMENTED | Customer + staff · 403 mismatch |
@@ -42,6 +42,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-033 | Custody | Receive validation/auth gated | IMPLEMENTED | 401/422 http_smoke |
 | CAP-034 | Order | quote_not_found 409 gated | IMPLEMENTED | http_smoke |
 | CAP-035 | Ops | healthz/readyz version | IMPLEMENTED | VERSION file |
+| CAP-036 | Kimia | Create Account ACL | PARTIAL | Core Swagger HTTP contract grounded + AccountDto guards; no Live Create; duplicate/validation/readback semantics and registration wire remain open |
 
 Do not copy GoldPlatform completion percentages.
 
