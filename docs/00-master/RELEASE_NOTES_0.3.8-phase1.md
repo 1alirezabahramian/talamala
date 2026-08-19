@@ -11,4 +11,9 @@
 - Live pricing, automatic Kimia settlement, payments, unattended Kimia mutations
 
 ## Operator
-See DEPLOY_PHASE1.md and PILOT_CHECKLIST.md.
+See DEPLOY_PHASE1.md, PILOT_CHECKLIST.md, and PILOT_RUNBOOK.md.
+
+Pilot tooling (ops only, Write still off):
+- `make pilot-env-check` · `make pilot-preflight` · `make pilot-all`
+- `make release-build` · `make pilot-host-smoke`
+- `.env.pilot.example`
