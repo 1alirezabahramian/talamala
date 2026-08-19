@@ -16,7 +16,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-007 | Identity | Admin approval queue | IMPLEMENTED | |
 | CAP-008 | Kimia | Read client | IMPLEMENTED | Http + Fake |
 | CAP-009 | Kimia | Assets Toman mapping | IMPLEMENTED | |
-| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Live Batch V1 evidence 2026-08-19; Create Customer still BLOCKED |
+| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Live Batch V1 + hardened ACL + Application read-before/read-after; Create Customer / Order wiring still BLOCKED |
 | CAP-011 | Quote | Immutable quote model | IMPLEMENTED | |
 | CAP-012 | Quote | Price provider | BLOCKED | Ground truth |
 | CAP-013 | Order | Accept from quote | IMPLEMENTED | |
@@ -41,7 +41,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-032 | Identity | Staff password rotate negatives | IMPLEMENTED | weak/invalid current |
 | CAP-033 | Custody | Receive validation/auth gated | IMPLEMENTED | 401/422 http_smoke |
 | CAP-034 | Order | quote_not_found 409 gated | IMPLEMENTED | http_smoke |
-| CAP-035 | Ops | healthz version file parity | IMPLEMENTED | VERSION file |
+| CAP-035 | Ops | healthz/readyz version | IMPLEMENTED | VERSION file |
 
 Do not copy GoldPlatform completion percentages.
 
