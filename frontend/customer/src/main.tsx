@@ -2,6 +2,7 @@ import './styles.css';
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { AppOtpFlow } from './AppOtpFlow';
+import { ErrorBoundary } from './ui/ErrorBoundary';
 
 /**
  * Customer entry — OTP → register/auth flow already present.
@@ -11,7 +12,7 @@ const root = document.getElementById('root');
 if (root) {
   createRoot(root).render(
     <StrictMode>
-      <AppOtpFlow />
+      <ErrorBoundary><AppOtpFlow /></ErrorBoundary>
     </StrictMode>,
   );
 }
