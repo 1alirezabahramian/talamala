@@ -7,6 +7,7 @@ require_once dirname(__DIR__) . '/app/Integrations/Kimia/KimiaExceptions.php';
 
 use Talamala\Integrations\Kimia\FakeKimiaCreateCustomerClient;
 use Talamala\Integrations\Kimia\KimiaContractNotGroundedException;
+use Talamala\Integrations\Kimia\KimiaAccountDtoInput;
 use Talamala\Integrations\Kimia\KimiaCreateCustomerContract;
 
 $pass=0; $fail=0; $root=dirname(__DIR__,2);
@@ -32,6 +33,49 @@ $fake=new FakeKimiaCreateCustomerClient($fixture);
 try { $fake->create(['Name'=>'A']); bad('fake_requires_fixture_required_fields','expected missing Mobile'); } catch (\InvalidArgumentException) { ok('fake_requires_fixture_required_fields'); }
 $res=$fake->create(['Name'=>'A','Mobile'=>'09121234567']);
 if ($res->accountId!==null && $res->path==='/api/__test_only_not_live__') ok('fake_create_with_fixture'); else bad('fake_create_with_fixture','bad result');
+
+try {
+    KimiaAccountDtoInput::assertValues(['Type' => 6]);
+    bad('dto_type_create_allowlist', 'bank type 6 must not pass Create allowlist');
+} catch (\InvalidArgumentException) {
+    ok('dto_type_create_allowlist');
+}
+try {
+    KimiaAccountDtoInput::assertValues(['Type' => 3, 'Name' => 'ok']);
+    ok('dto_type_retail_allowed');
+} catch (\Throwable $e) {
+    bad('dto_type_retail_allowed', $e->getMessage());
+}
+try {
+    KimiaAccountDtoInput::assertValues(['Name' => str_repeat('x', 256)]);
+    bad('dto_name_maxlength', 'expected throw');
+} catch (\InvalidArgumentException) {
+    ok('dto_name_maxlength');
+}
+try {
+    KimiaAccountDtoInput::assertValues(['Name' => 'A', 'Type' => 1]);
+    ok('dto_wholesale_allowed');
+} catch (\Throwable $e) {
+    bad('dto_wholesale_allowed', $e->getMessage());
+}
+try {
+    KimiaAccountDtoInput::assertValues(['Type' => 10]);
+    ok('dto_custody_allowed');
+} catch (\Throwable $e) {
+    bad('dto_custody_allowed', $e->getMessage());
+}
+try {
+    KimiaAccountDtoInput::assertValues(['Type' => '3']);
+    bad('dto_integer_string_rejected', 'numeric strings must not satisfy integer/int32');
+} catch (\InvalidArgumentException) {
+    ok('dto_integer_string_rejected');
+}
+try {
+    KimiaAccountDtoInput::assertValues(['AccountId' => 2147483648]);
+    bad('dto_int32_range', 'value outside int32 must be rejected');
+} catch (\InvalidArgumentException) {
+    ok('dto_int32_range');
+}
 
 echo "---\nPASS={$pass} FAIL={$fail}\n";
 echo "NOTE: Live Create not executed. Core Swagger HTTP contract is grounded; duplicate/validation/readback semantics remain partial and require separate evidence.\n";
