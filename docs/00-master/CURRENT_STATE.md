@@ -24,6 +24,7 @@ Do not bump VERSION merely for ops/docs.
 | openapi_parity | PASS |
 
 ## Operator
+- Closure authority: `make final-audit` → `docs/audit/` (Final Audit Agent)
 - App: `make help` · `make info` · `make check` · `make serve`
 - Pilot path: `make pilot-all` · `pilot-env-check` · `pilot-preflight` · `pilot-record` · `release-build` · `pilot-host-smoke`
 - Backup: `docs/00-master/PILOT_BACKUP.md`

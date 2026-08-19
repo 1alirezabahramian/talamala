@@ -7,11 +7,12 @@ help:
 	@echo '  make pilot-env-check     # .env / template write-deny posture'
 	@echo '  make pilot-all           # env-check + preflight (+ host if BASE_URL)'
 	@echo '  make pilot-record        # write PILOT_SHA_RECORD.last.md from git'
+	@echo '  make final-audit         # Final Audit Agent (closure authority)'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit
 
 check:
 	php backend/bin/check.php
@@ -107,3 +108,7 @@ pilot-all:
 # Fill docs/00-master/PILOT_SHA_RECORD.last.md from git (no secrets)
 pilot-record:
 	bash scripts/pilot_record.sh
+
+# Final Audit Agent — registry + current-run evidence → score → vetos → verdict
+final-audit:
+	python3 scripts/final_audit_agent.py
