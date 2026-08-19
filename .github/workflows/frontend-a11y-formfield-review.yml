@@ -1,0 +1,26 @@
+name: Frontend A11Y FormField Review
+
+on:
+  pull_request:
+    branches: [main]
+
+jobs:
+  frontend-a11y:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Customer install/typecheck/build
+        working-directory: frontend/customer
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
+      - name: Backoffice install/typecheck/build
+        working-directory: frontend/backoffice
+        run: |
+          npm ci
+          npm run typecheck
+          npm run build
