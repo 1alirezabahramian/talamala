@@ -25,8 +25,8 @@ Do not bump VERSION merely for ops/docs.
 
 ## Operator
 - App: `make help` · `make info` · `make check` · `make serve`
-- Pilot path: `make pilot-preflight` · `make release-build` · `TALAMALA_BASE_URL=… make pilot-host-smoke`
-- Checklist: `docs/00-master/PILOT_CHECKLIST.md` · Deploy: `docs/00-master/DEPLOY_PHASE1.md`
+- Pilot path: `make pilot-all` · `pilot-env-check` · `pilot-preflight` · `release-build` · `pilot-host-smoke`
+- Runbook: `docs/00-master/PILOT_RUNBOOK.md` · Checklist: `PILOT_CHECKLIST.md` · Deploy: `DEPLOY_PHASE1.md`
 - Phase-1 code freeze baseline: `f1e9eb2`
 - **Chabokan control (preferred):** GitHub Issue **#1** — Chabokan Control Console  
   Commands: `/chabokan status|logs|preflight TALAMALA|restart TALAMALA|start TALAMALA|stop TALAMALA`  
