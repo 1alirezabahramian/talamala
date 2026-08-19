@@ -8,6 +8,7 @@
 ```bash
 make pilot-env-check      # .env / template posture, write-deny
 make pilot-preflight      # VERSION · docs · domain · parity · typecheck · ACL contracts
+make pilot-record         # writes PILOT_SHA_RECORD.last.md (gitignored)
 # or chain:
 make pilot-all            # env-check + preflight (+ host if TALAMALA_BASE_URL set)
 ```
@@ -65,7 +66,11 @@ Follow `PILOT_CHECKLIST.md`:
 5. Assets for **bound** account (Kimia **Read** only)  
 6. Order accept → settlement **blocked**
 
-## 7. Hard stops
+## 7. SQLite backup
+
+See `PILOT_BACKUP.md` — copy durable DB before deploy; restore + previous SHA on rollback.
+
+## 8. Hard stops
 
 | Action | Rule |
 |--------|------|
@@ -75,7 +80,7 @@ Follow `PILOT_CHECKLIST.md`:
 | Production SMS / Jibit | Blocked until GT-008 / GT-009 |
 | Deploy via Chabokan Issue | Not allowed — status/logs/preflight/restart only |
 
-## 8. Rollback
+## 9. Rollback
 
 Redeploy previous exact SHA; restore DB backup taken before migrate.
 

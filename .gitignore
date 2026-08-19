@@ -27,3 +27,6 @@ var/
 /talamala-*-handoff*.zip
 /Talamala_*HANDOFF*.zip
 /talamala-multi-stage-*.zip
+
+# Auto pilot record (fill results locally; do not force-commit secrets)
+docs/00-master/PILOT_SHA_RECORD.last.md

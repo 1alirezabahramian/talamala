@@ -10,7 +10,8 @@
 - [ ] No Live Kimia Write/Create; settlement remains blocked
 
 ## Before traffic
-- [ ] Release SHA recorded (use `PILOT_SHA_RECORD.template.md`)
+- [ ] `make pilot-record` then fill results (or use `PILOT_SHA_RECORD.template.md`)
+- [ ] SQLite backup taken (`PILOT_BACKUP.md`) before cutover
 - [ ] `make release-build` green (preflight + SPA build + dist + backend gates)
 - [ ] On host with `pdo_sqlite`: full `php backend/bin/check.php` → ALL CHECKS PASSED
 - [ ] `.env` from `.env.pilot.example`; `TALAMALA_ENV=production`

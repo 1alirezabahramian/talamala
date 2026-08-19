@@ -81,6 +81,7 @@ Alternate: Actions → workflow **Talamala Chabokan Control**.
 ```bash
 make pilot-env-check
 make pilot-preflight
+make pilot-record
 make release-build
 TALAMALA_BASE_URL=https://host make pilot-host-smoke
 # chain: make pilot-all

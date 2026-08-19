@@ -59,6 +59,10 @@ cd backend && php -S 0.0.0.0:8080 -t public public/router.php
 - Assets for a **bound** test customer (Read only)  
 - Order accept shows settlement blocked  
 
-## 5. Rollback
+## 5. Backup
 
-Redeploy previous exact SHA; keep DB file backup before migrate.
+See `PILOT_BACKUP.md` — copy durable SQLite before cutover.
+
+## 6. Rollback
+
+Redeploy previous exact SHA; restore DB file from backup (`PILOT_BACKUP.md`).
