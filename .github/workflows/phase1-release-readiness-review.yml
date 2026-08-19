@@ -1,0 +1,26 @@
+name: Phase1 Release Readiness Review
+on:
+  pull_request:
+    branches: [main]
+permissions:
+  contents: read
+jobs:
+  release-readiness:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: |
+            frontend/customer/package-lock.json
+            frontend/backoffice/package-lock.json
+      - name: Customer install typecheck build
+        working-directory: frontend/customer
+        run: npm ci && npm run typecheck && npm run build
+      - name: Backoffice install typecheck build
+        working-directory: frontend/backoffice
+        run: npm ci && npm run typecheck && npm run build
+      - name: Phase1 full check
+        run: make check
