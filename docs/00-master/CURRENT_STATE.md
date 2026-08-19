@@ -1,4 +1,4 @@
-# Talamala — Current State (2026-08-18)
+# Talamala — Current State (2026-08-19)
 
 ## VERSION
 `0.3.8-phase1`
@@ -40,12 +40,13 @@ ACL: `KimiaWriteClient` / `HttpKimiaWriteClient` + `KimiaWriteApplicationService
 Contract hardening: shared `KimiaWriteInput` guards + offline `make kimia-write-contract` smoke + machine-readable Batch V1 contract.
 
 ## Kimia Create Customer (GT-002)
-**NOT GROUNDED** — Create ACL is fail-closed; no path/body was guessed and no live Create was executed.  
-Local gate: `make kimia-create-customer-contract` (offline only).  
-Grounding source: live Swagger extract on `talamala-kimia-runner`, followed by a separate explicit Owner authorization for any live Create.
+**PARTIAL — core Swagger HTTP contract GROUNDED.** Live Iran evidence proves `POST /api/account`, request schema `AccountDto`, no Swagger-required properties, HTTP `200` primitive int32 AccountId, and generic HTTP `400`.  
+Evidence run: `32245857002`; Swagger v1 SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea`.  
+Still open: duplicate semantics, validation error body/codes, and authoritative post-create readback.  
+**No Live Create executed; no registration/order/settlement wiring.** Separate explicit Owner authorization remains mandatory for any live Create.
 
 ## BLOCKED (requires further GT)
-Kimia Create Customer · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
+Create Customer duplicate/validation/readback · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
 
 ## Kimia Write Verification (separate track; Batch V1 completed)
 | Item | State |
