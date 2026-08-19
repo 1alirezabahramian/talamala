@@ -68,36 +68,32 @@ export function RegistrationScreen(props: RegistrationScreenProps) {
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>
-        <FormField id="full_name" label="نام کامل" hint="مطابق کارت ملی">
+        <FormField id="full_name" label="نام کامل" hint="مطابق مدارک">
           <input
-          id="full_name"
-          name="full_name"
-          type="text"
-          autoComplete="name"
-          value={fullName}
-          disabled={loading}
-          onChange={(ev) => setFullName(ev.target.value)}
-        />
+            id="full_name"
+            name="full_name"
+            type="text"
+            autoComplete="name"
+            value={fullName}
+            disabled={loading}
+            onChange={(ev) => setFullName(ev.target.value)}
+          />
         </FormField>
 
-        <label htmlFor="national_code">کد ملی</label>
-        <input
-          id="national_code"
-          name="national_code"
-          type="text"
-          inputMode="numeric"
-          dir="ltr"
-          maxLength={10}
-          value={nationalCode}
-          disabled={loading}
-          onChange={(ev) => setNationalCode(ev.target.value.replace(/\D+/g, '').slice(0, 10))}
-        />
-
-        {error ? (
-          <p className="tal-error" role="alert">
-            {error}
-          </p>
-        ) : null}
+        <FormField id="national_code" label="کد ملی" hint="۸ تا ۱۰ رقم" error={error}>
+          <input
+            id="national_code"
+            name="national_code"
+            type="text"
+            inputMode="numeric"
+            dir="ltr"
+            maxLength={10}
+            value={nationalCode}
+            disabled={loading}
+            onChange={(ev) => setNationalCode(ev.target.value.replace(/\D+/g, '').slice(0, 10))}
+            aria-invalid={!!error}
+          />
+        </FormField>
 
         <button type="submit" disabled={loading || !fullName.trim() || nationalCode.length < 8}>
           {loading ? 'در حال ارسال…' : 'ثبت‌نام'}
