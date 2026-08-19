@@ -1,0 +1,35 @@
+name: Frontend UI Consistency Review
+
+on:
+  pull_request:
+    paths:
+      - 'frontend/customer/**'
+      - 'frontend/backoffice/**'
+      - 'docs/frontend/**'
+      - 'docs/00-master/STAGE_FRONTEND_UI_CONSISTENCY_20260819.md'
+      - '.github/workflows/frontend-ui-consistency-review.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  frontend-ui:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Customer install/typecheck/build
+        run: |
+          cd frontend/customer
+          npm ci
+          npm run typecheck
+          npm run build
+      - name: Backoffice install/typecheck/build
+        run: |
+          cd frontend/backoffice
+          npm ci
+          npm run typecheck
+          npm run build
