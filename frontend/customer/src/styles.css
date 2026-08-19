@@ -255,3 +255,37 @@ button:disabled {
 .tal-assets-list > div:last-child { border-bottom: none; }
 .tal-assets-list dt { margin: 0; color: var(--muted); }
 .tal-assets-list dd { margin: 0; font-weight: 600; font-size: 1.05rem; }
+
+.tal-badge {
+  display: inline-block;
+  padding: 0.15rem 0.5rem;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  background: #e8eef5;
+  color: #1a3a5c;
+  border: 1px solid #c5d4e8;
+}
+.tal-badge[data-status="active"],
+.tal-badge[data-status="ok"],
+.tal-badge[data-status="delivered"],
+.tal-badge[data-status="completed"] {
+  background: #e6f4ea;
+  color: #1b5e20;
+  border-color: #a5d6a7;
+}
+.tal-badge[data-status="limited"],
+.tal-badge[data-status="pending"],
+.tal-badge[data-status="blocked"],
+.tal-badge[data-status="not_bound"] {
+  background: #fff8e1;
+  color: #f57f17;
+  border-color: #ffe082;
+}
+.tal-empty { padding: 1.25rem 0.5rem; text-align: center; }
+.tal-shell-footer {
+  margin-top: 2rem;
+  padding: 1rem 0;
+  text-align: center;
+  font-size: 0.8rem;
+  border-top: 1px solid #e2e8f0;
+}
