@@ -74,3 +74,17 @@ Rules:
 - Do not touch GoldPlatform from this runner
 
 Alternate: Actions → workflow **Talamala Chabokan Control**.
+
+
+## Phase-1 pilot path
+
+```bash
+make pilot-env-check
+make pilot-preflight
+make release-build
+TALAMALA_BASE_URL=https://host make pilot-host-smoke
+# chain: make pilot-all
+```
+
+Full flow: `docs/00-master/PILOT_RUNBOOK.md` · checklist: `PILOT_CHECKLIST.md`  
+**Write remains off:** `KIMIA_WRITE_VERIFY_ENABLE=0`
