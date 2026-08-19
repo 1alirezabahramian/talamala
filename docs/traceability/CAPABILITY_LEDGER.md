@@ -16,7 +16,7 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-007 | Identity | Admin approval queue | IMPLEMENTED | |
 | CAP-008 | Kimia | Read client | IMPLEMENTED | Http + Fake |
 | CAP-009 | Kimia | Assets Toman mapping | IMPLEMENTED | |
-| CAP-010 | Kimia | Write / create customer | BLOCKED | Ground truth |
+| CAP-010 | Kimia | Write buy/sell gold + receive/pay cash | PARTIAL | Live Batch V1 evidence 2026-08-19; Create Customer still BLOCKED |
 | CAP-011 | Quote | Immutable quote model | IMPLEMENTED | |
 | CAP-012 | Quote | Price provider | BLOCKED | Ground truth |
 | CAP-013 | Order | Accept from quote | IMPLEMENTED | |

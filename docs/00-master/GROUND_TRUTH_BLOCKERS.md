@@ -17,7 +17,7 @@ No “standard industry behavior”, no plausible guess, no invented payload is 
 |----|---------|--------|-------------------|--------------|
 | GT-001 | Current official Kimia Swagger / OpenAPI (raw file) | All Kimia write paths, Create Customer, exact Account/Balance semantics | Raw swagger.json or equivalent + version/date | Supply file or provide authenticated access |
 | GT-002 | Kimia Create Customer exact request/response/error/duplicate/readback | Onboarding automatic modes, Kimia binding creation | Official contract + real sandbox response | Supply or authorize live probe |
-| GT-003 | Kimia write contracts for each financial operation (paper gold, coin, currency, physical, receive/pay) | Order execution, Settlement | Exact request bodies + success/error responses + side effects on balance | Supply or authorize controlled tests |
+| GT-003 | Kimia write contracts | Order execution (partial), Settlement | **PARTIAL:** paper-gold buy/sell + cash receive/pay live-proven (Batch V1, account 350, ids 77193–77196). Still open: Create Customer, Coin, Currency, Physical, Settlement semantics, full balance-side-effect model | Continue GT for remaining ops |
 | GT-004 | Price Provider official API + freshness/failover + business coefficients (x/y/z) + rounding order + Quote expiry | Pricing, Quote | Official provider contract + owner-approved pricing policy | Supply contract + policy |
 | GT-005 | Settlement / reconciliation / hold / freeze / credit semantics | Settlement, Credit trading | Explicit business rules + Kimia behavior evidence | Owner decision + evidence |
 

@@ -80,7 +80,8 @@ This register classifies every known business and technical rule according to th
 | Kimia `GoldUnit`: `0=مثقال`, `1=گرم`, `2=اونس`, `3=کیلوگرم` | CONFIRMED (Swagger contract) | Official Kimia Swagger artifact; live `ExchangeRequest` confirms `GoldUnit` field |
 | Batch V1 paper-gold verification uses `GoldUnit=1` so `GoldPrice` is interpreted as Rial/gram and `Value` as gold quantity in grams | CONFIRMED FOR BATCH V1 | Swagger GoldUnit contract + Owner money-unit rule + account `350` transaction evidence |
 | Account `350` real paper-gold history demonstrates gram relation (`181000000 × 0.2 = 36200000`; `180700000 × 10 = 1807000000`) | CONFIRMED (Read-only evidence) | Chabokan account-350 evidence run `32193878935`; raw snapshot SHA-256 `4a5354dd...387f265` |
-| Exact success/error response bodies and balance/transaction side effects for new `exchangegold` / `tradecash` writes | UNKNOWN pending bounded Write evidence | GT-003 / KIMIA_OWNER_AUTHORIZED_BATCH_V1 |
+| Live success for `exchangegold`/`tradecash` writes (HTTP 200 + numeric ids 77193–77196) on account 350 | CONFIRMED | KIMIA_WRITE_VERIFICATION_EVIDENCE_2026-08-19 · run 32197791006 |
+| Full balance/tx side-effect model and error catalog for writes | PARTIAL | Immediate tx list may not show TX_NEW; balance readback_ok; deeper recon still open |
 | Exact write contracts for coin/currency/physical/transfer/adjustment/settlement families | UNKNOWN | GT-003 / GT-005 |
 | Create Customer exact contract + duplicate semantics | UNKNOWN | GT-002 |
 | Current official Kimia Swagger is reachable live from Iran runner: version `v1`, SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` | PARTIAL — live verified, raw official artifact not yet archived in repo | Chabokan live preflight + contract evidence |
@@ -89,7 +90,7 @@ This register classifies every known business and technical rule according to th
 
 | Provider | Purpose | Status | Notes |
 |----------|---------|--------|-------|
-| Kimia | Financial truth | PARTIAL (Read + live request schema) / UNKNOWN (Write side effects) | Bounded Write verification still requires explicit Owner signature |
+| Kimia | Financial truth | PARTIAL (Read + bounded live Write for exchangegold/tradecash) | Batch V1 completed on account 350; remaining families/error catalog/deeper reconciliation still open |
 | Jibit | Identity matching | PARTIAL | Official v1.5.2 PDF referenced; live credentials & current version needed |
 | SMS.ir | OTP | PARTIAL | Contract extract exists; tenant credentials & live proof needed |
 | BehPardakht Mellat | Payment | UNKNOWN | BLOCKED |
@@ -119,4 +120,4 @@ This register classifies every known business and technical rule according to th
 ---
 
 **Next action for this register:**  
-Bounded Write evidence must prove actual success/error responses and balance/transaction side effects before any Kimia Write capability is promoted.  
+Batch V1 proves live success responses for paper-gold buy/sell and cash receive/pay. Keep CAP-010 PARTIAL until error behavior and deeper authoritative balance/transaction reconciliation are proven; remaining Write families stay blocked.  
