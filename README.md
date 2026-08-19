@@ -33,8 +33,16 @@ Frontend typecheck is **optional** in CI (`continue-on-error`).
 
 ## Phase-1 pilot release
 
-See `docs/00-master/RELEASE_SCOPE_PHASE1.md` and `DEPLOY_PHASE1.md`.  
+See `docs/00-master/RELEASE_SCOPE_PHASE1.md`, `DEPLOY_PHASE1.md`, and **`PILOT_RUNBOOK.md`**.  
 Settlement, live pricing, and unattended Kimia writes are **out of scope** for this pilot.
+
+```bash
+make pilot-all              # env + offline gates
+make release-build          # SPA dist + backend gates
+TALAMALA_BASE_URL=https://… make pilot-host-smoke
+```
+
+Template: `.env.pilot.example` · Checklist: `docs/00-master/PILOT_CHECKLIST.md`
 
 ## Non-negotiables
 
