@@ -6,7 +6,8 @@
 
 ## Before traffic
 - [ ] Release SHA recorded
-- [ ] `make release-build` or equivalent green
+- [ ] `make release-build` green (preflight + SPA build + dist + backend gates)
+- [ ] On host with `pdo_sqlite`: full `php backend/bin/check.php` → ALL CHECKS PASSED
 - [ ] `TALAMALA_ENV=production`
 - [ ] CORS origins exact
 - [ ] Durable DB path + backup plan
