@@ -1,0 +1,66 @@
+{
+  "title": "Kimia Write Contract — Batch V1 (live verified)",
+  "evidence": "docs/providers/official/KIMIA_WRITE_VERIFICATION_EVIDENCE_2026-08-19.md",
+  "run": "32197791006",
+  "swagger_sha256": "be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea",
+  "out_of_scope": ["create_customer", "coin", "currency", "physical", "settlement", "adjustment", "void", "delete"],
+  "operations": [
+    {
+      "op": "buy",
+      "method": "POST",
+      "path": "/api/voucher/exchangegold",
+      "action": 32,
+      "swagger_required": ["AccountId", "Action", "GoldPrice", "Value"],
+      "swagger_optional": ["GoldUnit", "RequestId", "AddToExistingDateVoucher", "Comment", "CurrencyId", "Date"],
+      "acl_required": ["AccountId", "Action", "GoldPrice", "Value", "GoldUnit", "RequestId"],
+      "gold_unit_default": 1,
+      "gold_unit_batch_v1": 1,
+      "gold_price_unit": "Rial_per_gram_when_GoldUnit_1",
+      "value_unit": "grams_when_GoldUnit_1",
+      "live_id_example": 77193
+    },
+    {
+      "op": "sell",
+      "method": "POST",
+      "path": "/api/voucher/exchangegold",
+      "action": 64,
+      "swagger_required": ["AccountId", "Action", "GoldPrice", "Value"],
+      "swagger_optional": ["GoldUnit", "RequestId", "AddToExistingDateVoucher", "Comment", "CurrencyId", "Date"],
+      "acl_required": ["AccountId", "Action", "GoldPrice", "Value", "GoldUnit", "RequestId"],
+      "gold_unit_default": 1,
+      "gold_unit_batch_v1": 1,
+      "gold_price_unit": "Rial_per_gram_when_GoldUnit_1",
+      "value_unit": "grams_when_GoldUnit_1",
+      "live_id_example": 77194
+    },
+    {
+      "op": "receive",
+      "method": "POST",
+      "path": "/api/voucher/tradecash",
+      "action": 2,
+      "swagger_required": ["AccountId", "Action", "Value"],
+      "swagger_optional": ["RequestId", "AddToExistingDateVoucher", "Comment", "Date"],
+      "acl_required": ["AccountId", "Action", "Value", "RequestId"],
+      "value_unit": "Rial",
+      "live_id_example": 77195
+    },
+    {
+      "op": "pay",
+      "method": "POST",
+      "path": "/api/voucher/tradecash",
+      "action": 4,
+      "swagger_required": ["AccountId", "Action", "Value"],
+      "swagger_optional": ["RequestId", "AddToExistingDateVoucher", "Comment", "Date"],
+      "acl_required": ["AccountId", "Action", "Value", "RequestId"],
+      "value_unit": "Rial",
+      "live_id_example": 77196
+    }
+  ],
+  "rules": {
+    "decimal_encoding": "JSON number tokens without float intermediate in client",
+    "request_id": "Swagger optional; ACL requires UUID v4 for duplicate prevention",
+    "gold_unit": "Swagger optional; ACL sends explicit GoldUnit (default 1=gram) for exchangegold",
+    "post_write": "mandatory balance read-before/read-after at application layer",
+    "action_scope": "endpoint-context specific; not a global domain enum"
+  }
+}
