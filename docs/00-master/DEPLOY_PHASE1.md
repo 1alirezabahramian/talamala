@@ -8,10 +8,20 @@ make pilot-preflight   # VERSION · freeze docs · write-deny · domain · parit
 
 Does not require pdo_sqlite or Iran runner. See `PILOT_CHECKLIST.md`.
 
-## 1. Build
+## 1. Build (preferred)
 
 ```bash
 git checkout <release-sha>
+make release-build
+```
+
+`release-build` runs: pilot-preflight → customer/backoffice typecheck+build → dist presence →
+spa_router_smoke → backend gates (full `check.php` when `pdo_sqlite` is available; otherwise a
+documented subset and a clear note for the host that has the driver).
+
+Manual equivalent:
+
+```bash
 cd frontend/customer && npm ci && npm run build
 cd ../backoffice && npm ci && npm run build
 php backend/bin/check.php   # ALL CHECKS PASSED (needs pdo_sqlite)
@@ -44,6 +54,7 @@ cd backend && php -S 0.0.0.0:8080 -t public public/router.php
 - OTP request on customer Host  
 - Staff login + registration queue  
 - Assets for a **bound** test customer (Read only)  
+- Order accept shows settlement blocked  
 
 ## 5. Rollback
 
