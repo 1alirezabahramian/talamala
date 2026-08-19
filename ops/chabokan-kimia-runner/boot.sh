@@ -42,6 +42,12 @@ if [ "$rc" -eq 0 ]; then
   php backend/bin/kimia_contract_catalog_readonly.php || rc=$?
 fi
 
+# Local-only Create Customer GT extraction from the same captured Swagger.
+# NO additional HTTP and NO mutation.
+if [ "$rc" -eq 0 ]; then
+  php backend/bin/kimia_create_customer_gt_readonly.php || rc=$?
+fi
+
 # Local-only parse of the account 350 transaction snapshot captured by preflight.
 # NO additional HTTP and NO mutation.
 if [ "$rc" -eq 0 ]; then
