@@ -1,12 +1,12 @@
 help:
 	@echo 'Talamala targets:'
 	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
-	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax'
+	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version
+	frontend-typecheck frontend-build serve version kimia-write-contract
 
 check:
 	php backend/bin/check.php
@@ -43,6 +43,9 @@ parity:
 php-syntax:
 	find backend/app backend/bin -name '*.php' -print0 | xargs -0 -n1 php -l
 
+kimia-write-contract:
+	php backend/bin/kimia_write_contract_smoke.php
+
 # Optional / advisory (Node required). Does not block CI green SHA.
 frontend-typecheck:
 	cd frontend/customer && npm ci && npm run typecheck
@@ -62,4 +65,5 @@ info:
 	@echo VERSION=$$(cat VERSION 2>/dev/null || echo unknown)
 	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
 	@echo 'Phase-1: SAFE CLOSURE (frozen at 0.3.8-phase1)'
-	@echo 'Blocked: Kimia Write · Pricing · Settlement · Payment · SMS/Jibit live · Delta'
+	@echo 'Kimia Write ACL: Batch V1 partial (no Order wire)'
+	@echo 'Blocked: Create Customer · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit · Delta'
