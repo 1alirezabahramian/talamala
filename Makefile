@@ -2,12 +2,13 @@ help:
 	@echo 'Talamala targets:'
 	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
 	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract|release-build'
-	@echo '  make pilot-preflight   # offline Phase-1 pilot readiness (no Live Kimia)'
+	@echo '  make pilot-preflight     # offline Phase-1 pilot readiness (no Live Kimia)'
+	@echo '  make pilot-host-smoke    # TALAMALA_BASE_URL=https://host  GET healthz/readyz only'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke
 
 check:
 	php backend/bin/check.php
@@ -69,6 +70,7 @@ info:
 	@echo VERSION=$$(cat VERSION 2>/dev/null || echo unknown)
 	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
 	@echo 'Phase-1: SAFE CLOSURE (frozen at 0.3.8-phase1)'
+	@echo 'Pilot: make pilot-preflight · make release-build · make pilot-host-smoke'
 	@echo 'Kimia Write ACL: Batch V1 partial (no Order wire)'
 	@echo 'Create Account ACL: PARTIAL (no Live Create, no registration wire)'
 	@echo 'Blocked: Live Create evidence · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit · Delta'
@@ -84,3 +86,8 @@ verify-frontend:
 # Does not require pdo_sqlite or Iran runner. Never enables Live Write/Create.
 pilot-preflight:
 	bash scripts/pilot_preflight.sh
+
+# Safe GET-only smoke against a deployed Host. Requires TALAMALA_BASE_URL.
+# Does not call Kimia, does not send OTP/staff credentials.
+pilot-host-smoke:
+	bash scripts/pilot_host_smoke.sh

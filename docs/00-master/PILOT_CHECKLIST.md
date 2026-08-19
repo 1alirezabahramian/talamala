@@ -16,7 +16,8 @@
 - [ ] Owner signed RELEASE_SCOPE_PHASE1.md
 
 ## Smoke on production Host
-- [ ] `/healthz` `/readyz`
+- [ ] `TALAMALA_BASE_URL=https://… make pilot-host-smoke` (GET `/healthz` `/readyz` `/` `/robots.txt` only)
+- [ ] `/healthz` `/readyz` (manual confirm version if needed)
 - [ ] Customer OTP request
 - [ ] Staff login + registration queue
 - [ ] Custody receive on test customer
