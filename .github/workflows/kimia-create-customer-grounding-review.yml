@@ -1,0 +1,29 @@
+name: Kimia Create Customer Grounding Review
+
+on:
+  push:
+    branches:
+      - review/kimia-create-customer-grounding
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  grounded-contract-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          coverage: none
+      - name: Grounded Create Customer contract smoke
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(make kimia-create-customer-contract)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=12 FAIL=0'
+      - name: Full check
+        run: php backend/bin/check.php
