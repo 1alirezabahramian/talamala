@@ -33,17 +33,22 @@ Do not bump VERSION merely for ops/docs.
 - Do not route Owner through Chabokan console for routine ops
 - Do not call Kimia from non-Iran sandbox
 
-## BLOCKED (requires official GT)
-Kimia Write · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
+## Kimia Write (Batch V1 verified 2026-08-19)
+Live: buy/sell `exchangegold` (32/64) · receive/pay `tradecash` (2/4) · ids 77193–77196 · runner restored read-only.
+Evidence: `docs/providers/official/KIMIA_WRITE_VERIFICATION_EVIDENCE_2026-08-19.md`
+ACL: `KimiaWriteClient` / `HttpKimiaWriteClient` (no Kernel order wiring yet).
 
-## Kimia Write Verification (separate track)
+## BLOCKED (requires further GT)
+Kimia Create Customer · Coin/Currency/Physical · Pricing · Settlement · Payment · SMS/Jibit live · durable Tenant/Delta
+
+## Kimia Write Verification (separate track; Batch V1 completed)
 | Item | State |
 |------|--------|
 | Preflight (Iran runner) | **PREFLIGHT_OK** ×2 (live evidence) |
 | Live Swagger | v1 · SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` |
 | Account 350 Read / balance / tx | PASS |
-| `write_attempted` | **false** |
-| Write gate | **CLOSED** (default-deny) |
+| `write_attempted` | **true — exactly Batch V1: buy/sell/receive/pay once each** |
+| Write gate | **CLOSED again after Batch V1 restore** (default-deny) |
 
 Evidence: `docs/providers/official/KIMIA_LIVE_PREFLIGHT_EVIDENCE_2026-08-18.md`  
 Resume: `docs/providers/official/KIMIA_WRITE_VERIFICATION_RESUME.md`
