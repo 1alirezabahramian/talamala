@@ -82,15 +82,16 @@ This register classifies every known business and technical rule according to th
 | Account `350` real paper-gold history demonstrates gram relation (`181000000 × 0.2 = 36200000`; `180700000 × 10 = 1807000000`) | CONFIRMED (Read-only evidence) | Chabokan account-350 evidence run `32193878935`; raw snapshot SHA-256 `4a5354dd...387f265` |
 | Live success for `exchangegold`/`tradecash` writes (HTTP 200 + numeric ids 77193–77196) on account 350 | CONFIRMED | KIMIA_WRITE_VERIFICATION_EVIDENCE_2026-08-19 · run 32197791006 |
 | Full balance/tx side-effect model and error catalog for writes | PARTIAL | Immediate tx list may not show TX_NEW; balance readback_ok; deeper recon still open |
+| Create Account HTTP contract: `POST /api/account`, request `AccountDto`, no Swagger-required properties, HTTP 200 primitive int32 account id, generic HTTP 400 | CONFIRMED (Swagger contract) | Live Iran catalog run `32245857002`, Swagger v1 SHA-256 `be0fb0c...77dfbb5cea` |
+| Create Account duplicate/validation error semantics and authoritative post-create readback | UNKNOWN | GT-002 remains PARTIAL; current Swagger documents only generic HTTP 400 and no error body schema |
 | Exact write contracts for coin/currency/physical/transfer/adjustment/settlement families | UNKNOWN | GT-003 / GT-005 |
-| Create Customer exact contract + duplicate semantics | UNKNOWN | GT-002 |
 | Current official Kimia Swagger is reachable live from Iran runner: version `v1`, SHA-256 `be0fb0c6897015e238ef9dd58115b8502cf6f83feb868c91cff19377dfbb5cea` | PARTIAL — live verified, raw official artifact not yet archived in repo | Chabokan live preflight + contract evidence |
 
 ## 7. External Providers
 
 | Provider | Purpose | Status | Notes |
 |----------|---------|--------|-------|
-| Kimia | Financial truth | PARTIAL (Read + bounded live Write for exchangegold/tradecash) | Batch V1 completed on account 350; remaining families/error catalog/deeper reconciliation still open |
+| Kimia | Financial truth | PARTIAL (Read + bounded live Write for exchangegold/tradecash + Create HTTP contract) | Batch V1 completed on account 350; Create live mutation not executed; remaining families/error catalog/deeper reconciliation still open |
 | Jibit | Identity matching | PARTIAL | Official v1.5.2 PDF referenced; live credentials & current version needed |
 | SMS.ir | OTP | PARTIAL | Contract extract exists; tenant credentials & live proof needed |
 | BehPardakht Mellat | Payment | UNKNOWN | BLOCKED |
@@ -115,9 +116,9 @@ This register classifies every known business and technical rule according to th
 | Every sensitive mutation: permission + tenant + idempotency + audit + correlation | CONFIRMED | Same |
 | Audit must capture actor + tenant + target + reason + correlation | CONFIRMED | Same |
 | Cross-tenant adversarial tests required | CONFIRMED | Security Checklist |
-| Backup/restore drill before production | CONFIRMED | Same |
+| Backup/restore drill before production | CONFIRMED | Security Checklist |
 
 ---
 
 **Next action for this register:**  
-Batch V1 proves live success responses for paper-gold buy/sell and cash receive/pay. Keep CAP-010 PARTIAL until error behavior and deeper authoritative balance/transaction reconciliation are proven; remaining Write families stay blocked.  
+Create Customer core Swagger HTTP contract is grounded without executing a live Create. Keep GT-002 PARTIAL until duplicate/validation/readback behavior is proven under a separate explicit Owner-authorized test. CAP-010 remains PARTIAL; remaining Write families stay blocked.  
