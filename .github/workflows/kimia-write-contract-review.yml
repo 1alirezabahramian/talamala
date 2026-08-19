@@ -1,0 +1,29 @@
+name: Kimia Write Contract Review
+
+on:
+  push:
+    branches:
+      - review/kimia-write-contract-hardening
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  contract-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+      - name: Kimia write contract smoke
+        run: |
+          set -euo pipefail
+          out=$(make kimia-write-contract)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=11 FAIL=0'
+      - name: Full check
+        run: php backend/bin/check.php
