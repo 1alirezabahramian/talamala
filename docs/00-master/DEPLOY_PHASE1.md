@@ -1,5 +1,8 @@
 # Deploy Phase-1 (pilot)
 
+Full operator flow: **`docs/00-master/PILOT_RUNBOOK.md`**.
+
+
 ## 0. Offline preflight (recommended first)
 
 ```bash
