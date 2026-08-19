@@ -58,6 +58,7 @@ export function CustomerShell(props: CustomerShellProps) {
           />
         ) : null}
       </main>
+      <footer className="tal-shell-footer tal-muted">Talamala · مقادیر مالی فقط از سرور</footer>
     </div>
   );
 }
