@@ -3,6 +3,8 @@ name: Apply Release Cycle 2 Payload
 on:
   push:
     branches: [release/cycle2-admin-customers]
+  pull_request:
+    branches: [main]
 
 permissions:
   contents: write
