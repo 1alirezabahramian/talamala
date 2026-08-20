@@ -1,0 +1,31 @@
+name: Talamala HTTP Negative Smoke
+
+on:
+  push:
+    branches: [main, 'stage-*', 'feat/**']
+  pull_request:
+    branches: [main]
+
+# Independent fail-closed Phase-1 adversarial gate.
+# No network, no Live Kimia, no Write/Create.
+jobs:
+  http-negative-smoke:
+    name: HTTP negative smoke gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+      - name: Run adversarial HTTP smoke (exact PASS=8 FAIL=0)
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/http_negative_smoke.php)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=8 FAIL=0' || {
+            echo "http_negative_smoke gate failed: expected PASS=8 FAIL=0"
+            exit 1
+          }
