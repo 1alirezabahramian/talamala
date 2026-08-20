@@ -1,0 +1,31 @@
+name: Talamala Release Cycle 2
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  release-cycle2-http:
+    name: Release Cycle 2 HTTP/customer-directory gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+      - name: Exact Cycle2 route/isolation smoke
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/release_cycle2_http_smoke.php)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=6 FAIL=0' || {
+            echo 'release_cycle2_http gate failed: expected PASS=6 FAIL=0'
+            exit 1
+          }
+      - name: OpenAPI parity
+        run: php backend/bin/openapi_parity_check.php
