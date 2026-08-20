@@ -11,6 +11,7 @@ $root = dirname(__DIR__);
 $bins = [
     'domain_smoke' => $root . '/bin/smoke.php',
     'http_smoke' => $root . '/bin/http_smoke.php',
+    'http_negative_smoke' => $root . '/bin/http_negative_smoke.php',
     'persist_smoke' => $root . '/bin/persist_smoke.php',
     'cors_smoke' => $root . '/bin/cors_smoke.php',
     'logger_smoke' => $root . '/bin/logger_smoke.php',
