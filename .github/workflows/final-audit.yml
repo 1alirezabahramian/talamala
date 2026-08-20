@@ -49,8 +49,8 @@ jobs:
           set -euo pipefail
           out=$(php backend/bin/http_negative_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=8 FAIL=0' || {
-            echo 'expected PASS=8 FAIL=0'
+          echo "$out" | grep -q 'PASS=17 FAIL=0' || {
+            echo 'expected PASS=17 FAIL=0'
             exit 1
           }
 
