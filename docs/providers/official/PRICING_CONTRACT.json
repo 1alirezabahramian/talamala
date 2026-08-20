@@ -42,5 +42,7 @@
     "Authoritative quote TTL / freeze duration",
     "Failover and stale-price rejection rules"
   ],
-  "notes": "Machine-readable placeholder. status stays NOT_GROUNDED until Owner archives official provider + policy. No live PriceProvider implementation may treat this file as authorization."
+  "proposal_document": "docs/providers/official/PRICING_POLICY_PROPOSED_FOR_OWNER.md",
+  "proposal_status": "AWAITING_OWNER_RATIFICATION",
+  "notes": "Machine artifact remains NOT_GROUNDED. Cycle7 proposal is review-only. Owner ratification may ground only the approved business-policy subset; live provider authorization remains a separate evidence gate."
 }
