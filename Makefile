@@ -8,11 +8,14 @@ help:
 	@echo '  make pilot-all           # env-check + preflight (+ host if BASE_URL)'
 	@echo '  make pilot-record        # write PILOT_SHA_RECORD.last.md from git'
 	@echo '  make final-audit         # Final Audit Agent v2 (closure authority)'
+	@echo '  make final-audit-summary # read-only current-SHA audit board'
+	@echo '  make pilot-status        # VERSION/SHA/write-deny/audit snapshot'
+	@echo '  make ci-attest-hint      # explain exact-SHA CI attestation (no fake success)'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint
 
 check:
 	php backend/bin/check.php
@@ -86,29 +89,30 @@ release-build:
 verify-frontend:
 	bash scripts/verify_frontend.sh
 
-# Offline Phase-1 pilot readiness: VERSION pin, freeze docs, write-deny defaults,
-# php-syntax, domain_smoke, openapi parity, Kimia ACL contract smokes, frontend typecheck.
-# Does not require pdo_sqlite or Iran runner. Never enables Live Write/Create.
 pilot-preflight:
 	bash scripts/pilot_preflight.sh
 
-# Safe GET-only smoke against a deployed Host. Requires TALAMALA_BASE_URL.
-# Does not call Kimia, does not send OTP/staff credentials.
 pilot-host-smoke:
 	bash scripts/pilot_host_smoke.sh
 
-# Env posture for pilot (write-deny, no secret dump)
 pilot-env-check:
 	bash scripts/pilot_env_check.sh
 
-# env-check → preflight → optional host smoke (TALAMALA_BASE_URL)
 pilot-all:
 	bash scripts/pilot_all.sh
 
-# Fill docs/00-master/PILOT_SHA_RECORD.last.md from git (no secrets)
 pilot-record:
 	bash scripts/pilot_record.sh
 
 # Final Audit Agent v2 — bounded pilot scope + current-run evidence + exact-SHA CI.
 final-audit:
 	python3 scripts/final_audit_agent_v2.py
+
+final-audit-summary:
+	python3 scripts/final_audit_summary.py
+
+pilot-status:
+	bash scripts/pilot_status.sh
+
+ci-attest-hint:
+	bash scripts/ci_attest_hint.sh
