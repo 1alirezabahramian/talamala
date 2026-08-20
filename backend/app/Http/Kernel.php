@@ -89,6 +89,7 @@ final class Kernel
             isActive: true,
             isVerified: true,
         ));
+        // Second tenant for adversarial isolation tests
         $this->tenants->register(new Tenant(
             id: '00000000-0000-0000-0000-000000000002',
             slug: 'other',
@@ -97,6 +98,8 @@ final class Kernel
             isVerified: true,
         ));
 
+        // Persistence-1+2: SQLite (PDO). Default :memory: for smoke isolation.
+        // Set TALAMALA_DB_PATH=/path/to/talamala.sqlite for durable local server.
         $pdo = SqliteConnection::fromEnv();
         $this->audit = new SqliteAuditLogger($pdo);
         $this->idempotency = new SqliteIdempotencyRegistry($pdo);
@@ -106,6 +109,7 @@ final class Kernel
         $this->otp = new OtpAuthApplicationService($this->sms, $this->audit);
 
         $this->staffAuth = new StaffAuthApplicationService($this->audit);
+        // Demo staff: must change password on first login
         $this->staffAuth->bootstrapStaff(
             '00000000-0000-0000-0000-000000000001',
             'staff-demo-1',
@@ -116,6 +120,7 @@ final class Kernel
 
         $this->customers = new SqliteCustomerRepository($pdo);
         $jibit = new FakeJibitIdentityClient();
+        // Dev convenience: allow common test national/mobile pair
         $jibit->allowMatch('0012345678', '09121234567');
         $this->registration = new CustomerRegistrationService($this->customers, $jibit, $this->audit);
 
@@ -137,6 +142,7 @@ final class Kernel
         $this->log = StructuredLogger::fromEnv();
     }
 
+    /** Issue a short-lived skeleton session (replace with signed JWT/DB later). */
     public function issueSession(string $tenantId, string $subjectType, string $subjectId, int $ttlSeconds = 3600): string
     {
         $token = bin2hex(random_bytes(24));
@@ -166,6 +172,9 @@ final class Kernel
         return $session->isValid($now) ? $session : null;
     }
 
+    /**
+     * production | staging | local (default local allows skeleton header fallbacks)
+     */
     public static function environment(): string
     {
         $env = getenv('TALAMALA_ENV') ?: getenv('APP_ENV') ?: 'local';
@@ -177,6 +186,11 @@ final class Kernel
         return self::environment() === 'production';
     }
 
+    /**
+     * Prefer Bearer customer session; X-Customer-Id only outside production.
+     * Session tenant must match Host-resolved tenant (fail-closed isolation).
+     * @return array{0:?string,1:?array} [customerId, errorResponse]
+     */
     private function resolveCustomerId(array $headers, string $tenantId): array
     {
         $session = $this->sessionFromAuthHeader($headers);
@@ -201,6 +215,11 @@ final class Kernel
         ]]];
     }
 
+    /**
+     * Prefer Bearer staff session; X-Staff-Id only outside production.
+     * Session tenant must match Host-resolved tenant (fail-closed isolation).
+     * @return array{0:?string,1:?array}
+     */
     private function resolveStaffId(array $headers, string $tenantId): array
     {
         $session = $this->sessionFromAuthHeader($headers);
@@ -225,6 +244,9 @@ final class Kernel
         ]]];
     }
 
+    /**
+     * @return array{status:int,body:array}
+     */
     public function handle(string $method, string $path, array $headers, ?array $jsonBody): array
     {
         $correlationId = $headers['x-correlation-id'] ?? bin2hex(random_bytes(8));
@@ -247,6 +269,7 @@ final class Kernel
             $ready = (new HealthController())->ready();
             $ready['tenant_id'] = $tenant->id;
             $ready['tenant_slug'] = $tenant->slug;
+            // Non-leaking durability probe (Persistence-1/2)
             try {
                 $pdo = \Talamala\Infrastructure\Persistence\Sqlite\SqliteConnection::fromEnv();
                 $pdo->query('SELECT 1');
@@ -274,6 +297,7 @@ final class Kernel
 
         $body = $jsonBody ?? [];
 
+        // Auth OTP
         if ($method === 'POST' && $path === '/v1/auth/customer/otp/request') {
             $mobile = (string) ($body['mobile'] ?? '');
             $rlKey = $tenant->id . ':otp:' . preg_replace('/\D+/', '', $mobile);
@@ -296,6 +320,7 @@ final class Kernel
             return (new CustomerOtpController($this->otp))->verifyOtp($tenant, $body, $correlationId);
         }
 
+        // Staff auth
         if ($method === 'POST' && $path === '/v1/auth/staff/login') {
             $resp = (new StaffAuthController($this->staffAuth))->login($tenant, $body, $correlationId);
             if (($resp['status'] ?? 0) === 200 && !empty($resp['body']['staff_id'])) {
@@ -313,6 +338,8 @@ final class Kernel
             return (new StaffAuthController($this->staffAuth))->rotatePassword($tenant, $staffId, $body, $correlationId);
         }
 
+
+        // Logout — revoke Bearer session (no body required)
         if ($method === 'POST' && $path === '/v1/auth/logout') {
             $auth = $headers['authorization'] ?? '';
             if (!preg_match('/^Bearer\s+(\S+)/i', $auth, $m)) {
@@ -324,6 +351,7 @@ final class Kernel
             return ['status' => 200, 'body' => ['revoked' => true]];
         }
 
+        // Registration (after OTP verify registration_required)
         if ($method === 'POST' && $path === '/v1/auth/customer/register') {
             $result = $this->registration->completeRegistration($tenant->id, $body, $correlationId);
             if (!$result->success) {
@@ -339,6 +367,7 @@ final class Kernel
             ];
         }
 
+        // Customer assets — requires X-Customer-Id header in skeleton (session later)
         if ($method === 'GET' && $path === '/v1/customer/assets') {
             [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
             if ($err !== null) {
@@ -348,6 +377,7 @@ final class Kernel
                 ->assets($tenant, $customerId);
         }
 
+        // Admin registration queue
         if ($method === 'GET' && $path === '/v1/admin/registrations') {
             [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
@@ -364,6 +394,7 @@ final class Kernel
                 ->approve($tenant, $m[1], $staffId, $correlationId);
         }
 
+        // Custody ops (staff) — skeleton auth via X-Staff-Id
         if ($method === 'POST' && $path === '/v1/admin/custody/receive') {
             [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
             if ($err !== null) {
@@ -439,6 +470,7 @@ final class Kernel
             return ['status' => 200, 'body' => ['items' => $out]];
         }
 
+        // Orders — accept from immutable quote (settlement remains blocked)
         if ($method === 'POST' && $path === '/v1/customer/orders/accept') {
             [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
             if ($err !== null) {
@@ -479,6 +511,7 @@ final class Kernel
             return ['status' => 200, 'body' => ['items' => $out]];
         }
 
+        // Dev-only helpers (never enable in production)
         if (!self::isProduction() && ($headers['x-talamala-dev'] ?? '') === '1') {
             if ($method === 'GET' && $path === '/v1/dev/last-otp') {
                 $last = $this->sms->sent[array_key_last($this->sms->sent)] ?? null;
@@ -491,6 +524,7 @@ final class Kernel
                     ],
                 ];
             }
+            // Seed a manual open quote for order smoke (prices are test fixtures, not live feed)
             if ($method === 'POST' && $path === '/v1/dev/seed-quote') {
                 $customerId = (string) ($body['customer_id'] ?? '');
                 if ($customerId === '') {
@@ -530,6 +564,8 @@ final class Kernel
                 $token = $this->issueSession($tenant->id, $type, $id);
                 return ['status' => 200, 'body' => ['access_token' => $token, 'token_type' => 'Bearer']];
             }
+            // Manual Kimia account bind + optional fake balance seed (local vertical only)
+            // Does NOT create Kimia customer — account id is supplied by operator/test.
             if ($method === 'POST' && $path === '/v1/dev/bind-kimia') {
                 $customerId = (string) ($body['customer_id'] ?? '');
                 $kimiaAccountId = (int) ($body['kimia_account_id'] ?? 0);
@@ -548,6 +584,7 @@ final class Kernel
                         'body' => ['error' => $result->errorCode, 'message' => $result->errorMessage],
                     ];
                 }
+                // Optional seed for FakeKimia so GET /assets returns non-zero in local demos
                 if (isset($body['seed_money_rial']) || isset($body['seed_gold_weight_g'])) {
                     $money = (string) ($body['seed_money_rial'] ?? '0');
                     $weight = (string) ($body['seed_gold_weight_g'] ?? '0');
