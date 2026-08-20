@@ -12,4 +12,10 @@ interface OrderRepository
 
     /** @return list<Order> */
     public function listForCustomer(string $tenantId, string $customerId, int $limit = 50): array;
+
+    /**
+     * Staff/admin read — tenant-scoped only. No cross-tenant leak.
+     * @return list<Order>
+     */
+    public function listForTenant(string $tenantId, int $limit = 100): array;
 }

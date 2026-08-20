@@ -54,6 +54,17 @@ jobs:
             exit 1
           }
 
+      - name: Release Cycle 1 HTTP evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(make release-cycle1-http)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=9 FAIL=0' || {
+            echo 'expected Release Cycle 1 PASS=9 FAIL=0'
+            exit 1
+          }
+
       - name: Kimia write contract (offline only)
         run: make kimia-write-contract
 

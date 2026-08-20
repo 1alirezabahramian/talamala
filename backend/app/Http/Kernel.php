@@ -238,6 +238,7 @@ final class Kernel
                 return [$fallback, null];
             }
         }
+
         return [null, ['status' => 401, 'body' => [
             'error' => 'unauthorized',
             'message' => self::isProduction() ? 'Bearer required' : 'Bearer or X-Staff-Id required',
@@ -507,6 +508,52 @@ final class Kernel
                 'status' => $o->status->value,
                 'quantity' => $o->quantity,
                 'total_rial' => $o->totalRial,
+            ], $list);
+            return ['status' => 200, 'body' => ['items' => $out]];
+        }
+
+        // Customer profile — no balances; Kimia binding flag only
+        if ($method === 'GET' && $path === '/v1/customer/me') {
+            [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
+            if ($err !== null) {
+                return $err;
+            }
+            $customer = $this->customers->findById($tenant->id, $customerId);
+            if ($customer === null) {
+                return ['status' => 404, 'body' => ['error' => 'customer_not_found']];
+            }
+            return [
+                'status' => 200,
+                'body' => [
+                    'customer_id' => $customer->id,
+                    'mobile' => $customer->mobile,
+                    'full_name' => $customer->fullName,
+                    'access_status' => $customer->accessStatus->value,
+                    'kimia_bound' => $customer->isBoundToKimia(),
+                    // kimia_account_id intentionally not exposed to client SPA by default
+                ],
+            ];
+        }
+
+        // Admin orders list — read-only, tenant-scoped (settlement still blocked)
+        if ($method === 'GET' && $path === '/v1/admin/orders') {
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
+            if ($err !== null) {
+                return $err;
+            }
+            $list = $this->orderRepo->listForTenant($tenant->id, 100);
+            $out = array_map(static fn ($o) => [
+                'order_id' => $o->id,
+                'customer_id' => $o->customerId,
+                'quote_id' => $o->quoteId,
+                'status' => $o->status->value,
+                'side' => $o->side->value,
+                'asset' => $o->asset->value,
+                'quantity' => $o->quantity,
+                'unit_price_rial' => $o->unitPriceRial,
+                'total_rial' => $o->totalRial,
+                'created_at' => $o->createdAt->format(\DateTimeInterface::ATOM),
+                'settlement' => 'blocked_by_ground_truth',
             ], $list);
             return ['status' => 200, 'body' => ['items' => $out]];
         }

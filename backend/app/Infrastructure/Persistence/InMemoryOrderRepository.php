@@ -35,4 +35,18 @@ final class InMemoryOrderRepository implements OrderRepository
         }
         return $out;
     }
+
+    public function listForTenant(string $tenantId, int $limit = 100): array
+    {
+        $out = [];
+        foreach ($this->orders as $o) {
+            if ($o->tenantId === $tenantId) {
+                $out[] = $o;
+                if (count($out) >= $limit) {
+                    break;
+                }
+            }
+        }
+        return $out;
+    }
 }

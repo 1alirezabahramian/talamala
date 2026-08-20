@@ -50,6 +50,26 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Custody list }
+  /v1/customer/me:
+    get:
+      operationId: customerMe
+      security: [{ bearerAuth: [] }]
+      summary: Profile without balances (Kimia binding flag only)
+      responses:
+        '200':
+          description: Customer profile
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  customer_id: { type: string }
+                  mobile: { type: string }
+                  full_name: { type: string, nullable: true }
+                  access_status: { type: string }
+                  kimia_bound: { type: boolean }
+        '401': { description: Unauthorized }
+        '404': { description: Customer not found }
 components:
   securitySchemes:
     bearerAuth:

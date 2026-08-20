@@ -31,11 +31,13 @@ $expected = [
     'GET /v1/customer/custody',
     'POST /v1/customer/orders/accept',
     'GET /v1/customer/orders',
+    'GET /v1/customer/me',
     'GET /v1/admin/registrations',
     'POST /v1/admin/registrations/{id}/approve',
     'POST /v1/admin/custody/receive',
     'POST /v1/admin/custody/{id}/ready',
     'POST /v1/admin/custody/{id}/deliver',
+    'GET /v1/admin/orders',
 ];
 
 // Dev routes — must NOT appear in OpenAPI (local + X-Talamala-Dev only)

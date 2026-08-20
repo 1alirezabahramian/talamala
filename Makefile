@@ -15,11 +15,12 @@ help:
 	@echo '  make pilot-gate-matrix   # print exact Phase-1 gate matrix'
 	@echo '  make audit-domain-scorecard # current-SHA domain scorecard after final-audit'
 	@echo '  make pilot-offline-gates # diagnostic offline bundle; not closure authority'
+	@echo '  make release-cycle1-http # exact Release Cycle 1 route/isolation smoke (PASS=9)'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint decimal-invariant pilot-gate-matrix audit-domain-scorecard pilot-offline-gates
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint decimal-invariant pilot-gate-matrix audit-domain-scorecard pilot-offline-gates release-cycle1-http
 
 check:
 	php backend/bin/check.php
@@ -62,7 +63,6 @@ kimia-write-contract:
 kimia-create-customer-contract:
 	php backend/bin/kimia_create_customer_contract_smoke.php
 
-# Optional / advisory (Node required). Does not block CI green SHA.
 frontend-typecheck:
 	cd frontend/customer && npm ci && npm run typecheck
 	cd frontend/backoffice && npm ci && npm run typecheck
@@ -81,6 +81,7 @@ info:
 	@echo VERSION=$$(cat VERSION 2>/dev/null || echo unknown)
 	@echo 'Expected http_smoke PASS=78 (see CURRENT_STATE)'
 	@echo 'Phase-1: SAFE CLOSURE (frozen at 0.3.8-phase1)'
+	@echo 'Release path: release-cycle1-http + blocking frontend typecheck/build in CI'
 	@echo 'Pilot: make pilot-all · pilot-env-check · pilot-preflight · release-build · pilot-host-smoke'
 	@echo 'Runbook: docs/00-master/PILOT_RUNBOOK.md'
 	@echo 'Kimia Write ACL: Batch V1 partial (no Order wire)'
@@ -132,3 +133,6 @@ decimal-invariant:
 
 pilot-offline-gates:
 	bash scripts/pilot_offline_gates.sh
+
+release-cycle1-http:
+	php backend/bin/release_cycle1_http_smoke.php

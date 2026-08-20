@@ -92,6 +92,15 @@ paths:
           schema: { type: string }
       responses:
         '200': { description: delivered }
+  /v1/admin/orders:
+    get:
+      operationId: adminListOrders
+      security: [{ bearerAuth: [] }]
+      summary: Tenant-scoped order list (settlement always blocked_by_ground_truth until GT-005)
+      responses:
+        '200':
+          description: Orders (decimal strings; no client-side finance)
+        '401': { description: Unauthorized }
 components:
   securitySchemes:
     bearerAuth:

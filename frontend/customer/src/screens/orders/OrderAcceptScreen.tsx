@@ -2,11 +2,12 @@
  * پذیرش سفارش از quote_id موجود (API فعلی).
  * settlement از سرور می‌آید — معمولاً blocked تا GT تسویه.
  * seed dev فقط fixture محلی، نه قیمت زنده.
+ * الگوی UI یکسان: FormField + NoticeBanner + ErrorBlock-style alert.
  */
 
 import { useState, type FormEvent } from 'react';
 import { acceptOrderFromQuote, seedDevQuote } from '../../api/orderAccept';
-import { NoticeBanner } from '../../ui';
+import { FormField, NoticeBanner } from '../../ui';
 
 export type OrderAcceptScreenProps = {
   token?: string;
@@ -84,22 +85,30 @@ export function OrderAcceptScreen(props: OrderAcceptScreenProps) {
       <header className="tal-header">
         <h1>پذیرش سفارش</h1>
         <p className="tal-muted">فقط با quote موجود · تسویه مالی از سمت سرور کنترل می‌شود</p>
-        <NoticeBanner tone="warn">تا تکمیل Ground Truth، settlement سمت سرور blocked می‌ماند — موجودی Kimia جعل نمی‌شود.</NoticeBanner>
+        <NoticeBanner tone="warn">
+          تا تکمیل Ground Truth، settlement سمت سرور blocked می‌ماند — موجودی Kimia جعل نمی‌شود.
+        </NoticeBanner>
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>
-        <label htmlFor="quote_id">شناسه پیشنهاد (quote_id)</label>
-        <input
+        <FormField
           id="quote_id"
-          name="quote_id"
-          type="text"
-          dir="ltr"
-          autoComplete="off"
-          value={quoteId}
-          disabled={loading}
-          onChange={(ev) => setQuoteId(ev.target.value)}
-          placeholder="quote-…"
-        />
+          label="شناسه پیشنهاد (quote_id)"
+          hint="فقط quote از قبل موجود؛ قیمت زنده نیست"
+          error={error && !result ? error : null}
+        >
+          <input
+            id="quote_id"
+            name="quote_id"
+            type="text"
+            dir="ltr"
+            autoComplete="off"
+            value={quoteId}
+            disabled={loading}
+            onChange={(ev) => setQuoteId(ev.target.value)}
+            placeholder="quote-…"
+          />
+        </FormField>
 
         {props.allowDevSeed ? (
           <button
@@ -114,12 +123,6 @@ export function OrderAcceptScreen(props: OrderAcceptScreenProps) {
         ) : null}
 
         {seedNote ? <p className="tal-muted">{seedNote}</p> : null}
-
-        {error ? (
-          <p className="tal-error" role="alert">
-            {error}
-          </p>
-        ) : null}
 
         {result ? (
           <div className="tal-card" role="status">

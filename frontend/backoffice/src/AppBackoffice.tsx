@@ -1,6 +1,7 @@
 /**
- * Staff: login → optional rotate → shell (registration queue | custody).
+ * Staff: login → optional rotate → shell (registration queue | custody | orders).
  * Existing APIs only. No Kimia write. No reject endpoint (blocked).
+ * Settlement remains blocked_by_ground_truth until GT-005.
  */
 
 import { useEffect, useState } from 'react';
@@ -8,6 +9,7 @@ import { staffLogin, staffRotatePassword, logout } from './api/auth';
 import { RegistrationQueueScreen } from './screens/RegistrationQueueScreen';
 import { FormField } from './ui';
 import { CustodyOpsScreen } from './screens/CustodyOpsScreen';
+import { OrdersListScreen } from './screens/OrdersListScreen';
 
 const SESSION_KEY = 'talamala_staff_session_v1';
 
@@ -16,7 +18,7 @@ type Session = { staffId: string; token: string; username: string };
 type Phase =
   | { name: 'login' }
   | { name: 'rotate'; staffId: string; token?: string; username: string }
-  | { name: 'app'; session: Session; tab: 'queue' | 'custody' };
+  | { name: 'app'; session: Session; tab: 'queue' | 'custody' | 'orders' };
 
 function loadSession(): Session | null {
   try {
@@ -231,10 +233,18 @@ export function AppBackoffice() {
         >
           عملیات امانت
         </button>
+        <button
+          type="button"
+          className={tab === 'orders' ? 'active' : ''}
+          onClick={() => setPhase({ name: 'app', session, tab: 'orders' })}
+        >
+          سفارش‌ها
+        </button>
       </nav>
       <main>
         {tab === 'queue' ? <RegistrationQueueScreen token={session.token} /> : null}
         {tab === 'custody' ? <CustodyOpsScreen token={session.token} /> : null}
+        {tab === 'orders' ? <OrdersListScreen token={session.token} /> : null}
       </main>
     </div>
   );

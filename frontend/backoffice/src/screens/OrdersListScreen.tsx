@@ -1,28 +1,26 @@
 /**
- * لیست سفارش‌ها — فقط خواندن از API موجود.
- * هیچ محاسبهٔ مالی سمت کلاینت.
- * الگوی UI یکسان با Assets/Custody: LoadingBlock / ErrorBlock / EmptyBlock / NoticeBanner / StatusBadge.
+ * لیست سفارش‌های tenant — فقط خواندن.
+ * settlement همیشه blocked_by_ground_truth تا GT-005.
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { fetchCustomerOrders, type OrderItemDto } from '../../api/orders';
-import { EmptyBlock, ErrorBlock, LoadingBlock, NoticeBanner, StatusBadge } from '../../ui';
+import { fetchAdminOrders, type AdminOrderItem } from '../api/orders';
+import { EmptyBlock, ErrorBlock, LoadingBlock, NoticeBanner, StatusBadge } from '../ui';
 
 export type OrdersListScreenProps = {
-  token?: string;
-  customerId?: string;
+  token: string;
 };
 
 export function OrdersListScreen(props: OrdersListScreenProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [items, setItems] = useState<OrderItemDto[]>([]);
+  const [items, setItems] = useState<AdminOrderItem[]>([]);
   const [reload, setReload] = useState(0);
 
   const load = useCallback(async () => {
     setLoading(true);
     setError(null);
-    const res = await fetchCustomerOrders(props.token, props.customerId);
+    const res = await fetchAdminOrders(props.token);
     if (!res.ok) {
       setError(res.message || res.error || 'خطا در خواندن سفارش‌ها');
       setItems([]);
@@ -30,7 +28,7 @@ export function OrdersListScreen(props: OrdersListScreenProps) {
       setItems(res.data.items ?? []);
     }
     setLoading(false);
-  }, [props.token, props.customerId]);
+  }, [props.token]);
 
   useEffect(() => {
     void load();
@@ -43,19 +41,18 @@ export function OrdersListScreen(props: OrdersListScreenProps) {
   if (error) {
     return (
       <div className="tal-screen" dir="rtl" lang="fa">
-        <h1>سفارش‌های من</h1>
+        <h1>سفارش‌ها</h1>
         <ErrorBlock message={error} onRetry={() => setReload((n) => n + 1)} />
       </div>
     );
   }
 
   return (
-    <div className="tal-screen tal-orders-list" dir="rtl" lang="fa">
+    <div className="tal-screen" dir="rtl" lang="fa">
       <header className="tal-header">
-        <h1>سفارش‌های من</h1>
-        <p className="tal-muted">نمایش سرور · بدون محاسبه در مرورگر</p>
-        <NoticeBanner tone="info">
-          فقط خواندن — تسویه مالی از سمت سرور و تا تکمیل Ground Truth مسدود است.
+        <h1>سفارش‌های tenant</h1>
+        <NoticeBanner tone="warn">
+          تسویه مالی مسدود است (blocked_by_ground_truth) تا تکمیل GT-005 — موجودی Kimia جعل نمی‌شود.
         </NoticeBanner>
       </header>
 
@@ -66,9 +63,7 @@ export function OrdersListScreen(props: OrdersListScreenProps) {
       </p>
 
       {items.length === 0 ? (
-        <EmptyBlock title="سفارشی نیست">
-          هنوز سفارشی ثبت نشده است. از زبانه «پذیرش سفارش» می‌توانید quote موجود را بپذیرید.
-        </EmptyBlock>
+        <EmptyBlock title="سفارشی نیست">هنوز سفارشی در این tenant ثبت نشده است.</EmptyBlock>
       ) : (
         <ul className="tal-list">
           {items.map((it) => (
@@ -77,10 +72,12 @@ export function OrdersListScreen(props: OrdersListScreenProps) {
                 {it.order_id}
               </div>
               <div className="tal-list-meta">
-                وضعیت: <StatusBadge value={it.status} />
+                مشتری: <span dir="ltr">{it.customer_id}</span>
+                <br />
+                وضعیت: <StatusBadge value={it.status} /> · settlement: {it.settlement}
                 <br />
                 <span dir="ltr">
-                  quote: {it.quote_id} · qty: {it.quantity} · total_rial: {it.total_rial}
+                  {it.side}/{it.asset} · qty={it.quantity} · total_rial={it.total_rial}
                 </span>
               </div>
             </li>
