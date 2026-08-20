@@ -71,6 +71,13 @@ jobs:
           echo "$out"
           echo "$out" | grep -q 'PASS=6 FAIL=0' || exit 1
 
+      - name: Release Cycle 6 Quote HTTP evidence
+        run: |
+          set -euo pipefail
+          out=$(make release-cycle6-http)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=9 FAIL=0' || exit 1
+
       - name: Frontend typecheck
         run: make frontend-typecheck
 
@@ -97,6 +104,13 @@ jobs:
           out=$(make pricing-contract)
           echo "$out"
           echo "$out" | grep -q 'PASS=15 FAIL=0' || exit 1
+
+      - name: Settlement and payment contracts (offline only, exact)
+        run: |
+          set -euo pipefail
+          out=$(make settlement-payment-contract)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=27 FAIL=0' || exit 1
 
       - name: Pilot preflight
         run: make pilot-preflight
