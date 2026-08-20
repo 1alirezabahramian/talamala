@@ -2,7 +2,7 @@
 
 > **PHASE-1 SAFE CLOSURE** at `0.3.8-phase1` — no speculative financial/provider work. See `PHASE1_SAFE_CLOSURE.md`.
 
-alamala — Operator quick start
+Talamala — Operator quick start
 
 ## One-liner checks
 
@@ -11,7 +11,7 @@ make check
 # or: cd backend && php bin/check.php
 ```
 
-Expect: http 78 · persist 9 · cors 13 · logger 8 · maintenance 7 · landing 18 · domain 8 · openapi parity · ALL CHECKS PASSED
+Expect: http 78 · persist 9 · cors 13 · logger 8 · maintenance 7 · landing 18 · domain 13 · decimal 13 · http-negative 17 · openapi parity · ALL CHECKS PASSED
 
 ## Run API + static
 
@@ -75,7 +75,6 @@ Rules:
 
 Alternate: Actions → workflow **Talamala Chabokan Control**.
 
-
 ## Phase-1 pilot path
 
 ```bash
@@ -89,3 +88,7 @@ TALAMALA_BASE_URL=https://host make pilot-host-smoke
 
 Full flow: `docs/00-master/PILOT_RUNBOOK.md` · checklist: `PILOT_CHECKLIST.md`  
 **Write remains off:** `KIMIA_WRITE_VERIFY_ENABLE=0`
+
+## Gate matrix
+
+`make pilot-gate-matrix` · `make decimal-invariant` · `make audit-domain-scorecard`

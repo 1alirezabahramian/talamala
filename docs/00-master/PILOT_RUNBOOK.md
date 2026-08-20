@@ -6,6 +6,7 @@
 ## 1. Offline (any machine)
 
 ```bash
+make pilot-gate-matrix
 make pilot-env-check      # .env / template posture, write-deny
 make pilot-preflight      # VERSION · docs · domain · parity · typecheck · ACL contracts
 make pilot-record         # writes PILOT_SHA_RECORD.last.md (gitignored)

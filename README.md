@@ -19,7 +19,9 @@ White-label multi-tenant platform for gold & precious-metal businesses.
 
 | Check | Expect |
 |-------|--------|
-| domain_smoke | PASS=8 FAIL=0 |
+| domain_smoke | PASS=13 FAIL=0 |
+| decimal_invariant | PASS=13 FAIL=0 |
+| http_negative_smoke | PASS=17 FAIL=0 |
 | http_smoke | PASS=78 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=13 FAIL=0 |
@@ -37,6 +39,7 @@ See `docs/00-master/RELEASE_SCOPE_PHASE1.md`, `DEPLOY_PHASE1.md`, and **`PILOT_R
 Settlement, live pricing, and unattended Kimia writes are **out of scope** for this pilot.
 
 ```bash
+make pilot-gate-matrix
 make pilot-all              # env + offline gates
 make release-build          # SPA dist + backend gates
 TALAMALA_BASE_URL=https://… make pilot-host-smoke

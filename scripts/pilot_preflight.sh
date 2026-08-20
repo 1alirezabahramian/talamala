@@ -103,6 +103,22 @@ else
   skip "domain_smoke (no php)"
 fi
 
+# --- 5a. Decimal invariant smoke
+if command -v php >/dev/null 2>&1; then
+  if php backend/bin/decimal_invariant_smoke.php >/tmp/talamala_dec.out 2>&1; then
+    if grep -q 'PASS=13 FAIL=0' /tmp/talamala_dec.out; then
+      ok "decimal_invariant_smoke PASS=13 FAIL=0"
+    else
+      fail "decimal_invariant_smoke"
+      tail -15 /tmp/talamala_dec.out || true
+    fi
+  else
+    fail "decimal_invariant_smoke exited non-zero"
+  fi
+else
+  skip "decimal_invariant_smoke"
+fi
+
 # --- 5b. HTTP negative smoke (no network)
 if command -v php >/dev/null 2>&1; then
   if php backend/bin/http_negative_smoke.php >/tmp/talamala_neg.out 2>&1; then
