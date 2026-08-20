@@ -1,0 +1,29 @@
+{
+  "schema_version": 1,
+  "capability": "GT-005 Settlement / hold / freeze / reconciliation",
+  "status": "NOT_GROUNDED",
+  "live_settlement_authorized": false,
+  "order_to_kimia_wire_allowed": false,
+  "owner_policy_ref": null,
+  "evidence_refs": [],
+  "semantics": {
+    "hold": null,
+    "freeze": null,
+    "release": null,
+    "credit_trading": null,
+    "reconciliation": null
+  },
+  "kimia_side_effects": {
+    "on_accept_order": "none — must remain none until grounded",
+    "on_settle": null,
+    "on_fail": null,
+    "balance_model": null
+  },
+  "remaining_unknowns": [
+    "Owner business rules for hold/freeze/credit",
+    "Kimia side-effect model for settlement ops",
+    "Reconciliation job authority and idempotency",
+    "Whether accept implies any ledger movement (default: no)"
+  ],
+  "notes": "Order accept continues to return settlement=blocked_by_ground_truth. No code path may call KimiaWrite from Order until this contract is GROUNDED, complete, evidence-backed and explicitly Owner-authorized."
+}
