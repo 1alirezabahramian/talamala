@@ -9,6 +9,7 @@ import {
   custodyMarkReady,
   custodyReceive,
 } from '../api/custody';
+import { FormField, NoticeBanner } from '../ui';
 
 export type CustodyOpsScreenProps = {
   token: string;
@@ -26,6 +27,11 @@ type LastItem = {
   status: string;
   weight_grams?: string;
 };
+
+/** Align with backend DecimalString (positive canonical decimal). */
+function isCanonicalWeight(w: string): boolean {
+  return /^\d+(\.\d+)?$/.test(w) && !/[eE]/.test(w);
+}
 
 export function CustodyOpsScreen(props: CustodyOpsScreenProps) {
   const [customerId, setCustomerId] = useState('');
@@ -46,8 +52,8 @@ export function CustodyOpsScreen(props: CustodyOpsScreenProps) {
       setError('customer_id، شرح و وزن الزامی است');
       return;
     }
-    if (!/^\d+(\.\d+)?$/.test(weight)) {
-      setError('وزن باید رشتهٔ اعشاری مثبت باشد');
+    if (!isCanonicalWeight(weight)) {
+      setError('وزن باید رشتهٔ اعشاری canonical باشد (بدون scientific notation)');
       return;
     }
     setLoading(true);
@@ -94,10 +100,14 @@ export function CustodyOpsScreen(props: CustodyOpsScreenProps) {
           ? await custodyMarkReady(props.token, last.id)
           : await custodyDeliver(props.token, last.id);
       if (!res.ok) {
-        setError(res.message || res.error || 'transition ناموفق');
+        setError(res.message || res.error || `${kind} ناموفق`);
         return;
       }
-      setLast({ id: res.data.id, status: res.data.status, weight_grams: last.weight_grams });
+      setLast({
+        id: res.data.id,
+        status: res.data.status,
+        weight_grams: last.weight_grams,
+      });
     } finally {
       setLoading(false);
     }
@@ -108,44 +118,60 @@ export function CustodyOpsScreen(props: CustodyOpsScreenProps) {
       <header className="tal-header">
         <h1>عملیات امانت (staff)</h1>
         <p className="tal-muted">receive → ready_for_pickup → delivered</p>
+        <NoticeBanner tone="info">
+          وزن فقط decimal string — بدون float و بدون scientific notation.
+        </NoticeBanner>
       </header>
 
       <form onSubmit={onReceiveSubmit} className="tal-form" noValidate>
-        <label htmlFor="customer_id">Customer ID</label>
-        <input
-          id="customer_id"
-          dir="ltr"
-          value={customerId}
-          disabled={loading}
-          onChange={(e) => setCustomerId(e.target.value)}
-        />
+        <FormField id="customer_id" label="Customer ID">
+          <input
+            id="customer_id"
+            dir="ltr"
+            value={customerId}
+            disabled={loading}
+            onChange={(e) => setCustomerId(e.target.value)}
+          />
+        </FormField>
 
-        <label htmlFor="description">شرح</label>
-        <input
-          id="description"
-          value={description}
-          disabled={loading}
-          onChange={(e) => setDescription(e.target.value)}
-        />
+        <FormField id="description" label="شرح">
+          <input
+            id="description"
+            value={description}
+            disabled={loading}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </FormField>
 
-        <label htmlFor="weight_grams">وزن (گرم) — decimal string</label>
-        <input
+        <FormField
           id="weight_grams"
-          dir="ltr"
-          inputMode="decimal"
-          value={weightGrams}
-          disabled={loading}
-          onChange={(e) => setWeightGrams(e.target.value)}
-        />
+          label="وزن (گرم) — decimal string"
+          hint="مثال: 8.100 — نه 1e3"
+          error={
+            weightGrams.trim() && !isCanonicalWeight(weightGrams.trim())
+              ? 'فرمت وزن نامعتبر'
+              : null
+          }
+        >
+          <input
+            id="weight_grams"
+            dir="ltr"
+            inputMode="decimal"
+            value={weightGrams}
+            disabled={loading}
+            onChange={(e) => setWeightGrams(e.target.value)}
+          />
+        </FormField>
 
-        <label htmlFor="fineness">عیار (اختیاری)</label>
-        <input
-          id="fineness"
-          dir="ltr"
-          value={fineness}
-          disabled={loading}
-          onChange={(e) => setFineness(e.target.value)}
-        />
+        <FormField id="fineness" label="عیار (اختیاری)">
+          <input
+            id="fineness"
+            dir="ltr"
+            value={fineness}
+            disabled={loading}
+            onChange={(e) => setFineness(e.target.value)}
+          />
+        </FormField>
 
         {error ? (
           <p className="tal-error" role="alert">
