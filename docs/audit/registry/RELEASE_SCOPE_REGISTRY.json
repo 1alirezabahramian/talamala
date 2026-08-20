@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "authority": "Final Audit Agent — Release mode",
+  "description": "Items that must be GREEN (or explicitly Owner-deferred) before ACCEPTED_FOR_RELEASE. Deferred items are Release-2+ and do not veto Release when documented here.",
+  "scoring_rule": "release_required items: BLOCKED/RED/ORANGE veto ACCEPTED_FOR_RELEASE. Threshold mean>=90 over scored release_required items; all release_required critical must be GREEN; all CV-* and RV-* clear; exact-SHA CI attestation.",
+  "release_required": [
+    "FA-001","FA-002","FA-003","FA-004","FA-005","FA-006","FA-007","FA-008","FA-009","FA-010","FA-011","FA-012","FA-013","FA-014","FA-015","FA-016","FA-017","FA-018","FA-019","FA-021","FA-022","FA-023","FA-024","FA-025","FA-026","FA-027","FA-028","FA-029","FA-030","FA-031","FA-032","FA-033","FA-034","FA-035","FA-036","FA-037","FA-038","FA-039","FA-040","FA-041","FA-042","FA-043","FA-044","FA-045","FA-046","FA-047","FA-048","FA-049","FA-050","FA-051","FA-052","FA-053","FA-055","FA-056","FA-057","FA-058","FA-059","FA-060","FA-061","FA-062","FA-063","FA-064","FA-065","FA-068","FA-069","FA-070","FA-071","FA-072","FA-073","FA-074","FA-075","FA-076","FA-077","FA-078","FA-079","FA-080","FA-081","FA-082","FA-083","FA-084","FA-085","FA-086","FA-087","FA-088","FA-089","FA-090","FA-091","FA-092","FA-093","FA-094","FA-096","FA-097","FA-098","FA-099","FA-100","FA-104","FA-105","FA-106","FA-107","FA-108","FA-109","FA-110","FA-111","FA-113","FA-114","FA-115","FA-116","FA-117","FA-118","FA-119","FA-120","FA-121","FA-122","FA-125","FA-126","FA-127","FA-128","FA-129","FA-130","FA-131","FA-132","FA-133","FA-134","FA-135","FA-136","FA-137","FA-138"
+  ],
+  "release_deferred": [
+    "FA-020","FA-054","FA-066","FA-067","FA-095","FA-101","FA-102","FA-103","FA-112","FA-123","FA-124"
+  ],
+  "notes": {
+    "FA-026": "Production SMS — GT-008; blocks full release until grounded or Owner defers to Release-2",
+    "FA-048": "Price provider — GT-004",
+    "FA-060": "Settlement — GT-005",
+    "FA-096": "Payment gateway — GT-006",
+    "FA-045": "Kimia Create from registration — GT-002 + Owner auth",
+    "FA-020": "Durable multi-tenant — deferred Release-2 by default"
+  }
+}
