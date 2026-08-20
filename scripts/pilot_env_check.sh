@@ -27,7 +27,6 @@ else
   warn "no .env — checking .env.example template only"
 fi
 
-# helper: get value for KEY from ENV_FILE (no export of secrets)
 get_val() {
   local key="$1"
   grep -E "^[[:space:]]*${key}=" "$ENV_FILE" 2>/dev/null | tail -1 | sed "s/^[^=]*=//" | tr -d '\r' || true
@@ -41,6 +40,16 @@ elif [[ "$WVE" == "0" ]]; then
   ok "KIMIA_WRITE_VERIFY_ENABLE=0"
 else
   fail "KIMIA_WRITE_VERIFY_ENABLE must be 0 for Phase-1 pilot (got non-zero)"
+fi
+
+# --- create deny ---
+KCE=$(get_val KIMIA_CREATE_ENABLE)
+if [[ -z "$KCE" ]]; then
+  ok "KIMIA_CREATE_ENABLE unset (default-deny OK for pilot)"
+elif [[ "$KCE" == "0" ]]; then
+  ok "KIMIA_CREATE_ENABLE=0"
+else
+  fail "KIMIA_CREATE_ENABLE must be 0 for Phase-1 pilot (got non-zero)"
 fi
 
 # --- env mode ---
@@ -81,11 +90,16 @@ else
   ok "DB path check skipped or non-production"
 fi
 
-# --- templates must document write deny ---
+# --- templates must document mutation deny ---
 if grep -qE 'KIMIA_WRITE_VERIFY_ENABLE=0' .env.example 2>/dev/null; then
   ok ".env.example documents write-deny"
 else
   fail ".env.example missing KIMIA_WRITE_VERIFY_ENABLE=0"
+fi
+if grep -qE 'KIMIA_CREATE_ENABLE=0' .env.example 2>/dev/null; then
+  ok ".env.example documents create-deny"
+else
+  fail ".env.example missing KIMIA_CREATE_ENABLE=0"
 fi
 if [[ -f .env.pilot.example ]]; then
   if grep -qE 'KIMIA_WRITE_VERIFY_ENABLE=0' .env.pilot.example; then
@@ -93,10 +107,20 @@ if [[ -f .env.pilot.example ]]; then
   else
     fail ".env.pilot.example must set KIMIA_WRITE_VERIFY_ENABLE=0"
   fi
-  if grep -qiE 'KIMIA_WRITE_VERIFY_ENABLE\s*=\s*1' .env.pilot.example; then
+  if grep -qiE 'KIMIA_WRITE_VERIFY_ENABLE\s*=\s*(1|true)' .env.pilot.example; then
     fail ".env.pilot.example must not enable write"
   else
     ok ".env.pilot.example does not enable write"
+  fi
+  if grep -qE 'KIMIA_CREATE_ENABLE=0' .env.pilot.example; then
+    ok ".env.pilot.example documents create-deny"
+  else
+    fail ".env.pilot.example must set KIMIA_CREATE_ENABLE=0"
+  fi
+  if grep -qiE 'KIMIA_CREATE_ENABLE\s*=\s*(1|true)' .env.pilot.example; then
+    fail ".env.pilot.example must not enable create"
+  else
+    ok ".env.pilot.example does not enable create"
   fi
 fi
 
@@ -108,7 +132,6 @@ if [[ -f .env ]]; then
   if git check-ignore -q .env 2>/dev/null; then
     ok ".env is gitignored"
   else
-    # if not in git repo or not ignored
     if git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
       if git ls-files --error-unmatch .env >/dev/null 2>&1; then
         fail ".env is tracked by git — remove secrets from history"
