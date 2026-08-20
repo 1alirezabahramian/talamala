@@ -53,3 +53,10 @@ From this point:
 
 `make check` on this freeze line must remain green.  
 Regression of Phase-1 gates is a stop condition, not a soft warning.
+
+
+## Closure authority (No Human Green)
+
+Phase-1 pilot/release **acceptance** is not declared by humans.  
+Only `make final-audit` on the release SHA with current-run Evidence and verdict `ACCEPTED_FOR_PILOT` may close.  
+Policy: `docs/audit/CLOSURE_POLICY.md`.
