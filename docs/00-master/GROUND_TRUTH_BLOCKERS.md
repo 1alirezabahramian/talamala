@@ -1,7 +1,7 @@
 # Talamala — Ground Truth Blocker Register
 **Stage:** 0  
 **Status:** Active  
-**Last updated:** 2026-08-19  
+**Last updated:** 2026-08-20  
 
 Until a blocker is resolved with official/current evidence, the related capability remains:
 
@@ -16,9 +16,9 @@ No “standard industry behavior”, no plausible guess, no invented payload is 
 | ID | Blocker | Blocks | Required Evidence | Owner Action |
 |----|---------|--------|-------------------|--------------|
 | GT-001 | Current official Kimia Swagger / OpenAPI (raw file) | All Kimia write paths, exact Account/Balance semantics | Raw swagger.json or equivalent + version/date | Live Iran runner verifies current Swagger; raw artifact archival remains open |
-| GT-002 | Kimia Create Customer duplicate/validation/readback semantics | Automatic onboarding Create + authoritative binding completion | **PARTIAL:** live Swagger now grounds `POST /api/account`, `AccountDto`, zero Swagger-required properties, HTTP 200 primitive int32 id and generic HTTP 400. Still required: duplicate/validation error behavior + post-create readback | Separate explicit Owner authorization + exact test values for any controlled live Create |
+| GT-002 | Kimia Create Customer duplicate/validation/readback semantics | Automatic onboarding Create + authoritative binding completion | **PARTIAL:** HTTP contract GROUNDED + default-deny live gate. Still required: duplicate/validation body + post-create readback. **Prep:** `KIMIA_CREATE_CONTROLLED_RUNBOOK.md` | Owner signs controlled window; approve test-only data; archive evidence; restore deny |
 | GT-003 | Kimia write contracts | Order execution (partial), Settlement | **PARTIAL:** paper-gold buy/sell + cash receive/pay live-proven (Batch V1, account 350, ids 77193–77196). Still open: Coin, Currency, Physical, Settlement semantics, full balance-side-effect model | Continue GT for remaining ops |
-| GT-004 | Price Provider official API + freshness/failover + business coefficients (x/y/z) + rounding order + Quote expiry | Pricing, Quote | Official provider contract + owner-approved pricing policy | Supply contract + policy |
+| GT-004 | Price Provider official API + freshness/failover + business coefficients (x/y/z) + rounding order + Quote expiry | Pricing, Quote | Official provider contract + owner-approved pricing policy. **Scaffold:** `PRICING_CONTRACT.json` stays `NOT_GROUNDED` + `PRICING_POLICY_OWNER_TEMPLATE.md` + offline `make pricing-contract`. No live feed until exact policy/evidence is grounded. | Fill Owner template; archive official API; then controlled provider evidence |
 | GT-005 | Settlement / reconciliation / hold / freeze / credit semantics | Settlement, Credit trading | Explicit business rules + Kimia behavior evidence | Owner decision + evidence |
 
 ## P1 — Required before production readiness of the feature
@@ -41,5 +41,6 @@ No “standard industry behavior”, no plausible guess, no invented payload is 
 
 **Current project policy:**  
 Stage 0 and Stage 1 (Foundation) can proceed without resolving P0.  
-Pricing, Order/Kimia Write, Settlement and Payments cannot advance beyond their grounded scope until the corresponding blockers are cleared.  
-For Create Customer, the HTTP contract is grounded but **Live Create remains forbidden without a new explicit Owner authorization**; registration/order/settlement wiring remains off.
+Pricing, Order/Kimia Write, Settlement and Payments cannot advance beyond their grounded scope until corresponding blockers are cleared.  
+For Create Customer, the HTTP contract is grounded but **Live Create remains forbidden without a new explicit Owner authorization**; registration/order/settlement wiring remains off.  
+For Pricing, scaffolding and offline contract tests are allowed, but **no provider call, coefficient, rounding or TTL may be treated as grounded until official/Owner evidence is archived**.
