@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "capability": "GT-008 SMS.ir + GT-009 Jibit production",
+  "status": "NOT_GROUNDED",
+  "live_sms_authorized": false,
+  "live_jibit_authorized": false,
+  "sms": {
+    "provider": "SMS.ir (intended)",
+    "tenant_credentials": null,
+    "templates": null,
+    "delivery_proof": null
+  },
+  "jibit": {
+    "version": null,
+    "sandbox": null,
+    "live": null,
+    "rate_limits": null,
+    "error_catalog": null
+  },
+  "remaining_unknowns": [
+    "Tenant-specific SMS.ir credentials and templates",
+    "Controlled live OTP delivery proof",
+    "Jibit current API version and error catalog",
+    "Live onboarding identity proof process"
+  ],
+  "notes": "Pilot continues to use Fake SMS / Fake Jibit. Production providers stay blocked."
+}
