@@ -6,6 +6,7 @@
 
 import { useEffect, useState } from 'react';
 import { fetchCustomerAssets, type AssetsResponse } from '../../api/assets';
+import { EmptyBlock, ErrorBlock, LoadingBlock, NoticeBanner } from '../../ui';
 
 export type AssetsViewModel = {
   moneyToman: string;
@@ -19,7 +20,6 @@ export type AssetsScreenProps = {
   token?: string;
   /** Local/skeleton only — X-Customer-Id outside production */
   customerId?: string;
-  /** Controlled mode: pass data from parent instead of fetching */
   data?: AssetsViewModel | null;
   loading?: boolean;
 };
@@ -42,7 +42,7 @@ function toViewModel(res: AssetsResponse): AssetsViewModel {
 
 export function AssetsScreen(props: AssetsScreenProps) {
   const controlled = props.data !== undefined;
-  const [loading, setLoading] = useState(!controlled && (props.loading ?? true));
+  const [loading, setLoading] = useState(!controlled && props.loading !== false);
   const [error, setError] = useState<string | null>(null);
   const [view, setView] = useState<AssetsViewModel | null>(props.data ?? null);
   const [reload, setReload] = useState(0);
@@ -51,6 +51,7 @@ export function AssetsScreen(props: AssetsScreenProps) {
     if (controlled) {
       setView(props.data ?? null);
       setLoading(!!props.loading);
+      setError(null);
       return;
     }
     let cancelled = false;
@@ -77,25 +78,17 @@ export function AssetsScreen(props: AssetsScreenProps) {
   }, [controlled, props.data, props.loading, props.token, props.customerId, reload]);
 
   if (loading) {
-    return (
-      <div className="tal-screen tal-assets" dir="rtl" lang="fa">
-        <p className="tal-muted">در حال خواندن دارایی…</p>
-      </div>
-    );
+    return <LoadingBlock label="در حال خواندن دارایی…" />;
   }
 
   if (error) {
     return (
       <div className="tal-screen tal-assets" dir="rtl" lang="fa">
         <h1>دارایی</h1>
-        <p className="tal-error" role="alert">
-          {error}
-        </p>
-        {!controlled ? (
-          <button type="button" className="tal-btn" onClick={() => setReload((n) => n + 1)}>
-            تلاش مجدد
-          </button>
-        ) : null}
+        <ErrorBlock
+          message={error}
+          onRetry={controlled ? undefined : () => setReload((n) => n + 1)}
+        />
       </div>
     );
   }
@@ -104,7 +97,7 @@ export function AssetsScreen(props: AssetsScreenProps) {
     return (
       <div className="tal-screen tal-assets" dir="rtl" lang="fa">
         <h1>دارایی</h1>
-        <p className="tal-muted">داده‌ای نیست</p>
+        <EmptyBlock>داده‌ای نیست</EmptyBlock>
       </div>
     );
   }
@@ -114,6 +107,9 @@ export function AssetsScreen(props: AssetsScreenProps) {
       <header className="tal-header">
         <h1>دارایی من</h1>
         <p className="tal-muted">مقادیر فقط از Kimia Read (سرور)</p>
+        <NoticeBanner tone="info">
+          فقط خواندن — بدون محاسبهٔ موجودی در مرورگر و بدون Write.
+        </NoticeBanner>
       </header>
 
       {view.status === 'not_bound' ? (
