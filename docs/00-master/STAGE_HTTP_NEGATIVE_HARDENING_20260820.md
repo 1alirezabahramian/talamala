@@ -19,8 +19,10 @@
 
 `backend/bin/check.php` now executes `http_negative_smoke` as part of the aggregate local/release check.
 
+`.github/workflows/http-negative-smoke.yml` also runs the smoke on `push` and `pull_request` and requires exact `PASS=8 FAIL=0`; any non-zero exit or count drift fails that workflow.
+
 ## Evidence discipline
 
-The smoke and aggregate file passed PHP syntax validation before integration. A current-run `PASS=8 FAIL=0` is **not** claimed by this stage record until the smoke executes on a complete checkout/CI environment.
+The smoke and aggregate file passed PHP syntax validation before integration. Workflow presence is not PASS evidence: a current-run `PASS=8 FAIL=0` is **not** claimed by this stage record until the workflow/smoke executes on the exact claimed SHA.
 
 No Human Green remains unchanged: only `make final-audit` on the exact claimed SHA with current-run evidence may produce `ACCEPTED_FOR_PILOT`.
