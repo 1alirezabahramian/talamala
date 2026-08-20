@@ -51,3 +51,11 @@
 - Settlement wire from Order
 - Payment capture
 - lowering `ACCEPTED_FOR_RELEASE` thresholds
+
+## Cycle 6 progress
+
+- **GT-005 / FA-060, FA-078:** offline Settlement contract + hard-stop wire guard added. Flags alone cannot enable wiring; complete Owner policy, evidence refs, semantics, Kimia side-effect model and zero unknowns are required. Release rows remain Open.
+- **GT-006 / FA-096–098:** offline Payment contract added. Capture remains blocked unless official gateway contract, callback/signature/refund/reverse rules, Owner policy, evidence refs and zero unknowns are present. Release rows remain Open.
+- **GT-008/009 / FA-026, FA-039, FA-099:** production integration stub only; Fake SMS/Jibit remain unchanged.
+- **GT-004 / FA-047–049:** customer Quote-by-id exposes only an already-stored immutable snapshot. It does not fetch, calculate, refresh or authorize live pricing.
+- **No score gaming:** machine Release Authority remains the only blocker/verdict source.

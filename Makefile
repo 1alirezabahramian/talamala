@@ -1,7 +1,7 @@
 help:
 	@echo 'Talamala targets:'
 	@echo '  make check|domain|http|persist|cors|logger|maintenance|landing|spa|parity'
-	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract|pricing-contract|release-build'
+	@echo '  make frontend-typecheck|frontend-build|serve|version|php-syntax|kimia-write-contract|kimia-create-customer-contract|pricing-contract|settlement-payment-contract|release-build'
 	@echo '  make pilot-preflight     # offline Phase-1 pilot readiness (no Live Kimia)'
 	@echo '  make pilot-host-smoke    # TALAMALA_BASE_URL=https://host GET healthz/readyz only'
 	@echo '  make pilot-env-check     # .env / template write-deny posture'
@@ -18,12 +18,13 @@ help:
 	@echo '  make pilot-offline-gates # diagnostic only; not closure authority'
 	@echo '  make release-cycle1-http # exact PASS=9 FAIL=0'
 	@echo '  make release-cycle2-http # exact PASS=6 FAIL=0'
+	@echo '  make release-cycle6-http # quote snapshot/isolation exact PASS=9 FAIL=0'
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract pricing-contract release-build verify-frontend \
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract pricing-contract settlement-payment-contract release-build verify-frontend \
 	pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-release final-audit-summary \
 	pilot-status ci-attest-hint decimal-invariant pilot-gate-matrix audit-domain-scorecard pilot-offline-gates \
-	release-cycle1-http release-cycle2-http
+	release-cycle1-http release-cycle2-http release-cycle6-http
 
 check:
 	php backend/bin/check.php
@@ -54,6 +55,8 @@ kimia-create-customer-contract:
 	php backend/bin/kimia_create_customer_contract_smoke.php
 pricing-contract:
 	php backend/bin/pricing_contract_smoke.php
+settlement-payment-contract:
+	php backend/bin/settlement_payment_contract_smoke.php
 
 # These local commands are blocking in CI.
 frontend-typecheck:
@@ -114,3 +117,5 @@ release-cycle1-http:
 	php backend/bin/release_cycle1_http_smoke.php
 release-cycle2-http:
 	php backend/bin/release_cycle2_http_smoke.php
+release-cycle6-http:
+	php backend/bin/release_cycle6_http_smoke.php

@@ -19,16 +19,16 @@ No “standard industry behavior”, no plausible guess, no invented payload is 
 | GT-002 | Kimia Create Customer duplicate/validation/readback semantics | Automatic onboarding Create + authoritative binding completion | **PARTIAL:** HTTP contract GROUNDED + default-deny live gate. Still required: duplicate/validation body + post-create readback. **Prep:** `KIMIA_CREATE_CONTROLLED_RUNBOOK.md` | Owner signs controlled window; approve test-only data; archive evidence; restore deny |
 | GT-003 | Kimia write contracts | Order execution (partial), Settlement | **PARTIAL:** paper-gold buy/sell + cash receive/pay live-proven (Batch V1, account 350, ids 77193–77196). Still open: Coin, Currency, Physical, Settlement semantics, full balance-side-effect model | Continue GT for remaining ops |
 | GT-004 | Price Provider official API + freshness/failover + business coefficients (x/y/z) + rounding order + Quote expiry | Pricing, Quote | Official provider contract + owner-approved pricing policy. **Scaffold:** `PRICING_CONTRACT.json` stays `NOT_GROUNDED` + `PRICING_POLICY_OWNER_TEMPLATE.md` + offline `make pricing-contract`. No live feed until exact policy/evidence is grounded. | Fill Owner template; archive official API; then controlled provider evidence |
-| GT-005 | Settlement / reconciliation / hold / freeze / credit semantics | Settlement, Credit trading | Explicit business rules + Kimia behavior evidence | Owner decision + evidence |
+| GT-005 | Settlement / reconciliation / hold / freeze / credit semantics | Settlement, Credit trading | Explicit business rules + Kimia behavior evidence. **Scaffold:** `SETTLEMENT_CONTRACT.json` + Owner template + hard-stop `SettlementWireGuard`; still NOT_GROUNDED. | Fill Owner template + controlled evidence before any wire |
 
 ## P1 — Required before production readiness of the feature
 
 | ID | Blocker | Blocks | Required Evidence |
 |----|---------|--------|-------------------|
-| GT-006 | BehPardakht Mellat current merchant contract + sandbox process | Online payments | Official merchant docs + credentials process |
+| GT-006 | BehPardakht Mellat current merchant contract + sandbox process | Online payments | Official merchant docs + credentials process. **Scaffold:** `PAYMENT_CONTRACT.json` + Owner template; capture remains blocked. |
 | GT-007 | Goftino official widget/API/privacy contract | Support chat integration | Current official docs |
 | GT-008 | SMS.ir tenant-specific credentials, templates, live delivery proof | Production OTP | Tenant panel config + controlled live test results |
-| GT-009 | Jibit sandbox/live credentials + current version + rate/error behavior | Live onboarding | Credentials + controlled test results |
+| GT-009 | Jibit sandbox/live credentials + current version + rate/error behavior | Live onboarding | Credentials + controlled test results. **Scaffold:** `SMS_JIBIT_CONTRACT.json`; Fake path unchanged. |
 
 ## Resolution Rule
 

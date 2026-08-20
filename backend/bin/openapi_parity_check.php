@@ -32,6 +32,7 @@ $expected = [
     'POST /v1/customer/orders/accept',
     'GET /v1/customer/orders',
     'GET /v1/customer/me',
+    'GET /v1/customer/quotes/{id}',
     'GET /v1/admin/registrations',
     'POST /v1/admin/registrations/{id}/approve',
     'POST /v1/admin/custody/receive',

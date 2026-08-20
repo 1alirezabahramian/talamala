@@ -512,6 +512,37 @@ final class Kernel
             return ['status' => 200, 'body' => ['items' => $out]];
         }
 
+        // Quote by id — immutable snapshot only; never computes or refreshes price.
+        if ($method === 'GET' && preg_match('#^/v1/customer/quotes/([^/]+)$#', $path, $m)) {
+            [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);
+            if ($err !== null) {
+                return $err;
+            }
+            $quote = $this->quotes->findById($tenant->id, $m[1]);
+            if ($quote === null) {
+                return ['status' => 404, 'body' => ['error' => 'quote_not_found']];
+            }
+            if ($quote->customerId !== $customerId) {
+                return ['status' => 403, 'body' => ['error' => 'quote_owner_mismatch']];
+            }
+            return [
+                'status' => 200,
+                'body' => [
+                    'quote_id' => $quote->id,
+                    'side' => $quote->side->value,
+                    'asset' => $quote->asset->value,
+                    'quantity' => $quote->quantity,
+                    'unit_price_rial' => $quote->unitPriceRial,
+                    'total_rial' => $quote->totalRial,
+                    'status' => $quote->status->value,
+                    'issued_at' => $quote->issuedAt->format(\DateTimeInterface::ATOM),
+                    'expires_at' => $quote->expiresAt->format(\DateTimeInterface::ATOM),
+                    'price_source_ref' => $quote->priceSourceRef,
+                    'pricing_note' => 'Immutable snapshot only — live price provider blocked until GT-004 grounded',
+                ],
+            ];
+        }
+
         // Customer profile — no balances; Kimia binding flag only
         if ($method === 'GET' && $path === '/v1/customer/me') {
             [$customerId, $err] = $this->resolveCustomerId($headers, $tenant->id);

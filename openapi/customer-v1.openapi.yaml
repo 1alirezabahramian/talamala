@@ -50,6 +50,21 @@ paths:
       security: [{ bearerAuth: [] }]
       responses:
         '200': { description: Custody list }
+  /v1/customer/quotes/{id}:
+    get:
+      operationId: customerQuoteById
+      security: [{ bearerAuth: [] }]
+      summary: Immutable quote snapshot; no live pricing or refresh
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Stored quote snapshot with decimal-string values }
+        '401': { description: Unauthorized }
+        '403': { description: quote_owner_mismatch }
+        '404': { description: quote_not_found }
   /v1/customer/me:
     get:
       operationId: customerMe
