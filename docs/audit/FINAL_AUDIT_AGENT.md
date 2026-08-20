@@ -1,59 +1,59 @@
 # Final Audit Agent — Authority for Closure
 
-> **No Human Green:** Nobody (Owner, developer, AI, manual report) may declare Talamala green/closed/pilot-accepted unless `make final-audit` on **that exact SHA** yields `ACCEPTED_FOR_PILOT` with current-run Evidence. See `CLOSURE_POLICY.md`.
+> **No Human Green:** nobody may declare Talamala pilot-accepted unless `make final-audit` on the exact SHA yields `ACCEPTED_FOR_PILOT`; nobody may declare the product publishable unless `make final-audit-release` on that exact SHA yields `release_verdict: ACCEPTED_FOR_RELEASE`.
 
+## Roles
 
-**Role:** machine authority for Phase-1 pilot/release closure verdict.  
-Humans supply Ground Truth and external evidence; the Agent must not manufacture PASS from file presence.
+- `scripts/final_audit_agent_v2.py` — unchanged bounded Pilot authority.
+- `scripts/release_audit_agent.py` — strictly stronger Full Release wrapper; it first runs the Pilot authority, then applies Release scope + RV-*.
+
+Humans supply Ground Truth and external evidence. Neither Agent may manufacture PASS from file presence.
 
 ## Inputs
 
 1. `docs/audit/registry/CHECKLIST_REGISTRY.json`
-2. `docs/traceability/CAPABILITY_LEDGER.md`
-3. `docs/00-master/GROUND_TRUTH_BLOCKERS.md`
-4. Current repository filesystem / OpenAPI / pilot docs
-5. **Current-run** smoke/contract results executed by the Agent
+2. `docs/audit/registry/RELEASE_SCOPE_REGISTRY.json` (Release mode)
+3. Capability ledger + GT blockers
+4. Current repository / OpenAPI / frontend / deploy files
+5. Current-run smoke and contract results
 6. Exact-SHA CI success attestation matching `git rev-parse HEAD`
 
-## Non-negotiable evidence rules
+## Pilot gate
 
-- Test file exists ≠ test passed.
-- CI workflow exists ≠ exact-SHA CI passed.
-- OpenAPI parity script exists ≠ parity passed.
-- No score boost may turn weak evidence into GREEN.
-- A stale report is historical evidence only; it must not be copied to `AUDIT_REPORT_latest.*`.
+`ACCEPTED_FOR_PILOT` still requires the existing rules unchanged: no CV-*, mean ≥90, all Pilot in-scope critical GREEN, no Pilot ORANGE/RED, exact-SHA CI attestation.
 
-## Verdict gate
+## Full Release gate
 
-`ACCEPTED_FOR_PILOT` requires all of:
+`ACCEPTED_FOR_RELEASE` requires all of:
 
-- no Critical Veto,
-- mean score ≥ 90,
-- all in-scope critical items GREEN,
-- no in-scope ORANGE/RED item,
-- exact-SHA CI attestation for the current HEAD.
+- Pilot authority on the same SHA remains `ACCEPTED_FOR_PILOT`;
+- no CV-* and no RV-*;
+- every `release_required` checklist item GREEN;
+- all required critical items GREEN;
+- release mean ≥90;
+- release registry is a complete, unique, disjoint classification of every checklist row (RV-04 fail-closed);
+- exact-SHA current-run evidence/CI attestation.
 
-Out-of-pilot GT-blocked capabilities may remain ⚫ when explicitly excluded by Phase-1 scope.
+Until GT-002/003/004/005/006/008/009 and their required rows are grounded/implemented (or explicitly Owner-deferred where permitted), Release mode is expected to report `NOT_READY_FOR_RELEASE` or another blocking verdict. Do not lower thresholds to force green.
 
 ## Run
 
-Local diagnostic run:
-
 ```bash
 make final-audit
+make final-audit-release
 ```
 
-Without exact-SHA CI attestation, CV-03 is expected and the verdict cannot be accepted.
-
-Authoritative CI-backed run:
+Authoritative exact-SHA environment:
 
 ```bash
 TALAMALA_AUDIT_CI_SHA="$(git rev-parse HEAD)" \
 TALAMALA_AUDIT_CI_STATUS=success \
-make final-audit
+make final-audit-release
 ```
 
-The two environment values must come from the CI run for that exact SHA.
+## CI Release Authority
+
+The GitHub Final Audit workflow runs Release Authority after exact-SHA evidence and Pilot authority. `NOT_READY_FOR_RELEASE` is a valid development-time Authority result and its artifact is still published. Workflow greenness alone never means Release green; **only** `release_verdict: ACCEPTED_FOR_RELEASE` does.
 
 ## Output
 
@@ -61,4 +61,4 @@ The two environment values must come from the CI run for that exact SHA.
 - `docs/audit/reports/AUDIT_REPORT_latest.md`
 - `docs/audit/reports/AUDIT_REPORT_latest.json`
 
-Generated reports are outputs, not hand-edited source truth.
+Generated reports are outputs, not hand-edited truth.
