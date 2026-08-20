@@ -10,6 +10,7 @@ import { RegistrationQueueScreen } from './screens/RegistrationQueueScreen';
 import { FormField } from './ui';
 import { CustodyOpsScreen } from './screens/CustodyOpsScreen';
 import { OrdersListScreen } from './screens/OrdersListScreen';
+import { CustomersListScreen } from './screens/CustomersListScreen';
 
 const SESSION_KEY = 'talamala_staff_session_v1';
 
@@ -18,7 +19,7 @@ type Session = { staffId: string; token: string; username: string };
 type Phase =
   | { name: 'login' }
   | { name: 'rotate'; staffId: string; token?: string; username: string }
-  | { name: 'app'; session: Session; tab: 'queue' | 'custody' | 'orders' };
+  | { name: 'app'; session: Session; tab: 'queue' | 'custody' | 'orders' | 'customers' };
 
 function loadSession(): Session | null {
   try {
@@ -240,11 +241,19 @@ export function AppBackoffice() {
         >
           سفارش‌ها
         </button>
+        <button
+          type="button"
+          className={tab === 'customers' ? 'active' : ''}
+          onClick={() => setPhase({ name: 'app', session, tab: 'customers' })}
+        >
+          مشتریان
+        </button>
       </nav>
       <main>
         {tab === 'queue' ? <RegistrationQueueScreen token={session.token} /> : null}
         {tab === 'custody' ? <CustodyOpsScreen token={session.token} /> : null}
         {tab === 'orders' ? <OrdersListScreen token={session.token} /> : null}
+        {tab === 'customers' ? <CustomersListScreen token={session.token} /> : null}
       </main>
     </div>
   );

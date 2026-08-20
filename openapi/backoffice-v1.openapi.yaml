@@ -101,6 +101,15 @@ paths:
         '200':
           description: Orders (decimal strings; no client-side finance)
         '401': { description: Unauthorized }
+  /v1/admin/customers:
+    get:
+      operationId: adminListCustomers
+      security: [{ bearerAuth: [] }]
+      summary: Tenant-scoped customer directory (no balances)
+      responses:
+        '200':
+          description: Customers (kimia_bound flag only; no money/weight)
+        '401': { description: Unauthorized }
 components:
   securitySchemes:
     bearerAuth:

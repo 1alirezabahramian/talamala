@@ -38,6 +38,7 @@ $expected = [
     'POST /v1/admin/custody/{id}/ready',
     'POST /v1/admin/custody/{id}/deliver',
     'GET /v1/admin/orders',
+    'GET /v1/admin/customers',
 ];
 
 // Dev routes — must NOT appear in OpenAPI (local + X-Talamala-Dev only)

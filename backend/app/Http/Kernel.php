@@ -558,6 +558,24 @@ final class Kernel
             return ['status' => 200, 'body' => ['items' => $out]];
         }
 
+        // Admin customer directory — no balances; kimia_bound flag only
+        if ($method === 'GET' && $path === '/v1/admin/customers') {
+            [$staffId, $err] = $this->resolveStaffId($headers, $tenant->id);
+            if ($err !== null) {
+                return $err;
+            }
+            $list = $this->customers->listForTenant($tenant->id, 100);
+            $out = array_map(static fn ($c) => [
+                'customer_id' => $c->id,
+                'mobile' => $c->mobile,
+                'full_name' => $c->fullName,
+                'access_status' => $c->accessStatus->value,
+                'kimia_bound' => $c->isBoundToKimia(),
+                'created_at' => $c->createdAt->format(\DateTimeInterface::ATOM),
+            ], $list);
+            return ['status' => 200, 'body' => ['items' => $out]];
+        }
+
         // Dev-only helpers (never enable in production)
         if (!self::isProduction() && ($headers['x-talamala-dev'] ?? '') === '1') {
             if ($method === 'GET' && $path === '/v1/dev/last-otp') {

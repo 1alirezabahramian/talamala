@@ -81,6 +81,22 @@ SQL);
         return $out;
     }
 
+    public function listForTenant(string $tenantId, int $limit = 100): array
+    {
+        $st = $this->pdo->prepare(
+            'SELECT * FROM customers WHERE tenant_id = :t
+             ORDER BY created_at DESC LIMIT :lim'
+        );
+        $st->bindValue('t', $tenantId);
+        $st->bindValue('lim', $limit, PDO::PARAM_INT);
+        $st->execute();
+        $out = [];
+        while ($row = $st->fetch()) {
+            $out[] = $this->map($row);
+        }
+        return $out;
+    }
+
     /** @param array<string, mixed> $row */
     private function map(array $row): Customer
     {

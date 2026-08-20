@@ -14,4 +14,10 @@ interface CustomerRepository
 
     /** @return list<Customer> */
     public function listPendingRegistration(string $tenantId, int $limit = 50): array;
+
+    /**
+     * Staff/admin — tenant-scoped customer directory (no balances).
+     * @return list<Customer>
+     */
+    public function listForTenant(string $tenantId, int $limit = 100): array;
 }

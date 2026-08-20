@@ -49,4 +49,18 @@ final class InMemoryCustomerRepository implements CustomerRepository
         }
         return $out;
     }
+
+    public function listForTenant(string $tenantId, int $limit = 100): array
+    {
+        $out = [];
+        foreach ($this->byId as $c) {
+            if ($c->tenantId === $tenantId) {
+                $out[] = $c;
+                if (count($out) >= $limit) {
+                    break;
+                }
+            }
+        }
+        return $out;
+    }
 }
