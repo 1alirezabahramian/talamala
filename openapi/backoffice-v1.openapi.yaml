@@ -59,12 +59,14 @@ paths:
               properties:
                 customer_id: { type: string }
                 description: { type: string }
-                weight_grams: { type: string }
+                weight_grams:
+                  type: string
+                  description: Canonical decimal string; scientific notation and surrounding whitespace are rejected.
                 fineness: { type: string }
       responses:
         '201': { description: Created }
         '422':
-          description: customer_description_weight_required
+          description: customer_description_weight_required or invalid_weight_grams
         '401':
           description: staff auth required
 
