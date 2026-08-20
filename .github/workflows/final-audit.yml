@@ -91,6 +91,13 @@ jobs:
           echo "$out"
           echo "$out" | grep -q 'PASS=26 FAIL=0' || exit 1
 
+      - name: Pricing contract (offline only, exact)
+        run: |
+          set -euo pipefail
+          out=$(make pricing-contract)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=15 FAIL=0' || exit 1
+
       - name: Pilot preflight
         run: make pilot-preflight
 
