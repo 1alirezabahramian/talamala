@@ -85,6 +85,70 @@ $check(
 $r = $k->handle('GET', '/v1/customer/orders', $demo, null);
 $check('order_list_requires_identity', ($r['status'] ?? 0) === 401, $r);
 
+// --- expanded Phase-1 negatives ---
+
+$r = $k->handle('POST', '/v1/customer/orders/accept', $demo + [
+    'x-customer-id' => 'customer-a',
+], ['quote_id' => $quoteId]);
+$check(
+    'order_accept_requires_idempotency',
+    ($r['status'] ?? 0) === 422,
+    $r,
+);
+
+$r = $k->handle('POST', '/v1/customer/orders/accept', $demo + [
+    'x-customer-id' => 'customer-a',
+    'idempotency-key' => 'negative-missing-quote',
+], []);
+$check(
+    'order_accept_requires_quote_id',
+    ($r['status'] ?? 0) === 422,
+    $r,
+);
+
+$r = $k->handle('GET', '/v1/customer/assets', $demo, null);
+$check('assets_requires_identity', ($r['status'] ?? 0) === 401, $r);
+
+$r = $k->handle('GET', '/v1/customer/custody', $demo, null);
+$check('custody_list_requires_identity', ($r['status'] ?? 0) === 401, $r);
+
+$r = $k->handle('GET', '/v1/admin/registrations', $demo, null);
+$check('admin_queue_requires_staff', ($r['status'] ?? 0) === 401, $r);
+
+$r = $k->handle('POST', '/v1/admin/custody/receive', $demo, [
+    'customer_id' => 'c1',
+    'description' => 'test',
+    'weight_grams' => '8.1',
+]);
+$check('custody_receive_requires_staff', ($r['status'] ?? 0) === 401, $r);
+
+$r = $k->handle('POST', '/v1/admin/custody/receive', $demo + [
+    'x-staff-id' => 'staff-negative-smoke',
+], [
+    'customer_id' => 'c1',
+    'description' => 'test',
+    'weight_grams' => '1e3',
+]);
+$check(
+    'custody_invalid_weight_rejected',
+    ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'invalid_weight_grams'),
+    $r,
+);
+
+$r = $k->handle('POST', '/v1/kimia/write', $demo, ['op' => 'buy']);
+$check(
+    'kimia_write_route_absent',
+    ($r['status'] ?? 0) === 404,
+    $r,
+);
+
+$r = $k->handle('POST', '/v1/auth/customer/otp/request', $demo, []);
+$check(
+    'otp_request_validation',
+    ($r['status'] ?? 0) === 422 && (($r['body']['error'] ?? '') === 'mobile_required'),
+    $r,
+);
+
 putenv('TALAMALA_ENV=production');
 $r = $k->handle('POST', '/v1/dev/seed-quote', $dev, [
     'customer_id' => 'customer-a',
