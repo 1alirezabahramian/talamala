@@ -14,11 +14,12 @@ help:
 	@echo '  make decimal-invariant   # decimal-string invariant smoke (exact PASS=13 FAIL=0)'
 	@echo '  make pilot-gate-matrix   # print exact Phase-1 gate matrix'
 	@echo '  make audit-domain-scorecard # current-SHA domain scorecard after final-audit'
+	@echo '  make pilot-offline-gates # diagnostic offline bundle; not closure authority'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint decimal-invariant pilot-gate-matrix audit-domain-scorecard
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint decimal-invariant pilot-gate-matrix audit-domain-scorecard pilot-offline-gates
 
 check:
 	php backend/bin/check.php
@@ -128,3 +129,6 @@ audit-domain-scorecard:
 
 decimal-invariant:
 	php backend/bin/decimal_invariant_smoke.php
+
+pilot-offline-gates:
+	bash scripts/pilot_offline_gates.sh
