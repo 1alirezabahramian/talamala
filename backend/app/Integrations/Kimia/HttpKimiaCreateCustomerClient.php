@@ -18,7 +18,8 @@ final class HttpKimiaCreateCustomerClient implements KimiaCreateCustomerClient
 
     public function create(array $payload): KimiaCreateCustomerResult
     {
-        $this->contract->assertGroundedForHttp();
+        // Default-deny: grounded contract alone never authorizes live mutation.
+        KimiaCreateLiveGate::assertLiveMutationAllowed($this->contract);
         $this->contract->assertPayloadKeys($payload);
         KimiaAccountDtoInput::assertValues($payload);
         $path = (string) $this->contract->path;
