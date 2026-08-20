@@ -9,8 +9,11 @@ declare(strict_types=1);
 
 require_once dirname(__DIR__) . '/app/bootstrap_autoload.php';
 
+use Talamala\Domain\Quote\BlockedPriceProvider;
 use Talamala\Domain\Quote\PriceProviderUnavailableException;
 use Talamala\Domain\Quote\PricingContract;
+use Talamala\Domain\Quote\QuoteAsset;
+use Talamala\Domain\Quote\QuoteIssuanceGuard;
 
 $pass = 0;
 $fail = 0;
@@ -79,6 +82,44 @@ try {
     ok('allows_only_complete_fixture');
 } catch (PriceProviderUnavailableException $e) {
     bad('allows_only_complete_fixture', $e->getMessage());
+}
+
+if (($c->raw['proposal_status'] ?? null) === 'AWAITING_OWNER_RATIFICATION') {
+    ok('proposal_awaiting_owner_ratification');
+} else {
+    bad('proposal_awaiting_owner_ratification', 'proposal must not be ratified by code');
+}
+
+if (is_file($root . '/docs/providers/official/PRICING_POLICY_PROPOSED_FOR_OWNER.md')) {
+    ok('proposal_doc_present');
+} else {
+    bad('proposal_doc_present', 'missing');
+}
+
+$blocked = BlockedPriceProvider::fromDefaultArchive($root);
+try {
+    $blocked->getUnitPriceRial('tenant-fixture', QuoteAsset::Gold18, null);
+    bad('blocked_provider_throws', 'expected throw');
+} catch (PriceProviderUnavailableException) {
+    ok('blocked_provider_throws');
+}
+
+$guard = QuoteIssuanceGuard::fromDefaultArchive($root);
+if ($guard->isLivePricingOpen() === false) ok('issuance_live_closed');
+else bad('issuance_live_closed', 'live pricing must remain closed');
+
+try {
+    $guard->assertSourceAllowed('live-market-tick');
+    bad('refuse_live_looking_ref', 'expected complete live gate to throw');
+} catch (PriceProviderUnavailableException) {
+    ok('refuse_live_looking_ref');
+}
+
+try {
+    $guard->assertSourceAllowed('dev-manual-fixture');
+    ok('allow_explicit_nonlive_ref');
+} catch (PriceProviderUnavailableException $e) {
+    bad('allow_explicit_nonlive_ref', $e->getMessage());
 }
 
 echo "---\nPASS={$pass} FAIL={$fail}\n";
