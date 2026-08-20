@@ -59,3 +59,12 @@
 - **GT-008/009 / FA-026, FA-039, FA-099:** production integration stub only; Fake SMS/Jibit remain unchanged.
 - **GT-004 / FA-047–049:** customer Quote-by-id exposes only an already-stored immutable snapshot. It does not fetch, calculate, refresh or authorize live pricing.
 - **No score gaming:** machine Release Authority remains the only blocker/verdict source.
+
+## Cycle 7 progress — proposal only
+
+- **GT-004 / FA-047 + FA-049:** conservative business-policy proposal archived for Owner review; it is not Ground Truth yet.
+- `PRICING_CONTRACT.json` remains `NOT_GROUNDED`, `live_pricing_authorized=false`, `proposal_status=AWAITING_OWNER_RATIFICATION`.
+- `BlockedPriceProvider` is a hard-stop implementation and never emits a synthetic/live price.
+- `QuoteIssuanceGuard` permits only explicit `dev-` / `fixture-` / `manual-` sources while the live contract is incomplete. Any other source must pass the full provider/freshness/asset/rounding/TTL/zero-unknown gate.
+- Owner ratification in a later cycle may ground only the ratified policy subset. It does not close FA-048 or authorize Live Pricing.
+- **Blocker count remains exactly 19** until machine Release Authority says otherwise.
