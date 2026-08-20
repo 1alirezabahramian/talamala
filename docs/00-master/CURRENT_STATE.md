@@ -25,6 +25,7 @@ Do not bump VERSION merely for ops/docs.
 
 ## Operator
 - Closure authority: `make final-audit` → `docs/audit/` (Final Audit Agent)
+- **No Human Green:** only Agent `ACCEPTED_FOR_PILOT` on the claimed SHA counts as green (`docs/audit/CLOSURE_POLICY.md`)
 - App: `make help` · `make info` · `make check` · `make serve`
 - Pilot path: `make pilot-all` · `pilot-env-check` · `pilot-preflight` · `pilot-record` · `release-build` · `pilot-host-smoke`
 - Backup: `docs/00-master/PILOT_BACKUP.md`
