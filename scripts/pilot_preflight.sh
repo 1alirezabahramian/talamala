@@ -17,7 +17,6 @@ echo "== Talamala pilot preflight =="
 echo "ROOT=$ROOT"
 echo "DATE=$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
-# --- 1. VERSION pin ---
 if [[ -f VERSION ]]; then
   V=$(tr -d '[:space:]' < VERSION)
   if [[ "$V" == "0.3.8-phase1" ]]; then
@@ -29,7 +28,6 @@ else
   fail "VERSION file missing"
 fi
 
-# --- 2. Freeze docs present ---
 for f in \
   docs/00-master/PHASE1_SAFE_CLOSURE.md \
   docs/00-master/RELEASE_SCOPE_PHASE1.md \
@@ -45,7 +43,6 @@ do
   fi
 done
 
-# --- 3. Write/Create remain deny-by-default in examples ---
 if grep -qE 'KIMIA_WRITE_VERIFY_ENABLE=0' .env.example; then
   ok ".env.example KIMIA_WRITE_VERIFY_ENABLE=0"
 else
@@ -66,7 +63,6 @@ else
   fi
 fi
 
-# --- 4. PHP syntax (no DB) ---
 if command -v php >/dev/null 2>&1; then
   SYN_FAIL=0
   COUNT=0
@@ -86,31 +82,45 @@ else
   skip "php not available"
 fi
 
-# --- 5. Domain smoke (in-memory, no PDO required for pure domain) ---
 if command -v php >/dev/null 2>&1; then
   if php backend/bin/smoke.php >/tmp/talamala_domain_smoke.out 2>&1; then
     if grep -q 'PASS=13 FAIL=0' /tmp/talamala_domain_smoke.out; then
       ok "domain_smoke PASS=13 FAIL=0"
     else
       fail "domain_smoke unexpected output"
-      cat /tmp/talamala_domain_smoke.out | tail -20
+      tail -20 /tmp/talamala_domain_smoke.out
     fi
   else
     fail "domain_smoke exited non-zero"
-    cat /tmp/talamala_domain_smoke.out | tail -30
+    tail -30 /tmp/talamala_domain_smoke.out
   fi
 else
   skip "domain_smoke (no php)"
 fi
 
-# --- 6. OpenAPI parity (no DB) ---
+if command -v php >/dev/null 2>&1; then
+  if php backend/bin/http_negative_smoke.php >/tmp/talamala_neg.out 2>&1; then
+    if grep -q 'PASS=17 FAIL=0' /tmp/talamala_neg.out; then
+      ok "http_negative_smoke PASS=17 FAIL=0"
+    else
+      fail "http_negative_smoke"
+      tail -20 /tmp/talamala_neg.out
+    fi
+  else
+    fail "http_negative_smoke exited non-zero"
+    tail -30 /tmp/talamala_neg.out || true
+  fi
+else
+  skip "http_negative_smoke (no php)"
+fi
+
 if command -v php >/dev/null 2>&1; then
   if php backend/bin/openapi_parity_check.php >/tmp/talamala_parity.out 2>&1; then
     if grep -q 'PASS=22 FAIL=0\|parity OK' /tmp/talamala_parity.out; then
       ok "openapi_parity"
     else
       fail "openapi_parity"
-      cat /tmp/talamala_parity.out | tail -15
+      tail -15 /tmp/talamala_parity.out
     fi
   else
     fail "openapi_parity exited non-zero"
@@ -119,7 +129,6 @@ else
   skip "openapi_parity (no php)"
 fi
 
-# --- 7. Kimia write/create contract smokes (offline ACL guards only) ---
 if command -v php >/dev/null 2>&1; then
   if php backend/bin/kimia_write_contract_smoke.php >/tmp/talamala_kw.out 2>&1; then
     ok "kimia-write-contract (offline)"
@@ -137,7 +146,6 @@ else
   skip "kimia contract smokes (no php)"
 fi
 
-# --- 8. Frontend typecheck (Node) — advisory if npm missing ---
 if command -v npm >/dev/null 2>&1; then
   if (cd frontend/customer && npm ci --prefer-offline --no-audit --no-fund >/dev/null 2>&1 && npm run typecheck >/tmp/talamala_tc_c.out 2>&1); then
     ok "frontend/customer typecheck"
@@ -155,14 +163,12 @@ else
   skip "frontend typecheck (npm not available)"
 fi
 
-# --- 9. Settlement remains blocked in domain (regression guard text) ---
 if grep -R -n 'blocked_by_ground_truth\|settlement.*blocked' backend/app --include='*.php' >/dev/null 2>&1; then
   ok "settlement blocked marker present in backend"
 else
   fail "settlement blocked marker missing — pilot must not auto-settle"
 fi
 
-# --- Summary ---
 echo ""
 echo "---"
 echo "PASS=$PASS FAIL=$FAIL SKIP=$SKIP"
