@@ -20,12 +20,12 @@ jobs:
           php-version: '8.3'
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
-      - name: Run adversarial HTTP smoke (exact PASS=8 FAIL=0)
+      - name: Run adversarial HTTP smoke (exact PASS=17 FAIL=0)
         run: |
           set -euo pipefail
           out=$(php backend/bin/http_negative_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=8 FAIL=0' || {
-            echo "http_negative_smoke gate failed: expected PASS=8 FAIL=0"
+          echo "$out" | grep -q 'PASS=17 FAIL=0' || {
+            echo "http_negative_smoke gate failed: expected PASS=17 FAIL=0"
             exit 1
           }
