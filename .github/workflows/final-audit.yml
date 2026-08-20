@@ -30,8 +30,15 @@ jobs:
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+          cache-dependency-path: |
+            frontend/customer/package-lock.json
+            frontend/backoffice/package-lock.json
+
       - name: Verify checkout SHA
-        shell: bash
         run: |
           set -euo pipefail
           test "$(git rev-parse HEAD)" = "${AUDIT_SHA}"
@@ -44,26 +51,31 @@ jobs:
         run: make check
 
       - name: HTTP negative smoke exact gate
-        shell: bash
         run: |
           set -euo pipefail
           out=$(php backend/bin/http_negative_smoke.php)
           echo "$out"
-          echo "$out" | grep -q 'PASS=17 FAIL=0' || {
-            echo 'expected PASS=17 FAIL=0'
-            exit 1
-          }
+          echo "$out" | grep -q 'PASS=17 FAIL=0' || exit 1
 
       - name: Release Cycle 1 HTTP evidence
-        shell: bash
         run: |
           set -euo pipefail
           out=$(make release-cycle1-http)
           echo "$out"
-          echo "$out" | grep -q 'PASS=9 FAIL=0' || {
-            echo 'expected Release Cycle 1 PASS=9 FAIL=0'
-            exit 1
-          }
+          echo "$out" | grep -q 'PASS=9 FAIL=0' || exit 1
+
+      - name: Release Cycle 2 HTTP evidence
+        run: |
+          set -euo pipefail
+          out=$(make release-cycle2-http)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=6 FAIL=0' || exit 1
+
+      - name: Frontend typecheck
+        run: make frontend-typecheck
+
+      - name: Frontend build
+        run: make frontend-build
 
       - name: Kimia write contract (offline only)
         run: make kimia-write-contract
@@ -74,39 +86,86 @@ jobs:
       - name: Pilot preflight
         run: make pilot-preflight
 
-  final-audit:
-    name: Final Audit Agent — Closure Authority
+  pilot-authority:
+    name: Pilot Closure Authority
     needs: [evidence]
-    if: ${{ needs.evidence.result == 'success' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ env.AUDIT_SHA }}
           fetch-depth: 1
-
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.3'
           extensions: mbstring, xml, curl, pdo_sqlite
           coverage: none
+      - name: Exact-SHA Pilot Audit
+        env:
+          TALAMALA_AUDIT_CI_SHA: ${{ env.AUDIT_SHA }}
+          TALAMALA_AUDIT_CI_STATUS: success
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${AUDIT_SHA}"
+          make final-audit
+      - name: Publish pilot evidence artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-audit-pilot-${{ env.AUDIT_SHA }}
+          path: |
+            docs/audit/reports/AUDIT_REPORT_latest.json
+            docs/audit/reports/AUDIT_REPORT_*.md
+          if-no-files-found: error
+          retention-days: 30
 
-      - name: Exact-SHA Final Audit
+  release-authority:
+    name: Full Release Authority — verdict
+    needs: [evidence, pilot-authority]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ env.AUDIT_SHA }}
+          fetch-depth: 1
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+      - name: Exact-SHA Release Audit
         env:
           TALAMALA_AUDIT_CI_SHA: ${{ env.AUDIT_SHA }}
           TALAMALA_AUDIT_CI_STATUS: success
         shell: bash
         run: |
-          set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${AUDIT_SHA}"
-          make final-audit
-
-      - name: Publish audit evidence artifact
-        if: ${{ always() }}
+          set +e
+          make final-audit-release
+          rc=$?
+          echo "release_rc=$rc"
+          python3 - <<'PY'
+          import json
+          from pathlib import Path
+          p = Path('docs/audit/reports/AUDIT_REPORT_latest.json')
+          if not p.is_file():
+              raise SystemExit('release report missing')
+          r = json.loads(p.read_text())
+          verdict = r.get('release_verdict')
+          allowed = {'ACCEPTED_FOR_RELEASE','NOT_READY_FOR_RELEASE','REJECTED_SECURITY','BLOCKED_FINANCIAL_GT'}
+          if verdict not in allowed:
+              raise SystemExit(f'invalid release verdict: {verdict!r}')
+          print(f'RELEASE_VERDICT={verdict}')
+          print(f"RELEASE_REQUIRED_GREEN={r.get('release_required_green')}/{r.get('release_required_count')}")
+          print(f"RELEASE_VETOS={len(r.get('release_vetos') or [])}")
+          PY
+          # NOT_READY is a valid Authority result while developing.
+          # Only release_verdict=ACCEPTED_FOR_RELEASE authorizes release language.
+          exit 0
+      - name: Publish release authority artifact
         uses: actions/upload-artifact@v4
         with:
-          name: final-audit-${{ env.AUDIT_SHA }}
+          name: final-audit-release-${{ env.AUDIT_SHA }}
           path: |
             docs/audit/reports/AUDIT_REPORT_latest.json
             docs/audit/reports/AUDIT_REPORT_*.md
