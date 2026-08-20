@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "purpose": "Explicit current-run evidence bindings for bounded Phase-1 pilot closure. Does not change Ground Truth or enable out-of-scope capabilities.",
+  "item_patches": {
+    "FA-009": {"add_smokes": ["domain_smoke"]},
+    "FA-042": {"add_smokes": ["http_smoke"]},
+    "FA-046": {"add_smokes": ["domain_smoke"]},
+    "FA-052": {"add_smokes": ["http_negative_smoke"]},
+    "FA-055": {"add_smokes": ["http_smoke"]},
+    "FA-058": {"replace_capability_ids": [], "add_smokes": ["domain_smoke", "http_negative_smoke"]},
+    "FA-059": {"replace_capability_ids": [], "add_smokes": ["http_negative_smoke"]},
+    "FA-064": {"add_smokes": ["domain_smoke"]},
+    "FA-065": {"replace_capability_ids": [], "add_smokes": ["pilot_env_check", "http_negative_smoke"]},
+    "FA-070": {"add_smokes": ["pilot_preflight", "http_negative_smoke"]},
+    "FA-071": {"add_smokes": ["http_smoke"]},
+    "FA-077": {"add_smokes": ["pilot_env_check"]}
+  }
+}
