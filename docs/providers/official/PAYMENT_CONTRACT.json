@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "capability": "GT-006 Online payment",
+  "status": "NOT_GROUNDED",
+  "live_payment_authorized": false,
+  "owner_policy_ref": null,
+  "evidence_refs": [],
+  "gateway": {
+    "name": null,
+    "merchant_contract_path_or_url": null,
+    "sandbox_base_url": null,
+    "production_base_url": null,
+    "callback_model": null,
+    "signature_verification": null,
+    "refund_model": null,
+    "reverse_model": null
+  },
+  "remaining_unknowns": [
+    "Current merchant contract document",
+    "Sandbox credentials process (vault, not Git)",
+    "Callback/signature verification rules",
+    "Refund and reverse semantics"
+  ],
+  "notes": "No payment capture endpoint may go live until contract is GROUNDED, complete, evidence-backed and explicitly Owner-authorized."
+}
