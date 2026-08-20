@@ -1,5 +1,8 @@
 # Final Audit Agent — Authority for Closure
 
+> **No Human Green:** Nobody (Owner, developer, AI, manual report) may declare Talamala green/closed/pilot-accepted unless `make final-audit` on **that exact SHA** yields `ACCEPTED_FOR_PILOT` with current-run Evidence. See `CLOSURE_POLICY.md`.
+
+
 **Role:** machine authority for Phase-1 pilot/release closure verdict.  
 Humans supply Ground Truth and external evidence; the Agent must not manufacture PASS from file presence.
 
