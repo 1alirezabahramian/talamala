@@ -23,8 +23,8 @@ Statuses: IMPLEMENTED (skeleton/fake) | PARTIAL | BLOCKED | NOT_STARTED
 | CAP-014 | Order | Settlement write | BLOCKED | Ground truth |
 | CAP-015 | Custody | Lifecycle | IMPLEMENTED | Talamala truth |
 | CAP-016 | API | OpenAPI auth/customer/backoffice | IMPLEMENTED | Runtime parity + CI gate |
-| CAP-017 | Frontend | Customer screens | PARTIAL | OTP login/register · shell assets/orders/custody · session persistence |
-| CAP-018 | Frontend | Backoffice screens | PARTIAL | Staff login/rotate · registration queue approve · custody ops · session |
+| CAP-017 | Frontend | Customer screens | IMPLEMENTED | **Bounded Phase-1 screens only:** OTP login/register · assets/orders/custody · session persistence · settlement-blocked warning. Exact-SHA frontend typecheck PASS. No claim for out-of-pilot Pricing/Payment/Settlement/live integrations. |
+| CAP-018 | Frontend | Backoffice screens | IMPLEMENTED | **Bounded Phase-1 screens only:** staff login/rotate · registration queue approve · custody ops · session. Exact-SHA frontend typecheck PASS. No claim for out-of-pilot Pricing/Payment/Settlement/live integrations. |
 | CAP-019 | Payment | Gateways | BLOCKED | Ground truth |
 | CAP-020 | Release | Exact-SHA CI | IMPLEMENTED | Fail-closed smoke gates (http 78) |
 | CAP-021 | Security | Session↔tenant isolation | IMPLEMENTED | Customer + staff · 403 mismatch |
@@ -60,3 +60,8 @@ Do not copy GoldPlatform completion percentages.
 
 ## Domain invariants (2026-08-20)
 - Money/weight: `Talamala\Domain\Shared\DecimalString` on Quote, Order, CustodyItem constructors; domain_smoke PASS=13.
+
+## Exact-SHA pilot UI evidence (2026-08-20)
+- CAP-017/CAP-018 status is bounded to the Phase-1 screens named above.
+- Talamala CI on the audit head passed both Customer and Backoffice frontend typechecks.
+- This status does **not** open or claim Pricing, Payment, Settlement, production SMS/Jibit, Live Create, or any other GT-blocked capability.
