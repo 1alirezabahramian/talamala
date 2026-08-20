@@ -1,6 +1,6 @@
 # Critical Vetos — Final Audit Agent
 
-If **any** veto is active, final verdict cannot be `ACCEPTED_FOR_PILOT`.
+If **any** CV-* veto is active, the Pilot verdict cannot be `ACCEPTED_FOR_PILOT`.
 
 | ID | Veto | Detection |
 |----|------|-----------|
@@ -16,8 +16,23 @@ If **any** veto is active, final verdict cannot be `ACCEPTED_FOR_PILOT`.
 
 ## Phase-1 pilot special rule
 
-Items marked `pilot_scope: out` that are BLOCKED for GT do **not** by themselves veto the bounded pilot when RELEASE_SCOPE excludes them. They remain ⚫ and keep full product closure blocked.
+Items marked `pilot_scope: out` that are BLOCKED for GT do **not** by themselves veto the bounded pilot. They remain ⚫ and still block Full Release when classified `release_required`.
+
+## Release Vetos — Release mode only
+
+Every active CV-* also blocks Release. In addition:
+
+| ID | Veto | Detection |
+|----|------|-----------|
+| RV-01 | Release-required item not GREEN | Any `release_required` item is MISSING/BLOCKED/RED/ORANGE/YELLOW |
+| RV-02 | Release-required critical not GREEN | Required critical item is not GREEN |
+| RV-03 | Ungrounded financial claim in Release | CV-02 active / ungrounded financial implementation claim |
+| RV-04 | Release scope registry missing/invalid | Registry unreadable/empty, duplicate or unknown IDs, required/deferred overlap, or any checklist ID unclassified |
+
+`release_deferred` items do not fire RV-01/RV-02.
+
+**Threshold is never lowered:** Release first requires the Pilot authority to remain accepted, then adds the complete release-required gate and RV-*.
 
 ## Evidence rule
 
-Presence of a test script or CI workflow is **not** evidence that it passed. Current-run gate results and exact-SHA attestation are required.
+Presence of a test script or workflow is not evidence that it passed. Current-run gates and exact-SHA attestation are required.
