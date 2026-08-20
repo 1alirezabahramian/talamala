@@ -103,7 +103,7 @@ jobs:
           set -euo pipefail
           out=$(make pricing-contract)
           echo "$out"
-          echo "$out" | grep -q 'PASS=15 FAIL=0' || exit 1
+          echo "$out" | grep -q 'PASS=21 FAIL=0' || exit 1
 
       - name: Settlement and payment contracts (offline only, exact)
         run: |
