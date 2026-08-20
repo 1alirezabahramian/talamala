@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "capability": "GT-004 Price Provider + business coefficients + quote expiry",
+  "status": "NOT_GROUNDED",
+  "live_pricing_authorized": false,
+  "provider": {
+    "name": null,
+    "official_api_doc_url_or_path": null,
+    "auth_model": null,
+    "freshness_sla_seconds": null,
+    "failover_policy": null,
+    "observed_at_field": null
+  },
+  "assets_supported": [],
+  "coefficients": {
+    "x": null,
+    "y": null,
+    "z": null,
+    "notes": "Owner must supply approved coefficients; never invent in code"
+  },
+  "rounding": {
+    "order": null,
+    "mode": null,
+    "scale_rial": null,
+    "scale_quantity": null
+  },
+  "quote_policy": {
+    "default_ttl_seconds": null,
+    "max_ttl_seconds": null,
+    "freeze_on_accept": null,
+    "authority": "UNSET — FA-047 remains blocked until Owner sets TTL/freeze policy"
+  },
+  "rial_toman": {
+    "conversion_side": "backend_only",
+    "factor": "10",
+    "note": "Rial↔Toman only on backend; already Phase-1 rule"
+  },
+  "remaining_unknowns": [
+    "Official price provider contract document",
+    "Owner-approved x/y/z coefficients and application order",
+    "Rounding mode and decimal scales",
+    "Authoritative quote TTL / freeze duration",
+    "Failover and stale-price rejection rules"
+  ],
+  "notes": "Machine-readable placeholder. status stays NOT_GROUNDED until Owner archives official provider + policy. No live PriceProvider implementation may treat this file as authorization."
+}
