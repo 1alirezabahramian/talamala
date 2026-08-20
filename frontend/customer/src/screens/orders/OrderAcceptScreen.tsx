@@ -6,6 +6,7 @@
 
 import { useState, type FormEvent } from 'react';
 import { acceptOrderFromQuote, seedDevQuote } from '../../api/orderAccept';
+import { NoticeBanner } from '../../ui';
 
 export type OrderAcceptScreenProps = {
   token?: string;
@@ -83,7 +84,7 @@ export function OrderAcceptScreen(props: OrderAcceptScreenProps) {
       <header className="tal-header">
         <h1>پذیرش سفارش</h1>
         <p className="tal-muted">فقط با quote موجود · تسویه مالی از سمت سرور کنترل می‌شود</p>
-        <div className="tal-card" role="status"><strong>هشدار تسویه:</strong> تا تکمیل Ground Truth، settlement سمت سرور blocked می‌ماند — موجودی Kimia جعل نمی‌شود.</div>
+        <NoticeBanner tone="warn">تا تکمیل Ground Truth، settlement سمت سرور blocked می‌ماند — موجودی Kimia جعل نمی‌شود.</NoticeBanner>
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>

@@ -10,6 +10,7 @@ import {
   listRegistrationQueue,
   type RegistrationQueueItemDto,
 } from '../api/registrations';
+import { NoticeBanner } from '../ui';
 
 export type RegistrationQueueItem = {
   customerId: string;
@@ -104,7 +105,8 @@ export function RegistrationQueueScreen(props: RegistrationQueueScreenProps) {
   return (
     <div className="tal-screen tal-reg-queue" dir="rtl" lang="fa">
       <header className="tal-header">
-        <h1>صف ثبت‌نام</h1>
+        <NoticeBanner tone="info">پایلوت: تأیید ثبت‌نام دستی است — Live Kimia Create خاموش است.</NoticeBanner>
+      <h1>صف ثبت‌نام</h1>
         <p className="tal-muted">مشتریان در انتظار تأیید (Limited → Active)</p>
       </header>
 

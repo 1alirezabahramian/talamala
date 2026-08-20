@@ -11,11 +11,14 @@ help:
 	@echo '  make final-audit-summary # read-only current-SHA audit board'
 	@echo '  make pilot-status        # VERSION/SHA/write-deny/audit snapshot'
 	@echo '  make ci-attest-hint      # explain exact-SHA CI attestation (no fake success)'
+	@echo '  make decimal-invariant   # decimal-string invariant smoke (exact PASS=13 FAIL=0)'
+	@echo '  make pilot-gate-matrix   # print exact Phase-1 gate matrix'
+	@echo '  make audit-domain-scorecard # current-SHA domain scorecard after final-audit'
 
 # Talamala — operator shortcuts (no invent financial targets)
 
 .PHONY: help info check smokes domain http persist cors logger maintenance landing spa parity php-syntax \
-	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint
+	frontend-typecheck frontend-build serve version kimia-write-contract kimia-create-customer-contract release-build verify-frontend pilot-preflight pilot-host-smoke pilot-env-check pilot-all pilot-record final-audit final-audit-summary pilot-status ci-attest-hint decimal-invariant pilot-gate-matrix audit-domain-scorecard
 
 check:
 	php backend/bin/check.php
@@ -116,3 +119,12 @@ pilot-status:
 
 ci-attest-hint:
 	bash scripts/ci_attest_hint.sh
+
+pilot-gate-matrix:
+	bash scripts/pilot_gate_matrix.sh
+
+audit-domain-scorecard:
+	python3 scripts/audit_domain_scorecard.py
+
+decimal-invariant:
+	php backend/bin/decimal_invariant_smoke.php

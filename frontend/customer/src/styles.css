@@ -323,3 +323,21 @@ button:disabled {
   inset-inline-start: 0.5rem;
   top: 0.5rem;
 }
+
+.tal-banner {
+  margin: 0.75rem 0;
+  padding: 0.65rem 0.85rem;
+  border-radius: 0.4rem;
+  font-size: 0.9rem;
+  line-height: 1.45;
+}
+.tal-banner-warn {
+  background: #fff7e6;
+  border: 1px solid #f0c36d;
+  color: #5c3d00;
+}
+.tal-banner-info {
+  background: #eef6ff;
+  border: 1px solid #8bb4e0;
+  color: #0b3a5b;
+}

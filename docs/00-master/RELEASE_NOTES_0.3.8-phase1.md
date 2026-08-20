@@ -17,3 +17,7 @@ Pilot tooling (ops only, Write still off):
 - `make pilot-env-check` · `make pilot-preflight` · `make pilot-all`
 - `make release-build` · `make pilot-host-smoke`
 - `.env.pilot.example`
+
+### Ops pack (decimal + gate matrix)
+- `decimal_invariant_smoke` PASS=13
+- `make pilot-gate-matrix` · `make audit-domain-scorecard`

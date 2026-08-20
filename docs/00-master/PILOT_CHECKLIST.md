@@ -5,6 +5,7 @@
 
 ## Offline preflight (any sandbox)
 - [ ] `make pilot-env-check` green (write-deny · production posture hints)
+- [ ] `make decimal-invariant` green (PASS=13)
 - [ ] `make pilot-preflight` green (VERSION · docs · domain · parity · typecheck · ACL contracts)
 - [ ] or `make pilot-all` (env + preflight; host if `TALAMALA_BASE_URL` set)
 - [ ] No Live Kimia Write/Create; settlement remains blocked

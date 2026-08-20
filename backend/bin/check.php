@@ -18,6 +18,7 @@ $bins = [
     'maintenance_smoke' => $root . '/bin/maintenance_smoke.php',
     'landing_smoke' => $root . '/bin/landing_smoke.php',
     'spa_router_smoke' => $root . '/bin/spa_router_smoke.php',
+    'decimal_invariant_smoke' => $root . '/bin/decimal_invariant_smoke.php',
     'openapi_parity' => $root . '/bin/openapi_parity_check.php',
 ];
 

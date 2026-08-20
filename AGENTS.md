@@ -40,3 +40,6 @@ Never call anything “Production Ready” without green exact-SHA release gates
 Preserve → Inspect → Inventory → Extract → Compare → Validate → Classify → Document → Integrate → Continue
 
 Every capability must eventually satisfy the full traceability chain before it can be closed.
+
+## Pilot ops shortcuts
+`make pilot-status` · `make pilot-gate-matrix` · `make final-audit-summary` · `make decimal-invariant`

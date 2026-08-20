@@ -25,8 +25,10 @@ Do not bump VERSION merely for ops/docs.
 | landing_smoke | PASS=18 FAIL=0 |
 | openapi_parity | PASS |
 | http_negative_smoke | PASS=17 FAIL=0 |
+| decimal_invariant_smoke | PASS=13 FAIL=0 |
 
 ## Operator
+- Gate matrix: `make pilot-gate-matrix` · `make decimal-invariant`
 - Ops snapshot: `make pilot-status` · `make final-audit-summary` · `make ci-attest-hint`
 - Closure authority: `make final-audit` → `docs/audit/` (Final Audit Agent)
 - **No Human Green:** only Agent `ACCEPTED_FOR_PILOT` on the claimed SHA counts as green (`docs/audit/CLOSURE_POLICY.md`)
