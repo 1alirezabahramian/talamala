@@ -1,0 +1,100 @@
+name: Talamala Final Audit Authority
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+env:
+  TALAMALA_ENV: local
+
+jobs:
+  evidence:
+    name: Exact-SHA audit evidence
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+
+      - name: Verify checkout SHA
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          echo "EVIDENCE_SHA=${GITHUB_SHA}"
+
+      - name: PHP syntax
+        run: make php-syntax
+
+      - name: Aggregate backend checks
+        run: make check
+
+      - name: HTTP negative smoke exact gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          out=$(php backend/bin/http_negative_smoke.php)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=8 FAIL=0' || {
+            echo 'expected PASS=8 FAIL=0'
+            exit 1
+          }
+
+      - name: Kimia write contract (offline only)
+        run: make kimia-write-contract
+
+      - name: Kimia create-customer contract (offline only)
+        run: make kimia-create-customer-contract
+
+      - name: Pilot preflight
+        run: make pilot-preflight
+
+  final-audit:
+    name: Final Audit Agent — Closure Authority
+    needs: [evidence]
+    if: ${{ needs.evidence.result == 'success' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, xml, curl, pdo_sqlite
+          coverage: none
+
+      - name: Exact-SHA Final Audit
+        env:
+          TALAMALA_AUDIT_CI_SHA: ${{ github.sha }}
+          TALAMALA_AUDIT_CI_STATUS: success
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          make final-audit
+
+      - name: Publish audit evidence artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: final-audit-${{ github.sha }}
+          path: |
+            docs/audit/reports/AUDIT_REPORT_latest.json
+            docs/audit/reports/AUDIT_REPORT_*.md
+          if-no-files-found: error
+          retention-days: 30
