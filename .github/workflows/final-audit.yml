@@ -77,11 +77,19 @@ jobs:
       - name: Frontend build
         run: make frontend-build
 
-      - name: Kimia write contract (offline only)
-        run: make kimia-write-contract
+      - name: Kimia write contract (offline only, exact)
+        run: |
+          set -euo pipefail
+          out=$(make kimia-write-contract)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=21 FAIL=0' || exit 1
 
-      - name: Kimia create-customer contract (offline only)
-        run: make kimia-create-customer-contract
+      - name: Kimia create-customer contract (offline only, exact)
+        run: |
+          set -euo pipefail
+          out=$(make kimia-create-customer-contract)
+          echo "$out"
+          echo "$out" | grep -q 'PASS=26 FAIL=0' || exit 1
 
       - name: Pilot preflight
         run: make pilot-preflight
