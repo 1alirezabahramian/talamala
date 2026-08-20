@@ -4,6 +4,8 @@
 `0.3.8-phase1`
 
 ## Phase status
+
+Domain money/weight: `DecimalString` enforced on Quote/Order/Custody (no float).
 **PHASE-1 SAFE CLOSURE — FROZEN**  
 See `docs/00-master/PHASE1_SAFE_CLOSURE.md`.
 
@@ -13,7 +15,7 @@ Do not bump VERSION merely for ops/docs.
 ## Smokes (Phase-1 freeze baseline)
 | Check | Expect |
 |-------|--------|
-| domain_smoke | PASS=8 FAIL=0 |
+| domain_smoke | PASS=13 FAIL=0 |
 | http_smoke | PASS=78 FAIL=0 |
 | persist_smoke | PASS=9 FAIL=0 |
 | cors_smoke | PASS=13 FAIL=0 |

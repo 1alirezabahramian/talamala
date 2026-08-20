@@ -59,7 +59,6 @@ fi
 if grep -qiE 'Live Create|unattended.*[Cc]reate' docs/00-master/RELEASE_SCOPE_PHASE1.md 2>/dev/null; then
   ok "RELEASE_SCOPE documents Create restrictions"
 else
-  # soft: presence of Must NOT claim section is enough
   if grep -q 'Must NOT claim' docs/00-master/RELEASE_SCOPE_PHASE1.md; then
     ok "RELEASE_SCOPE has Must NOT claim section"
   else
@@ -90,8 +89,8 @@ fi
 # --- 5. Domain smoke (in-memory, no PDO required for pure domain) ---
 if command -v php >/dev/null 2>&1; then
   if php backend/bin/smoke.php >/tmp/talamala_domain_smoke.out 2>&1; then
-    if grep -q 'PASS=8 FAIL=0' /tmp/talamala_domain_smoke.out; then
-      ok "domain_smoke PASS=8 FAIL=0"
+    if grep -q 'PASS=13 FAIL=0' /tmp/talamala_domain_smoke.out; then
+      ok "domain_smoke PASS=13 FAIL=0"
     else
       fail "domain_smoke unexpected output"
       cat /tmp/talamala_domain_smoke.out | tail -20

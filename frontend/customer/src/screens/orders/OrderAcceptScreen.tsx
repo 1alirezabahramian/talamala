@@ -83,6 +83,7 @@ export function OrderAcceptScreen(props: OrderAcceptScreenProps) {
       <header className="tal-header">
         <h1>پذیرش سفارش</h1>
         <p className="tal-muted">فقط با quote موجود · تسویه مالی از سمت سرور کنترل می‌شود</p>
+        <div className="tal-card" role="status"><strong>هشدار تسویه:</strong> تا تکمیل Ground Truth، settlement سمت سرور blocked می‌ماند — موجودی Kimia جعل نمی‌شود.</div>
       </header>
 
       <form onSubmit={onSubmit} className="tal-form" noValidate>

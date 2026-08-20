@@ -29,6 +29,7 @@ use Talamala\Infrastructure\Persistence\InMemoryTenantResolver;
 use Talamala\Infrastructure\Sms\FakeSmsOtpSender;
 use Talamala\Integrations\Jibit\FakeJibitIdentityClient;
 use Talamala\Integrations\Kimia\FakeKimiaReadClient;
+use Talamala\Domain\Shared\DecimalString;
 
 $pass = 0;
 $fail = 0;
@@ -108,6 +109,21 @@ $oa = $orders->acceptFromQuote('t1', $r->customer->id, 'q-smoke', 'idem-smoke-1'
 $check('order_accept', $oa->success === true);
 $settle = $orders->attemptSettlement('t1', $oa->order->id);
 $check('settlement_blocked', $settle->success === false && $settle->errorCode === 'settlement_blocked');
+$check('decimal_order_fields', DecimalString::isCanonical($oa->order->quantity) && DecimalString::isCanonical($oa->order->totalRial));
+$check('decimal_canonical_ok', DecimalString::isCanonical('1.500') && DecimalString::isCanonical('0'));
+$check('decimal_rejects_scientific', !DecimalString::isCanonical('1e3') && !DecimalString::isCanonical('') && !DecimalString::isCanonical(' 1.0 '));
+try {
+    new Quote('q-bad', 't1', $r->customer->id, QuoteSide::Buy, QuoteAsset::Gold18, '1e3', '1', '1', new DateTimeImmutable('now', new DateTimeZone('UTC')), (new DateTimeImmutable('now', new DateTimeZone('UTC')))->modify('+1 minute'), QuoteStatus::Open);
+    $check('decimal_quote_rejects_scientific', false);
+} catch (InvalidArgumentException) {
+    $check('decimal_quote_rejects_scientific', true);
+}
+try {
+    DecimalString::assertCanonical('not-a-number', 'x');
+    $check('decimal_assert_throws', false);
+} catch (InvalidArgumentException) {
+    $check('decimal_assert_throws', true);
+}
 
 echo "\n---\nPASS=$pass FAIL=$fail\n";
 exit($fail > 0 ? 1 : 0);

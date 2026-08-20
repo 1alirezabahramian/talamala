@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Talamala\Domain\Custody;
 
+use Talamala\Domain\Shared\DecimalString;
+
 /**
  * Physical custody (Amanat) — Talamala source of truth.
  * Independent from Kimia financial balances (Money/Gold/Coin/Currency).
@@ -24,7 +26,9 @@ final class CustodyItem
         public readonly ?\DateTimeImmutable $deliveredAt = null,
         public readonly ?string $barcodeRef = null,
         public readonly ?string $notes = null,
-    ) {}
+    ) {
+        DecimalString::assertCanonical($weightGrams, 'weightGrams');
+    }
 
     public function markReady(\DateTimeImmutable $at): self
     {

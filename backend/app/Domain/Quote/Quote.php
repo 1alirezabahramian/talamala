@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Talamala\Domain\Quote;
 
+use Talamala\Domain\Shared\DecimalString;
+
 /**
  * Immutable quote snapshot.
  * Once issued, fields must not change. Order references quote_id only.
@@ -25,7 +27,11 @@ final class Quote
         public readonly QuoteStatus $status,
         public readonly ?string $priceSourceRef = null,
         public readonly array $metadata = [],
-    ) {}
+    ) {
+        DecimalString::assertCanonical($quantity, 'quantity');
+        DecimalString::assertCanonical($unitPriceRial, 'unitPriceRial');
+        DecimalString::assertCanonical($totalRial, 'totalRial');
+    }
 
     public function isExpired(\DateTimeImmutable $now): bool
     {

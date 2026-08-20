@@ -56,3 +56,7 @@ Do not copy GoldPlatform completion percentages.
 - http_smoke PASS=78 FAIL=0
 - spa_router_smoke exact PASS=6 in CI
 - VERSION 0.3.8-phase1 · cors 13 · landing 18 · Permissions-Policy
+
+
+## Domain invariants (2026-08-20)
+- Money/weight: `Talamala\Domain\Shared\DecimalString` on Quote, Order, CustodyItem constructors; domain_smoke PASS=13.

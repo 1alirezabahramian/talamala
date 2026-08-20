@@ -6,6 +6,7 @@ namespace Talamala\Domain\Order;
 
 use Talamala\Domain\Quote\QuoteSide;
 use Talamala\Domain\Quote\QuoteAsset;
+use Talamala\Domain\Shared\DecimalString;
 
 /**
  * Order references an immutable quote_id.
@@ -29,7 +30,11 @@ final class Order
         public readonly ?string $idempotencyKey = null,
         public readonly ?string $kimiaRecordId = null,
         public readonly ?string $failureReason = null,
-    ) {}
+    ) {
+        DecimalString::assertCanonical($quantity, 'quantity');
+        DecimalString::assertCanonical($unitPriceRial, 'unitPriceRial');
+        DecimalString::assertCanonical($totalRial, 'totalRial');
+    }
 
     public function markPendingSettlement(): self
     {
