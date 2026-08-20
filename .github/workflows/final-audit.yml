@@ -11,6 +11,7 @@ permissions:
 
 env:
   TALAMALA_ENV: local
+  AUDIT_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
 jobs:
   evidence:
@@ -19,6 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.AUDIT_SHA }}
           fetch-depth: 1
 
       - name: Setup PHP
@@ -32,8 +34,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
-          echo "EVIDENCE_SHA=${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${AUDIT_SHA}"
+          echo "EVIDENCE_SHA=${AUDIT_SHA}"
 
       - name: PHP syntax
         run: make php-syntax
@@ -69,6 +71,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ env.AUDIT_SHA }}
           fetch-depth: 1
 
       - name: Setup PHP
@@ -80,19 +83,19 @@ jobs:
 
       - name: Exact-SHA Final Audit
         env:
-          TALAMALA_AUDIT_CI_SHA: ${{ github.sha }}
+          TALAMALA_AUDIT_CI_SHA: ${{ env.AUDIT_SHA }}
           TALAMALA_AUDIT_CI_STATUS: success
         shell: bash
         run: |
           set -euo pipefail
-          test "$(git rev-parse HEAD)" = "${GITHUB_SHA}"
+          test "$(git rev-parse HEAD)" = "${AUDIT_SHA}"
           make final-audit
 
       - name: Publish audit evidence artifact
         if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
-          name: final-audit-${{ github.sha }}
+          name: final-audit-${{ env.AUDIT_SHA }}
           path: |
             docs/audit/reports/AUDIT_REPORT_latest.json
             docs/audit/reports/AUDIT_REPORT_*.md
