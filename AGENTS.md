@@ -3,6 +3,9 @@
 ## Prime Directive
 Build from business truth. Never invent Kimia, pricing, payment or settlement behavior.
 
+## No Human Green (Closure)
+Nobody — human or AI — may declare the project green, pilot-accepted, or release-closed unless `make final-audit` on **the same Git SHA** returns `ACCEPTED_FOR_PILOT` with current-run Evidence. Manual reports and chat claims are not authority. See `docs/audit/CLOSURE_POLICY.md`.
+
 ## Mandatory First Actions in Any New Session
 1. Read `docs/00-master/SOURCE_REGISTER.md`
 2. Read `docs/00-master/GROUND_TRUTH_BLOCKERS.md`
