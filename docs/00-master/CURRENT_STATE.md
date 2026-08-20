@@ -24,6 +24,7 @@ Do not bump VERSION merely for ops/docs.
 | spa_router_smoke | PASS=6 FAIL=0 |
 | landing_smoke | PASS=18 FAIL=0 |
 | openapi_parity | PASS |
+| http_negative_smoke | PASS=17 FAIL=0 |
 
 ## Operator
 - Closure authority: `make final-audit` → `docs/audit/` (Final Audit Agent)
