@@ -103,7 +103,7 @@ jobs:
           set -euo pipefail
           out=$(make pricing-contract)
           echo "$out"
-          echo "$out" | grep -q 'PASS=21 FAIL=0' || exit 1
+          echo "$out" | grep -q 'PASS=29 FAIL=0' || exit 1
 
       - name: Settlement and payment contracts (offline only, exact)
         run: |
@@ -187,6 +187,7 @@ jobs:
           print(f'RELEASE_VERDICT={verdict}')
           print(f"RELEASE_REQUIRED_GREEN={r.get('release_required_green')}/{r.get('release_required_count')}")
           print(f"RELEASE_VETOS={len(r.get('release_vetos') or [])}")
+          print(f"RELEASE_EVIDENCE_OVERRIDES={len(r.get('release_evidence_overrides') or [])}")
           PY
           # NOT_READY is a valid Authority result while developing.
           # Only release_verdict=ACCEPTED_FOR_RELEASE authorizes release language.
