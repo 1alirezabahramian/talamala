@@ -4,6 +4,10 @@
 Strict wrapper around the existing Pilot Final Audit Agent.
 It never weakens or replaces Pilot semantics. It first executes the Pilot Agent
 on the same checkout, then applies a complete release-scope registry and RV-*.
+
+Release-only evidence overrides are deliberately narrow and fail-closed. They
+may resolve an exact Owner-grounded business-policy row without changing the
+Pilot checklist or authorizing a broader live capability.
 """
 from __future__ import annotations
 
@@ -17,6 +21,7 @@ ROOT = Path(__file__).resolve().parents[1]
 PILOT_AGENT = ROOT / "scripts/final_audit_agent_v2.py"
 CHECKLIST = ROOT / "docs/audit/registry/CHECKLIST_REGISTRY.json"
 RELEASE_REG = ROOT / "docs/audit/registry/RELEASE_SCOPE_REGISTRY.json"
+RELEASE_OVERLAY = ROOT / "docs/audit/registry/RELEASE_EVIDENCE_OVERLAY.json"
 REPORT_JSON = ROOT / "docs/audit/reports/AUDIT_REPORT_latest.json"
 REPORT_MD_LATEST = ROOT / "docs/audit/reports/AUDIT_REPORT_latest.md"
 
@@ -75,6 +80,113 @@ def _dedupe(vetos: list[dict]) -> list[dict]:
     return out
 
 
+def _repo_path(value: object) -> Path | None:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    p = (ROOT / value).resolve()
+    try:
+        p.relative_to(ROOT.resolve())
+    except ValueError:
+        return None
+    return p
+
+
+def _validate_pricing_release_overrides() -> tuple[set[str], list[dict], list[dict]]:
+    """Validate only the Cycle8 Owner-ratified GT-004 policy subset.
+
+    No generic human-green mechanism exists here. Only FA-047/FA-049 are
+    eligible, and FA-048 must remain explicitly excluded and live pricing false.
+    """
+    resolved: set[str] = set()
+    evidence: list[dict] = []
+    errors: list[dict] = []
+    allowed = {"FA-047", "FA-049"}
+
+    if not RELEASE_OVERLAY.is_file():
+        return resolved, evidence, errors
+    try:
+        overlay = json.loads(RELEASE_OVERLAY.read_text(encoding="utf-8"))
+    except Exception as exc:
+        return resolved, evidence, [{"id": "RV-04", "reason": f"invalid release evidence overlay: {exc}"}]
+
+    overrides = overlay.get("item_overrides")
+    if not isinstance(overrides, dict):
+        return resolved, evidence, [{"id": "RV-04", "reason": "release evidence item_overrides must be an object"}]
+    unknown = sorted(set(overrides) - allowed)
+    if unknown:
+        errors.append({"id": "RV-04", "reason": "unauthorized release evidence override IDs: " + ",".join(unknown)})
+    if "FA-048" not in (overlay.get("explicitly_not_overridden") or []):
+        errors.append({"id": "RV-04", "reason": "FA-048 must be explicitly excluded from pricing policy override"})
+
+    contract_path = ROOT / "docs/providers/official/PRICING_CONTRACT.json"
+    if not contract_path.is_file():
+        errors.append({"id": "RV-04", "reason": "pricing contract missing for release evidence overlay"})
+        return resolved, evidence, errors
+    try:
+        contract = json.loads(contract_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        errors.append({"id": "RV-04", "reason": f"invalid pricing contract for release override: {exc}"})
+        return resolved, evidence, errors
+
+    common_ok = True
+    common_checks = [
+        (contract.get("status") == "PARTIALLY_GROUNDED", "pricing status must be PARTIALLY_GROUNDED"),
+        (contract.get("live_pricing_authorized") is False, "live_pricing_authorized must remain false"),
+        (contract.get("proposal_status") == "OWNER_RATIFIED_POLICY_SUBSET", "Owner ratification marker missing"),
+        (isinstance(contract.get("remaining_unknowns"), list) and len(contract.get("remaining_unknowns")) > 0, "provider unknowns must remain visible"),
+        ((contract.get("blocked_scope") or []) == ["FA-048 live price provider integration"], "FA-048 blocked scope must remain explicit"),
+    ]
+    provider = contract.get("provider") or {}
+    common_checks.append((isinstance(provider, dict) and all(provider.get(k) is None for k in ["name", "official_api_doc_url_or_path", "auth_model", "freshness_sla_seconds", "failover_policy", "observed_at_field"]), "provider fields must remain unresolved"))
+    for ok, reason in common_checks:
+        if not ok:
+            common_ok = False
+            errors.append({"id": "RV-04", "reason": reason})
+
+    for rid in sorted(allowed):
+        row = overrides.get(rid)
+        if not isinstance(row, dict):
+            continue
+        row_ok = common_ok
+        if row.get("status") != "OWNER_RATIFIED":
+            row_ok = False
+            errors.append({"id": "RV-04", "reason": f"{rid} override status must be OWNER_RATIFIED"})
+        if row.get("required_smoke") != "pricing_contract":
+            row_ok = False
+            errors.append({"id": "RV-04", "reason": f"{rid} must require pricing_contract smoke"})
+        if row.get("live_pricing_authorized_must_be") is not False:
+            row_ok = False
+            errors.append({"id": "RV-04", "reason": f"{rid} override must require live pricing false"})
+        ep = _repo_path(row.get("evidence_path"))
+        cp = _repo_path(row.get("contract_path"))
+        if ep is None or not ep.is_file():
+            row_ok = False
+            errors.append({"id": "RV-04", "reason": f"{rid} ratification evidence missing"})
+        if cp != contract_path.resolve():
+            row_ok = False
+            errors.append({"id": "RV-04", "reason": f"{rid} contract_path mismatch"})
+
+        if rid == "FA-047":
+            q = contract.get("quote_policy") or {}
+            exact = q.get("default_ttl_seconds") == 120 and q.get("max_ttl_seconds") == 300 and q.get("freeze_on_accept") is True and q.get("accepted_order_behavior") == "preserve immutable accepted quote snapshot; do not re-price"
+            if not exact:
+                row_ok = False
+                errors.append({"id": "RV-04", "reason": "FA-047 ratified TTL/freeze values mismatch"})
+        if rid == "FA-049":
+            c = contract.get("coefficients") or {}
+            r = contract.get("rounding") or {}
+            exact = c.get("x") == "1" and c.get("y") == "0" and c.get("z") == "0" and c.get("application_order") == "adjusted_unit = (reference_unit * x) + y + z" and r.get("mode") == "half_up" and r.get("scale_rial") == 0 and r.get("scale_total_rial") == 0 and r.get("scale_quantity") == 4
+            if not exact:
+                row_ok = False
+                errors.append({"id": "RV-04", "reason": "FA-049 ratified coefficient/rounding values mismatch"})
+
+        if row_ok:
+            resolved.add(rid)
+            evidence.append({"id": rid, "authority": "OWNER_RATIFIED", "scope": row.get("scope"), "evidence_path": row.get("evidence_path")})
+
+    return resolved, evidence, errors
+
+
 def main() -> int:
     env = os.environ.copy()
     env.pop("TALAMALA_AUDIT_MODE", None)
@@ -99,6 +211,9 @@ def main() -> int:
         except Exception as exc:  # fail closed
             vetos.append({"id": "RV-04", "reason": f"invalid release registry: {exc}"})
 
+    resolved_overrides, override_evidence, override_errors = _validate_pricing_release_overrides()
+    vetos.extend(override_errors)
+
     by_id = {row.get("id"): row for row in report.get("items") or [] if row.get("id")}
     green = 0
     blocked_count = 0
@@ -111,6 +226,9 @@ def main() -> int:
             continue
         color = str(row.get("color") or "RED")
         critical = bool(row.get("critical"))
+        if rid in resolved_overrides:
+            green += 1
+            continue
         if color == "GREEN":
             green += 1
             if row.get("score") is not None:
@@ -158,6 +276,7 @@ def main() -> int:
         "release_required_blocked": blocked_count,
         "release_deferred_count": len(deferred),
         "release_mean_score": mean,
+        "release_evidence_overrides": override_evidence,
         "final_verdict_authority": "release",
         "authoritative_verdict": verdict,
     }
@@ -172,10 +291,14 @@ def main() -> int:
         f"**release_required:** {green}/{len(required)} GREEN  ",
         f"**release_blocked_rows:** {blocked_count}  ",
         f"**release_mean_score:** {mean}  ",
-        f"**release_deferred:** {len(deferred)}  ", "",
+        f"**release_deferred:** {len(deferred)}  ",
+        f"**release_evidence_overrides:** {len(override_evidence)}  ", "",
         "### Release Vetos", "",
     ]
     lines.extend(["NONE"] if not vetos else [f"- `{v.get('id')}`: {v.get('reason')}" for v in vetos])
+    if override_evidence:
+        lines += ["", "### Release Evidence Overrides", ""]
+        lines.extend([f"- `{x.get('id')}` OWNER_RATIFIED — {x.get('scope')}" for x in override_evidence])
     lines += ["", "See `docs/audit/RELEASE_SCOPE_FULL.md` and `CRITICAL_VETOS.md`.", ""]
     board = "\n".join(lines)
     for target in dict.fromkeys([REPORT_MD_LATEST, exact_md]):
@@ -185,7 +308,7 @@ def main() -> int:
     print("======== RELEASE AUTHORITY ========")
     print(f"SHA={sha[:7]} release_verdict={verdict}")
     print(f"required_green={green}/{len(required)} blocked_rows={blocked_count} mean={mean}")
-    print(f"release_vetos={len(vetos)} deferred={len(deferred)}")
+    print(f"release_vetos={len(vetos)} deferred={len(deferred)} overrides={len(override_evidence)}")
     return 0 if verdict == "ACCEPTED_FOR_RELEASE" else 1
 
 
