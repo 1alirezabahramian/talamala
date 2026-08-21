@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "purpose": "Narrow Release-only evidence overrides for Owner-grounded scopes. Does not alter Pilot semantics, defer required items, or authorize live external capabilities.",
+  "item_overrides": {
+    "FA-047": {
+      "status": "OWNER_RATIFIED",
+      "scope": "quote TTL/freeze business policy only",
+      "evidence_path": "docs/providers/official/PRICING_POLICY_OWNER_RATIFIED_20260821.md",
+      "contract_path": "docs/providers/official/PRICING_CONTRACT.json",
+      "required_smoke": "pricing_contract",
+      "live_pricing_authorized_must_be": false
+    },
+    "FA-049": {
+      "status": "OWNER_RATIFIED",
+      "scope": "x/y/z coefficients and rounding policy only",
+      "evidence_path": "docs/providers/official/PRICING_POLICY_OWNER_RATIFIED_20260821.md",
+      "contract_path": "docs/providers/official/PRICING_CONTRACT.json",
+      "required_smoke": "pricing_contract",
+      "live_pricing_authorized_must_be": false
+    }
+  },
+  "explicitly_not_overridden": [
+    "FA-048"
+  ]
+}
