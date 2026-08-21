@@ -2,7 +2,7 @@
 
 **Source of truth:** exact Release Authority artifact for `0dec08b15445d6d43de31d0a01687f1026d53fdf`  
 **Authority:** `RELEASE_SCOPE_REGISTRY.json` + machine `release_blockers` output.  
-**Exact baseline:** `19` release-required blockers. No ranges, no approximate counts.  
+**Exact baseline:** `19` release-required blockers before Owner-ratified Cycle8 evidence. No ranges, no approximate counts.  
 **Rule:** do not move a row to GREEN without exact evidence. Live mutation remains forbidden without explicit Owner authorization.
 
 ## Classes
@@ -14,16 +14,16 @@
 | **C — Controlled evidence** | Narrow authorized live/sandbox test with archived evidence and restored deny posture |
 | **D — Product integration** | Wire into registration/order/payment only after prerequisite A+B+C is grounded |
 
-## Exact 19 release blockers
+## Release blockers tracked from the exact 19 baseline
 
 | ID | Title | GT | Class | Cycle status | Close condition |
 |----|-------|----|-------|--------------|-----------------|
 | FA-026 | Production SMS.ir | GT-008 | B→C | Open | Tenant credentials/templates + controlled OTP delivery proof |
 | FA-039 | Live Jibit onboarding | GT-009 | B→C | Open | Current Jibit contract/credentials + controlled behavior evidence |
 | FA-045 | Kimia Create Account live from registration | GT-002 | D | Open | After FA-080 evidence + explicit product wiring decision |
-| FA-047 | Quote expiry / freeze duration authoritative source | GT-004 | B | Open | Owner-approved TTL/freeze policy |
-| FA-048 | Price provider integration | GT-004 | B→C→D | Open | Official API contract + controlled provider evidence + adapter |
-| FA-049 | Business coefficients x/y/z + rounding order | GT-004 | B | Open | Owner-approved coefficients, order and rounding |
+| FA-047 | Quote expiry / freeze duration authoritative source | GT-004 | B | **Owner ratified 2026-08-21; pending exact-SHA Release Authority validation** | Exact ratification artifact + pricing 29/29 + release override validation |
+| FA-048 | Price provider integration | GT-004 | B→C→D | **Open — explicitly not overridden** | Official API contract + controlled provider evidence + real adapter |
+| FA-049 | Business coefficients x/y/z + rounding order | GT-004 | B | **Owner ratified 2026-08-21; pending exact-SHA Release Authority validation** | Exact ratification artifact + pricing 29/29 + release override validation |
 | FA-060 | Settlement / hold / freeze semantics | GT-005 | B→C | Open | Owner rules + Kimia behavior evidence |
 | FA-075 | Kimia Write ACL Batch V1 offline contract | GT-003 | A (depth) | Open | Offline Batch V1 is evidenced; registry remains blocked until required GT scope is reconciled |
 | FA-076 | Kimia Write readback mandatory in ACL | GT-003 | A→C | Open | Offline readback contract + live evidence for remaining operation families |
@@ -40,8 +40,8 @@
 
 ## Cycle 5 focus
 
-1. **GT-004 depth (A/B scaffold):** machine contract remains `NOT_GROUNDED`; no coefficient, rounding, TTL, provider or freshness default is invented.
-2. **GT-002 preparation (C):** controlled Create runbook defines the exact evidence window; no Live Create is executed.
+1. **GT-004 depth (A/B scaffold):** machine contract initially remained `NOT_GROUNDED`; no coefficient, rounding, TTL, provider or freshness default was invented.
+2. **GT-002 preparation (C):** controlled Create runbook defines the exact evidence window; no Live Create was executed.
 3. **No score gaming:** this matrix is explanatory only. The Release Authority remains the machine source for blocker count and verdict.
 
 ## Explicit non-goals
@@ -58,13 +58,18 @@
 - **GT-006 / FA-096–098:** offline Payment contract added. Capture remains blocked unless official gateway contract, callback/signature/refund/reverse rules, Owner policy, evidence refs and zero unknowns are present. Release rows remain Open.
 - **GT-008/009 / FA-026, FA-039, FA-099:** production integration stub only; Fake SMS/Jibit remain unchanged.
 - **GT-004 / FA-047–049:** customer Quote-by-id exposes only an already-stored immutable snapshot. It does not fetch, calculate, refresh or authorize live pricing.
-- **No score gaming:** machine Release Authority remains the only blocker/verdict source.
 
 ## Cycle 7 progress — proposal only
 
-- **GT-004 / FA-047 + FA-049:** conservative business-policy proposal archived for Owner review; it is not Ground Truth yet.
-- `PRICING_CONTRACT.json` remains `NOT_GROUNDED`, `live_pricing_authorized=false`, `proposal_status=AWAITING_OWNER_RATIFICATION`.
-- `BlockedPriceProvider` is a hard-stop implementation and never emits a synthetic/live price.
-- `QuoteIssuanceGuard` permits only explicit `dev-` / `fixture-` / `manual-` sources while the live contract is incomplete. Any other source must pass the full provider/freshness/asset/rounding/TTL/zero-unknown gate.
-- Owner ratification in a later cycle may ground only the ratified policy subset. It does not close FA-048 or authorize Live Pricing.
-- **Blocker count remains exactly 19** until machine Release Authority says otherwise.
+- Conservative GT-004 business policy proposal archived.
+- `BlockedPriceProvider` and `QuoteIssuanceGuard` hard-stop Live Pricing while provider evidence is incomplete.
+- Pricing offline evidence increased to exact 21/21.
+
+## Cycle 8 — Owner ratification
+
+- Owner explicitly ratified Cycle7 policy on 2026-08-21.
+- `PRICING_POLICY_OWNER_RATIFIED_20260821.md` is the archived Owner evidence.
+- `PRICING_CONTRACT.json` is now `PARTIALLY_GROUNDED`; policy values are machine-readable, but `live_pricing_authorized=false` and provider unknowns remain open.
+- Release-only evidence overlay is intentionally limited to `FA-047` and `FA-049`; `FA-048` is explicitly excluded.
+- Pricing exact gate is raised to **PASS=29 FAIL=0**.
+- **No final blocker count is claimed here before exact-SHA Release Authority runs.**
