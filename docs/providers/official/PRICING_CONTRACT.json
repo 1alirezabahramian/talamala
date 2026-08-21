@@ -1,7 +1,7 @@
 {
   "schema_version": 1,
   "capability": "GT-004 Price Provider + business coefficients + quote expiry",
-  "status": "NOT_GROUNDED",
+  "status": "PARTIALLY_GROUNDED",
   "live_pricing_authorized": false,
   "provider": {
     "name": null,
@@ -11,24 +11,30 @@
     "failover_policy": null,
     "observed_at_field": null
   },
-  "assets_supported": [],
+  "assets_supported": [
+    "gold_quote_grams"
+  ],
   "coefficients": {
-    "x": null,
-    "y": null,
-    "z": null,
-    "notes": "Owner must supply approved coefficients; never invent in code"
+    "x": "1",
+    "y": "0",
+    "z": "0",
+    "application_order": "adjusted_unit = (reference_unit * x) + y + z",
+    "authority": "Owner ratification 2026-08-21"
   },
   "rounding": {
-    "order": null,
-    "mode": null,
-    "scale_rial": null,
-    "scale_quantity": null
+    "order": "adjustment -> unit_rounding -> total_calculation -> total_rounding",
+    "mode": "half_up",
+    "scale_rial": 0,
+    "scale_total_rial": 0,
+    "scale_quantity": 4,
+    "authority": "Owner ratification 2026-08-21"
   },
   "quote_policy": {
-    "default_ttl_seconds": null,
-    "max_ttl_seconds": null,
-    "freeze_on_accept": null,
-    "authority": "UNSET — FA-047 remains blocked until Owner sets TTL/freeze policy"
+    "default_ttl_seconds": 120,
+    "max_ttl_seconds": 300,
+    "freeze_on_accept": true,
+    "accepted_order_behavior": "preserve immutable accepted quote snapshot; do not re-price",
+    "authority": "Owner ratification 2026-08-21"
   },
   "rial_toman": {
     "conversion_side": "backend_only",
@@ -37,12 +43,21 @@
   },
   "remaining_unknowns": [
     "Official price provider contract document",
-    "Owner-approved x/y/z coefficients and application order",
-    "Rounding mode and decimal scales",
-    "Authoritative quote TTL / freeze duration",
-    "Failover and stale-price rejection rules"
+    "Provider authentication and endpoint contract",
+    "Provider observed-at / clock semantics",
+    "Provider freshness SLA",
+    "Provider failover and stale-price evidence",
+    "Controlled provider evidence and real adapter"
   ],
   "proposal_document": "docs/providers/official/PRICING_POLICY_PROPOSED_FOR_OWNER.md",
-  "proposal_status": "AWAITING_OWNER_RATIFICATION",
-  "notes": "Machine artifact remains NOT_GROUNDED. Cycle7 proposal is review-only. Owner ratification may ground only the approved business-policy subset; live provider authorization remains a separate evidence gate."
+  "ratification_document": "docs/providers/official/PRICING_POLICY_OWNER_RATIFIED_20260821.md",
+  "proposal_status": "OWNER_RATIFIED_POLICY_SUBSET",
+  "grounded_scope": [
+    "FA-047 quote TTL/freeze business policy",
+    "FA-049 x/y/z coefficients and rounding order"
+  ],
+  "blocked_scope": [
+    "FA-048 live price provider integration"
+  ],
+  "notes": "Business-policy subset is Owner-ratified. Provider scope remains incomplete; status is PARTIALLY_GROUNDED and live_pricing_authorized remains false. No live provider call is authorized."
 }
